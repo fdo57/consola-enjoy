@@ -48,34 +48,64 @@ st.markdown("""
         color: #ffffff !important;
     }
     
-    /* Custom Indicator Cards */
+    /* Custom Indicator Cards with Homogenized Height */
     .metric-card {
         background: white;
         border-radius: 10px;
         padding: 1.2rem;
         border: 1px solid #e2e8f0;
         box-shadow: 0 2px 4px rgba(0,0,0,0.03);
-        margin-bottom: 0.8rem;
+        min-height: 280px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
     }
     .metric-card h4 {
-        margin: 0 0 10px 0;
+        margin: 0 0 12px 0;
         color: #1e293b;
         font-size: 1.1rem;
         font-weight: 700;
         border-bottom: 2px solid #e2e8f0;
-        padding-bottom: 6px;
+        padding-bottom: 8px;
     }
+    
+    /* Standardized List Items */
     .metric-item {
         display: flex;
         align-items: center;
         justify-content: flex-start;
         gap: 12px;
         padding: 8px 0;
-        border-bottom: 1px stroke #f1f5f9;
+        border-bottom: 1px solid #f1f5f9;
         font-size: 0.95rem;
     }
     .metric-item:last-child {
         border-bottom: none;
+    }
+    
+    .unit-list-item {
+        padding: 10px 0;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+    }
+    .unit-list-item:last-child {
+        border-bottom: none;
+    }
+    
+    .unit-item-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 4px;
+        line-height: 1.3;
+    }
+    .unit-item-subtitle {
+        font-size: 0.88rem;
+        color: #475569;
+        line-height: 1.4;
     }
     
     /* Circle Badges for Numbers Only (Left Aligned) */
@@ -380,11 +410,11 @@ if vista_seleccionada == "DASHBOARD":
         
         c1, c2, c3 = st.columns(3)
         
-        # 1. Proyectos activos
+        # 1. Proyectos activos (Título sin nombre de unidad)
         with c1:
-            st.markdown(f"""
+            st.markdown("""
                 <div class="metric-card">
-                    <h4>🏢 Proyectos Activos ({unidad_filtro})</h4>
+                    <h4>🏢 Proyectos Activos</h4>
             """, unsafe_allow_html=True)
             
             df_activos_sub = df_p_sub[df_p_sub["proyecto_estatus"] != "Finalizado"]
@@ -393,16 +423,14 @@ if vista_seleccionada == "DASHBOARD":
             else:
                 for _, p_row in df_activos_sub.iterrows():
                     st.markdown(f"""
-                        <div class="metric-item" style="flex-direction: column; align-items: flex-start;">
-                            <div><b>{p_row['proyecto_nombre']}</b></div>
-                            <div style="font-size:0.85rem; color:#475569; margin-top:3px;">
-                                Salud: {p_row['proyecto_salud']} | Estatus: <code>{p_row['proyecto_estatus']}</code>
-                            </div>
+                        <div class="unit-list-item">
+                            <div class="unit-item-title">{p_row['proyecto_nombre']}</div>
+                            <div class="unit-item-subtitle">Salud: {p_row['proyecto_salud']} &nbsp;|&nbsp; Estatus: <code>{p_row['proyecto_estatus']}</code></div>
                         </div>
                     """, unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
-        # 2. Tareas pendientes por proyecto (Nombre proyecto y Nombre de la tarea)
+        # 2. Tareas pendientes por proyecto
         with c2:
             st.markdown("""
                 <div class="metric-card">
@@ -416,16 +444,16 @@ if vista_seleccionada == "DASHBOARD":
                 else:
                     for _, t_row in merged_sub_t.iterrows():
                         st.markdown(f"""
-                            <div class="metric-item" style="flex-direction: column; align-items: flex-start; margin-bottom: 4px;">
-                                <div><small style="color:#0284c7; font-weight:bold;">{t_row['proyecto_nombre']}:</small></div>
-                                <div><b>{t_row['tarea_nombre']}</b> <span style="font-size:0.8rem; background-color:#e2e8f0; padding:2px 6px; border-radius:4px;">{t_row['tarea_estatus']}</span></div>
+                            <div class="unit-list-item">
+                                <div class="unit-item-title">{t_row['proyecto_nombre']}</div>
+                                <div class="unit-item-subtitle">Tarea: <b>{t_row['tarea_nombre']}</b> &nbsp;|&nbsp; Estatus: <code>{t_row['tarea_estatus']}</code></div>
                             </div>
                         """, unsafe_allow_html=True)
             else:
                 st.write("No hay tareas pendientes.")
             st.markdown("</div>", unsafe_allow_html=True)
 
-        # 3. Requiere atención (Nombre proyecto y Nombre de la tarea)
+        # 3. Requiere atención
         with c3:
             st.markdown("""
                 <div class="metric-card">
@@ -441,10 +469,10 @@ if vista_seleccionada == "DASHBOARD":
                 else:
                     for _, a_row in merged_atencion_t.iterrows():
                         st.markdown(f"""
-                            <div class="metric-item" style="flex-direction: column; align-items: flex-start; margin-bottom: 4px;">
-                                <div><small style="color:#b91c1c; font-weight:bold;">{a_row['proyecto_nombre']} ({a_row['proyecto_salud']}):</small></div>
-                                <div><b>{a_row['tarea_nombre']}</b></div>
-                                {f'<div style="font-size:0.8rem; color:#dc2626;">💬 {a_row["tarea_comentarios"]}</div>' if a_row["tarea_comentarios"] else ''}
+                            <div class="unit-list-item">
+                                <div class="unit-item-title">{a_row['proyecto_nombre']} <span style="font-size:0.85rem; font-weight:normal;">({a_row['proyecto_salud']})</span></div>
+                                <div class="unit-item-subtitle">Tarea: <b>{a_row['tarea_nombre']}</b></div>
+                                {f'<div style="font-size:0.82rem; color:#dc2626; margin-top:2px;">💬 {a_row["tarea_comentarios"]}</div>' if a_row["tarea_comentarios"] else ''}
                             </div>
                         """, unsafe_allow_html=True)
             else:
