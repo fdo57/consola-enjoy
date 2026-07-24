@@ -21,81 +21,76 @@ st.markdown("""
         background-color: #f8f9fa;
     }
     
-    /* Header Styling */
-    .app-header {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        color: white;
-        padding: 1.5rem 2rem;
-        border-radius: 12px;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    /* Sidebar Radio Customization - Large Font, No Icons */
+    div[data-testid="stRadio"] label {
+        padding: 10px 14px !important;
+        margin-bottom: 8px !important;
+        border-radius: 8px !important;
+        background-color: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        transition: all 0.2s ease-in-out;
     }
-    .app-header h1 {
-        color: #ffffff;
-        margin: 0;
-        font-size: 1.8rem;
+    div[data-testid="stRadio"] label:hover {
+        background-color: #e2e8f0;
+    }
+    div[data-testid="stRadio"] label p {
+        font-size: 1.25rem !important;
+        font-weight: 800 !important;
+        color: #0f172a !important;
+        letter-spacing: 0.5px !important;
+        margin: 0 !important;
+    }
+    div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] {
+        background-color: #1e293b !important;
+        border-color: #0f172a !important;
+    }
+    div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] p {
+        color: #ffffff !important;
+    }
+    
+    /* Custom Indicator Cards */
+    .metric-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.2rem;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+        margin-bottom: 0.8rem;
+    }
+    .metric-card h4 {
+        margin: 0 0 10px 0;
+        color: #1e293b;
+        font-size: 1.1rem;
         font-weight: 700;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 6px;
     }
-    .app-header p {
-        color: #94a3b8;
-        margin: 0.2rem 0 0 0;
+    .metric-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px stroke #f1f5f9;
         font-size: 0.95rem;
     }
-    
-    /* Executive Cards */
-    .proj-card {
-        background: white;
+    .metric-item:last-child {
+        border-bottom: none;
+    }
+    .metric-val {
+        font-weight: 700;
+        background-color: #e2e8f0;
+        color: #0f172a;
+        padding: 2px 10px;
         border-radius: 12px;
-        padding: 1.25rem;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-        margin-bottom: 1rem;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .proj-card:hover {
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
-    }
-    
-    /* Health Badges */
-    .badge-verde {
-        background-color: #dcfce7;
-        color: #166534;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-weight: 600;
         font-size: 0.85rem;
-        display: inline-block;
     }
-    .badge-amarillo {
-        background-color: #fef9c3;
-        color: #854d0e;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 0.85rem;
-        display: inline-block;
-    }
-    .badge-rojo {
+    .badge-atencion {
         background-color: #fee2e2;
         color: #991b1b;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-weight: 600;
+        font-weight: 700;
+        padding: 2px 10px;
+        border-radius: 12px;
         font-size: 0.85rem;
-        display: inline-block;
-    }
-    .badge-status {
-        background-color: #e2e8f0;
-        color: #334155;
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 0.8rem;
-        font-weight: 500;
-    }
-    
-    .stButton>button {
-        border-radius: 8px;
-        font-weight: 600;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -127,7 +122,7 @@ def init_db():
         )
     """)
     
-    # Tareas Table
+    # Tareas Table with tarea_fecha_fin_real
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS Tareas (
             tarea_id TEXT PRIMARY KEY,
@@ -140,11 +135,19 @@ def init_db():
             tarea_fecha_inicio DATE,
             tarea_fecha_fin_base DATE,
             tarea_fecha_fin_proyectada DATE,
+            tarea_fecha_fin_real DATE,
             tarea_comentarios TEXT,
             fecha_ultima_actualizacion TIMESTAMP,
             FOREIGN KEY (proyecto_id) REFERENCES Proyectos (proyecto_id) ON DELETE CASCADE
         )
     """)
+    
+    # Migration check for existing DBs
+    cursor.execute("PRAGMA table_info(Tareas)")
+    cols = [col[1] for col in cursor.fetchall()]
+    if "tarea_fecha_fin_real" not in cols:
+        cursor.execute("ALTER TABLE Tareas ADD COLUMN tarea_fecha_fin_real DATE")
+        
     conn.commit()
     conn.close()
 
@@ -170,81 +173,30 @@ def seed_demo_data():
     today_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     tareas_seed = [
         # PROJ-001
-        ("TAR-001", "PROJ-001", "Diseño e iluminación decorativa", "Felipe Soto", 1, "Completada", 100, "2026-06-01", "2026-06-30", "2026-06-30", "Entregado a conformidad por arquitecto.", today_str),
-        ("TAR-002", "PROJ-001", "Instalación alfombra alto tráfico", "Jorge Rivas", 1, "En Proceso", 65, "2026-07-01", "2026-07-25", "2026-07-28", "Avance continuo, leve espera de remate.", today_str),
-        ("TAR-003", "PROJ-001", "Permiso Municipal de Funcionamiento", "Felipe Soto", 0, "En Proceso", 0, "2026-06-15", "2026-07-30", "2026-08-05", "Trámite en inspección municipal (Sin % numérico - Hito por Estatus).", today_str),
+        ("TAR-001", "PROJ-001", "Diseño e iluminación decorativa", "Felipe Soto", 1, "Completada", 100, "2026-06-01", "2026-06-30", "2026-06-30", "2026-06-28", "Entregado a conformidad por arquitecto.", today_str),
+        ("TAR-002", "PROJ-001", "Instalación alfombra alto tráfico", "Jorge Rivas", 1, "En Proceso", 65, "2026-07-01", "2026-07-25", "2026-07-28", None, "Avance continuo, leve espera de remate.", today_str),
+        ("TAR-003", "PROJ-001", "Permiso Municipal de Funcionamiento", "Felipe Soto", 0, "En Proceso", 0, "2026-06-15", "2026-07-30", "2026-08-05", None, "Trámite en inspección municipal (Sin % numérico - Hito por Estatus).", today_str),
 
         # PROJ-002
-        ("TAR-004", "PROJ-002", "Desmontaje de chillers antiguos", "Marcos Ugarte", 1, "Completada", 100, "2026-06-10", "2026-06-20", "2026-06-20", "Completado sin observaciones.", today_str),
-        ("TAR-005", "PROJ-002", "Aprobación de Importación de Tuberías", "Ana María Silva", 0, "En Proceso", 0, "2026-06-21", "2026-07-15", "2026-08-10", "Aduana solicitó certificación ambiental (Alerta activada).", today_str),
+        ("TAR-004", "PROJ-002", "Desmontaje de chillers antiguos", "Marcos Ugarte", 1, "Completada", 100, "2026-06-10", "2026-06-20", "2026-06-20", "2026-06-19", "Completado sin observaciones.", today_str),
+        ("TAR-005", "PROJ-002", "Aprobación de Importación de Tuberías", "Ana María Silva", 0, "En Proceso", 0, "2026-06-21", "2026-07-15", "2026-08-10", None, "Aduana solicitó certificación ambiental (Alerta activada).", today_str),
 
         # PROJ-003
-        ("TAR-006", "PROJ-003", "Licitación Tótems Kiosco", "Roberto Gómez", 0, "Pendiente", 0, "2026-08-01", "2026-08-20", "2026-08-20", "Pliegos listos para publicación.", today_str),
-        ("TAR-007", "PROJ-003", "Integración Software POS", "Camila Torres", 1, "En Proceso", 35, "2026-07-10", "2026-09-01", "2026-09-01", "Desarrollo de API en etapa de testing.", today_str),
+        ("TAR-006", "PROJ-003", "Licitación Tótems Kiosco", "Roberto Gómez", 0, "Pendiente", 0, "2026-08-01", "2026-08-20", "2026-08-20", None, "Pliegos listos para publicación.", today_str),
+        ("TAR-007", "PROJ-003", "Integración Software POS", "Camila Torres", 1, "En Proceso", 35, "2026-07-10", "2026-09-01", "2026-09-01", None, "Desarrollo de API en etapa de testing.", today_str),
 
         # PROJ-004
-        ("TAR-008", "PROJ-004", "Estudio de Cobertura Radiante", "Marcela Fuentes", 1, "Completada", 100, "2026-05-01", "2026-05-15", "2026-05-15", "Informe técnico aprobatorio.", today_str),
-        ("TAR-009", "PROJ-004", "Firma de Contrato Proveedor Fibra", "Marcela Fuentes", 0, "Pendiente", 0, "2026-06-01", "2026-06-15", "2026-08-30", "Detenido por negociación presupuestaria.", today_str)
+        ("TAR-008", "PROJ-004", "Estudio de Cobertura Radiante", "Marcela Fuentes", 1, "Completada", 100, "2026-05-01", "2026-05-15", "2026-05-15", "2026-05-14", "Informe técnico aprobatorio.", today_str),
+        ("TAR-009", "PROJ-004", "Firma de Contrato Proveedor Fibra", "Marcela Fuentes", 0, "Pendiente", 0, "2026-06-01", "2026-06-15", "2026-08-30", None, "Detenido por negociación presupuestaria.", today_str)
     ]
     
     cursor.executemany("""
-        INSERT INTO Tareas (tarea_id, proyecto_id, tarea_nombre, tarea_responsable, aplica_porcentaje, tarea_estatus, tarea_porcentaje, tarea_fecha_inicio, tarea_fecha_fin_base, tarea_fecha_fin_proyectada, tarea_comentarios, fecha_ultima_actualizacion)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO Tareas (tarea_id, proyecto_id, tarea_nombre, tarea_responsable, aplica_porcentaje, tarea_estatus, tarea_porcentaje, tarea_fecha_inicio, tarea_fecha_fin_base, tarea_fecha_fin_proyectada, tarea_fecha_fin_real, tarea_comentarios, fecha_ultima_actualizacion)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, tareas_seed)
     
     conn.commit()
     conn.close()
-
-def get_proyectos_df(unidad_filter=None):
-    conn = get_db_connection()
-    query = "SELECT * FROM Proyectos"
-    params = []
-    if unidad_filter and unidad_filter != "Todas":
-        query += " WHERE unidad_negocio = ?"
-        params.append(unidad_filter)
-    
-    df_proj = pd.read_sql_query(query, conn, params=params)
-    df_tareas = pd.read_sql_query("SELECT * FROM Tareas", conn)
-    conn.close()
-    
-    if not df_proj.empty:
-        if not df_tareas.empty:
-            def calc_effective_pct(row):
-                if row["aplica_porcentaje"] == 1:
-                    return float(row["tarea_porcentaje"] if row["tarea_porcentaje"] is not None else 0)
-                else:
-                    estatus = str(row["tarea_estatus"]).lower()
-                    if "completad" in estatus:
-                        return 100.0
-                    elif "proceso" in estatus:
-                        return 50.0
-                    else:
-                        return 0.0
-            
-            df_tareas["pct_efectivo"] = df_tareas.apply(calc_effective_pct, axis=1)
-            
-            proj_stats = df_tareas.groupby("proyecto_id").agg(
-                avance_promedio=("pct_efectivo", "mean"),
-                max_fecha_proyectada=("tarea_fecha_fin_proyectada", "max"),
-                total_tareas=("tarea_id", "count")
-            ).reset_index()
-            
-            df_proj = pd.merge(df_proj, proj_stats, on="proyecto_id", how="left")
-            df_proj["avance_promedio"] = df_proj["avance_promedio"].fillna(0).round(1)
-            df_proj["total_tareas"] = df_proj["total_tareas"].fillna(0).astype(int)
-            df_proj["max_fecha_proyectada"] = df_proj["max_fecha_proyectada"].fillna("-")
-        else:
-            df_proj["avance_promedio"] = 0.0
-            df_proj["max_fecha_proyectada"] = "-"
-            df_proj["total_tareas"] = 0
-            
-    return df_proj
-
-def get_tareas_by_proyecto(proyecto_id):
-    conn = get_db_connection()
-    df = pd.read_sql_query("SELECT * FROM Tareas WHERE proyecto_id = ? ORDER BY tarea_id", conn, params=[proyecto_id])
-    conn.close()
-    return df
 
 def generate_new_id(prefix, table_name, col_id):
     conn = get_db_connection()
@@ -269,28 +221,14 @@ def generate_new_id(prefix, table_name, col_id):
 init_db()
 
 # ---------------------------------------------------------
-# APP HEADER
+# SIDEBAR NAVIGATION (NO ICONS, LARGE FONT)
 # ---------------------------------------------------------
-st.markdown("""
-    <div class="app-header">
-        <h1>🏨 Consola de Administración de Proyectos ENJOY</h1>
-        <p>Plataforma Integral de Seguimiento Ejecutivo y Carga Operativa</p>
-    </div>
-""", unsafe_allow_html=True)
-
-# ---------------------------------------------------------
-# SIDEBAR NAVIGATION & FILTERS
-# ---------------------------------------------------------
-st.sidebar.image("https://img.icons8.com/color/96/dashboard-layout.png", width=64)
-st.sidebar.title("Navegación Principal")
+st.sidebar.markdown("## NAVEGACIÓN")
 
 vista_seleccionada = st.sidebar.radio(
-    "Selecciona el Módulo:",
-    [
-        "📊 Dashboard Ejecutivo (Gerencia)",
-        "📝 Gestión y Carga de Datos (Subgerencia)",
-        "⚙️ Administración y Datos Semilla"
-    ]
+    "Navegación principal:",
+    ["DASHBOARD", "GESTIÓN DE PROYECTOS", "ADMIN"],
+    label_visibility="collapsed"
 )
 
 UNIDADES_NEGOCIO = [
@@ -304,106 +242,260 @@ UNIDADES_NEGOCIO = [
 ]
 
 # ---------------------------------------------------------
-# VISTA 1: 📊 DASHBOARD EJECUTIVO (GERENTE GENERAL)
+# VISTA 1: DASHBOARD
 # ---------------------------------------------------------
-if vista_seleccionada == "📊 Dashboard Ejecutivo (Gerencia)":
-    st.subheader("📊 Resumen Ejecutivo Global por Unidad de Negocio")
-    st.caption("Visión sintética de alto nivel para toma de decisiones y control de estado de salud.")
-    
-    # Top Filter
-    col_f1, col_f2 = st.columns([1, 2])
-    with col_f1:
+if vista_seleccionada == "DASHBOARD":
+    # Top Filter by Business Unit
+    col_filter, col_empty = st.columns([1, 2])
+    with col_filter:
         unidad_filtro = st.selectbox(
-            "📍 Filtrar por Unidad de Negocio:",
+            "📍 Seleccionar Unidad de Negocio:",
             ["Todas"] + UNIDADES_NEGOCIO
         )
-        
-    df_proyectos = get_proyectos_df(unidad_filtro)
     
-    if df_proyectos.empty:
-        st.info("💡 No hay proyectos registrados para la unidad de negocio seleccionada. Ve al módulo de **Gestión y Carga** para agregar nuevos o a **Administración** para cargar datos demo.")
-    else:
-        # KPI Cards Calculation
-        total_proj = len(df_proyectos)
-        en_regla = len(df_proyectos[df_proyectos["proyecto_salud"] == "🟢 Verde"])
-        en_riesgo = len(df_proyectos[df_proyectos["proyecto_salud"].isin(["🟡 Amarillo", "🔴 Rojo"])])
-        avance_global = round(df_proyectos["avance_promedio"].mean(), 1)
+    conn = get_db_connection()
+    df_p = pd.read_sql_query("SELECT * FROM Proyectos", conn)
+    df_t = pd.read_sql_query("SELECT * FROM Tareas", conn)
+    conn.close()
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # ---------------------------------------------------------
+    # CASO A: FILTRO = "Todas"
+    # ---------------------------------------------------------
+    if unidad_filtro == "Todas":
+        c1, c2, c3 = st.columns(3)
         
-        # Display Metric Cards
-        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-        kpi1.metric("Total Proyectos", f"{total_proj}", help="Proyectos bajo la unidad seleccionada")
-        kpi2.metric("🟢 En Regla (Verde)", f"{en_regla}", delta=f"{round(en_regla/total_proj*100)}%" if total_proj>0 else "0%")
-        kpi3.metric("⚠️ En Riesgo / Atención", f"{en_riesgo}", delta=f"-{en_riesgo}" if en_riesgo>0 else "0", delta_color="inverse")
-        kpi4.metric("📈 Avance Promedio Global", f"{avance_global}%")
-        
-        st.markdown("---")
-        st.markdown("### 📋 Proyectos Ejecutivos")
-        
-        # Grid layout for Executive Cards
-        for idx, row in df_proyectos.iterrows():
-            salud_raw = str(row["proyecto_salud"])
-            if "Verde" in salud_raw:
-                badge_class = "badge-verde"
-            elif "Amarillo" in salud_raw:
-                badge_class = "badge-amarillo"
-            else:
-                badge_class = "badge-rojo"
+        # 1. Proyectos activos por unidad
+        with c1:
+            st.markdown("""
+                <div class="metric-card">
+                    <h4>📍 Proyectos Activos por Unidad</h4>
+            """, unsafe_allow_html=True)
+            
+            if not df_p.empty:
+                df_p_activos = df_p[df_p["proyecto_estatus"] != "Finalizado"]
+                unit_counts = df_p_activos.groupby("unidad_negocio")["proyecto_id"].count().reset_index()
+                unit_counts = unit_counts[unit_counts["proyecto_id"] > 0]
                 
-            with st.container():
-                st.markdown(f"""
-                    <div class="proj-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <h3 style="margin: 0; font-size: 1.2rem; color: #0f172a;">{row['proyecto_nombre']} <span style="font-size: 0.85rem; color: #64748b; font-weight: normal;">({row['proyecto_id']})</span></h3>
-                            <div>
-                                <span class="{badge_class}">{salud_raw}</span>
-                                <span class="badge-status">{row['proyecto_estatus']}</span>
+                if unit_counts.empty:
+                    st.write("No hay proyectos activos.")
+                else:
+                    for _, u_row in unit_counts.iterrows():
+                        st.markdown(f"""
+                            <div class="metric-item">
+                                <span><b>{u_row['unidad_negocio']}</b></span>
+                                <span class="metric-val">{u_row['proyecto_id']} proyecto(s)</span>
+                            </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.write("No hay proyectos registrados.")
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+        # 2. Tareas pendientes por proyecto
+        with c2:
+            st.markdown("""
+                <div class="metric-card">
+                    <h4>📌 Tareas Pendientes por Proyecto</h4>
+            """, unsafe_allow_html=True)
+            
+            if not df_t.empty and not df_p.empty:
+                df_t_pend = df_t[df_t["tarea_estatus"] != "Completada"]
+                merged_t = pd.merge(df_t_pend, df_p, on="proyecto_id", how="inner")
+                proj_t_counts = merged_t.groupby(["proyecto_id", "proyecto_nombre"])["tarea_id"].count().reset_index()
+                
+                if proj_t_counts.empty:
+                    st.write("No hay tareas pendientes.")
+                else:
+                    for _, p_row in proj_t_counts.iterrows():
+                        st.markdown(f"""
+                            <div class="metric-item">
+                                <span><b>{p_row['proyecto_nombre']}</b> <small style="color:#64748b;">({p_row['proyecto_id']})</small></span>
+                                <span class="metric-val">{p_row['tarea_id']} pendiente(s)</span>
+                            </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.write("No hay tareas registradas.")
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+        # 3. Requieren Atención (por unidad)
+        with c3:
+            st.markdown("""
+                <div class="metric-card">
+                    <h4>⚠️ Requieren Atención</h4>
+            """, unsafe_allow_html=True)
+            
+            if not df_p.empty:
+                # Projects in Yellow or Red, or tasks pending in those projects
+                df_atencion_proj = df_p[df_p["proyecto_salud"].isin(["🟡 Amarillo", "🔴 Rojo"])]
+                if not df_t.empty:
+                    merged_atencion = pd.merge(df_t[df_t["tarea_estatus"] != "Completada"], df_atencion_proj, on="proyecto_id", how="inner")
+                    unit_atencion = merged_atencion.groupby("unidad_negocio")["tarea_id"].count().reset_index()
+                else:
+                    unit_atencion = pd.DataFrame()
+                    
+                if unit_atencion.empty:
+                    # Fallback to counts of Yellow/Red projects per unit
+                    unit_atencion_proj = df_atencion_proj.groupby("unidad_negocio")["proyecto_id"].count().reset_index()
+                    if unit_atencion_proj.empty:
+                        st.write("🟢 Todas las unidades están en regla.")
+                    else:
+                        for _, a_row in unit_atencion_proj.iterrows():
+                            st.markdown(f"""
+                                <div class="metric-item">
+                                    <span><b>{a_row['unidad_negocio']}</b></span>
+                                    <span class="badge-atencion">{a_row['proyecto_id']} proyecto(s) en riesgo</span>
+                                </div>
+                            """, unsafe_allow_html=True)
+                else:
+                    for _, a_row in unit_atencion.iterrows():
+                        st.markdown(f"""
+                            <div class="metric-item">
+                                <span><b>{a_row['unidad_negocio']}</b></span>
+                                <span class="badge-atencion">{a_row['tarea_id']} tarea(s) en atención</span>
+                            </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.write("Sin datos.")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    # ---------------------------------------------------------
+    # CASO B: FILTRO = Unidad Específica
+    # ---------------------------------------------------------
+    else:
+        df_p_sub = df_p[df_p["unidad_negocio"] == unidad_filtro]
+        
+        c1, c2, c3 = st.columns(3)
+        
+        # 1. Proyectos activos
+        with c1:
+            st.markdown(f"""
+                <div class="metric-card">
+                    <h4>🏢 Proyectos Activos ({unidad_filtro})</h4>
+            """, unsafe_allow_html=True)
+            
+            df_activos_sub = df_p_sub[df_p_sub["proyecto_estatus"] != "Finalizado"]
+            if df_activos_sub.empty:
+                st.write("No hay proyectos activos en esta unidad.")
+            else:
+                for _, p_row in df_activos_sub.iterrows():
+                    st.markdown(f"""
+                        <div class="metric-item" style="flex-direction: column; align-items: flex-start;">
+                            <div><b>{p_row['proyecto_nombre']}</b> <span style="font-size:0.8rem; color:#64748b;">({p_row['proyecto_id']})</span></div>
+                            <div style="font-size:0.85rem; color:#475569; margin-top:3px;">
+                                Salud: {p_row['proyecto_salud']} | Estatus: <code>{p_row['proyecto_estatus']}</code>
                             </div>
                         </div>
-                        <div style="font-size: 0.9rem; color: #475569; margin-bottom: 10px;">
-                            📍 <b>Unidad:</b> {row['unidad_negocio']} &nbsp;|&nbsp; 👤 <b>Responsable:</b> {row['proyecto_responsable']} &nbsp;|&nbsp; 🗓️ <b>Término Est.:</b> {row['max_fecha_proyectada']}
-                        </div>
-                        <div style="margin-bottom: 5px; font-size: 0.85rem; color: #334155;">
-                            <b>Avance Ponderado del Proyecto:</b> {row['avance_promedio']}%
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # 2. Tareas pendientes por proyecto (Nombre proyecto y Nombre de la tarea)
+        with c2:
+            st.markdown("""
+                <div class="metric-card">
+                    <h4>📌 Tareas Pendientes por Proyecto</h4>
+            """, unsafe_allow_html=True)
+            
+            if not df_t.empty and not df_p_sub.empty:
+                merged_sub_t = pd.merge(df_t[df_t["tarea_estatus"] != "Completada"], df_p_sub, on="proyecto_id", how="inner")
+                if merged_sub_t.empty:
+                    st.write("No hay tareas pendientes en esta unidad.")
+                else:
+                    for _, t_row in merged_sub_t.iterrows():
+                        st.markdown(f"""
+                            <div class="metric-item" style="flex-direction: column; align-items: flex-start; margin-bottom: 4px;">
+                                <div><small style="color:#0284c7; font-weight:bold;">{t_row['proyecto_nombre']}:</small></div>
+                                <div><b>{t_row['tarea_nombre']}</b> <span class="metric-val">{t_row['tarea_estatus']}</span></div>
+                            </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.write("No hay tareas pendientes.")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # 3. Requiere atención (Nombre proyecto y Nombre de la tarea)
+        with c3:
+            st.markdown("""
+                <div class="metric-card">
+                    <h4>⚠️ Requieren Atención</h4>
+            """, unsafe_allow_html=True)
+            
+            if not df_p_sub.empty and not df_t.empty:
+                df_atencion_sub_p = df_p_sub[df_p_sub["proyecto_salud"].isin(["🟡 Amarillo", "🔴 Rojo"])]
+                merged_atencion_t = pd.merge(df_t[df_t["tarea_estatus"] != "Completada"], df_atencion_sub_p, on="proyecto_id", how="inner")
                 
-                # Progress bar
-                st.progress(int(min(max(row['avance_promedio'], 0), 100)))
+                if merged_atencion_t.empty:
+                    st.write("🟢 Ninguna tarea requiere atención urgente.")
+                else:
+                    for _, a_row in merged_atencion_t.iterrows():
+                        st.markdown(f"""
+                            <div class="metric-item" style="flex-direction: column; align-items: flex-start; margin-bottom: 4px;">
+                                <div><small style="color:#b91c1c; font-weight:bold;">{a_row['proyecto_nombre']} ({a_row['proyecto_salud']}):</small></div>
+                                <div><b>{a_row['tarea_nombre']}</b></div>
+                                {f'<div style="font-size:0.8rem; color:#dc2626;">💬 {a_row["tarea_comentarios"]}</div>' if a_row["tarea_comentarios"] else ''}
+                            </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.write("Sin novedades de atención.")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    # ---------------------------------------------------------
+    # SECCIÓN: TAREAS TERMINADAS (MATRIZ)
+    # ---------------------------------------------------------
+    st.markdown("---")
+    
+    show_completed = st.button("📋 Ver Sección: Tareas Terminadas", use_container_width=True)
+    
+    # Store toggle in session state so it stays open when clicked
+    if "show_completed_state" not in st.session_state:
+        st.session_state.show_completed_state = False
+        
+    if show_completed:
+        st.session_state.show_completed_state = not st.session_state.show_completed_state
+
+    if st.session_state.show_completed_state:
+        st.markdown("### 🏁 Tareas Terminadas")
+        st.caption("Matriz de historial de tareas completadas y fechas de término reales.")
+        
+        if not df_t.empty and not df_p.empty:
+            df_completed_t = df_t[df_t["tarea_estatus"] == "Completada"].copy()
+            
+            if unidad_filtro != "Todas":
+                p_ids_filter = df_p[df_p["unidad_negocio"] == unidad_filtro]["proyecto_id"].tolist()
+                df_completed_t = df_completed_t[df_completed_t["proyecto_id"].isin(p_ids_filter)]
                 
-                # Read-only task breakdown drilldown
-                with st.expander(f"🔍 Ver Detalle de Tareas ({row['total_tareas']} tareas) - Solo Lectura"):
-                    df_tareas_proj = get_tareas_by_proyecto(row["proyecto_id"])
-                    
-                    if df_tareas_proj.empty:
-                        st.caption("No hay tareas registradas aún para este proyecto.")
-                    else:
-                        st.markdown("**Desglose Operativo:**")
-                        for t_idx, t_row in df_tareas_proj.iterrows():
-                            c1, c2, c3, c4 = st.columns([3, 2, 2, 3])
-                            with c1:
-                                st.markdown(f"**{t_row['tarea_nombre']}**")
-                                st.caption(f"Responsable: {t_row['tarea_responsable']}")
-                            with c2:
-                                st.write(f"Estatus: `{t_row['tarea_estatus']}`")
-                            with c3:
-                                if t_row["aplica_porcentaje"] == 1:
-                                    st.write(f"Avance Numérico: **{t_row['tarea_porcentaje']}%**")
-                                    st.progress(int(t_row['tarea_porcentaje']))
-                                else:
-                                    st.write("Avance: `N/A - Hito por Estatus`")
-                            with c4:
-                                st.caption(f"Término Proyectado: {t_row['tarea_fecha_fin_proyectada']}")
-                                if t_row["tarea_comentarios"]:
-                                    st.info(f"💬 {t_row['tarea_comentarios']}")
-                            st.divider()
+            if df_completed_t.empty:
+                st.info("No hay tareas completadas para la unidad seleccionada.")
+            else:
+                matrix_df = pd.merge(df_completed_t, df_p, on="proyecto_id", how="inner")
+                
+                # Fill missing fecha_fin_real with fecha_fin_proyectada if empty
+                matrix_df["tarea_fecha_fin_real"] = matrix_df["tarea_fecha_fin_real"].fillna(matrix_df["tarea_fecha_fin_proyectada"])
+                
+                # Format final matrix view with exact required headers:
+                # Unidad | Proyecto | Tarea | Fecha de inicio | Fecha de término
+                final_matrix = matrix_df[[
+                    "unidad_negocio",
+                    "proyecto_nombre",
+                    "tarea_nombre",
+                    "tarea_fecha_inicio",
+                    "tarea_fecha_fin_real"
+                ]].rename(columns={
+                    "unidad_negocio": "Unidad",
+                    "proyecto_nombre": "Proyecto",
+                    "tarea_nombre": "Tarea",
+                    "tarea_fecha_inicio": "Fecha de inicio",
+                    "tarea_fecha_fin_real": "Fecha de término"
+                })
+                
+                st.dataframe(final_matrix, use_container_width=True, hide_index=True)
+        else:
+            st.info("No existen tareas registradas.")
 
 # ---------------------------------------------------------
-# VISTA 2: 📝 GESTIÓN Y CARGA DE DATOS (SUBGERENTA)
+# VISTA 2: GESTIÓN DE PROYECTOS
 # ---------------------------------------------------------
-elif vista_seleccionada == "📝 Gestión y Carga de Datos (Subgerencia)":
-    st.subheader("📝 Centro de Carga y Actualización Operativa")
-    st.caption("Diseñado para la edición rápida, directa e intuitiva de proyectos y tareas sin elementos ambiguos.")
+elif vista_seleccionada == "GESTIÓN DE PROYECTOS":
+    st.subheader("📝 Gestión y Carga de Proyectos y Tareas")
     
     tab1, tab2, tab3 = st.tabs([
         "➕ / ✏️ Formulario A: Proyecto",
@@ -530,7 +622,7 @@ elif vista_seleccionada == "📝 Gestión y Carga de Datos (Subgerencia)":
                     if aplica_pct_val == 1:
                         t_porcentaje = st.slider("% Avance Inicial", 0, 100, 0)
                     else:
-                        st.info("ℹ️ Al seleccionar 'No aplica porcentaje', la tarea medirá su avance por Estatus (Pendiente=0%, En Proceso=50%, Completada=100%).")
+                        st.info("ℹ️ Al seleccionar 'No aplica porcentaje', la tarea medirá su avance por Estatus.")
                         t_porcentaje = 0
                 
                 c_f1, c_f2, c_f3 = st.columns(3)
@@ -540,6 +632,10 @@ elif vista_seleccionada == "📝 Gestión y Carga de Datos (Subgerencia)":
                     t_f_base = st.date_input("Fecha Fin Base", value=date.today())
                 with c_f3:
                     t_f_proj = st.date_input("Fecha Fin Proyectada", value=date.today())
+                
+                t_f_real = None
+                if t_estatus == "Completada":
+                    t_f_real = st.date_input("Fecha Fin Real:", value=date.today())
                 
                 t_comentarios = st.text_area("Comentarios u Observaciones Iniciales", placeholder="Notas adicionales sobre la tarea...")
                 
@@ -553,16 +649,18 @@ elif vista_seleccionada == "📝 Gestión y Carga de Datos (Subgerencia)":
                         cursor = conn.cursor()
                         today_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         
+                        f_real_str = str(t_f_real) if t_f_real else None
+                        
                         cursor.execute("""
                             INSERT INTO Tareas (
                                 tarea_id, proyecto_id, tarea_nombre, tarea_responsable, aplica_porcentaje,
                                 tarea_estatus, tarea_porcentaje, tarea_fecha_inicio, tarea_fecha_fin_base,
-                                tarea_fecha_fin_proyectada, tarea_comentarios, fecha_ultima_actualizacion
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                tarea_fecha_fin_proyectada, tarea_fecha_fin_real, tarea_comentarios, fecha_ultima_actualizacion
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, (
                             t_id_new, p_id_selected, t_nombre, t_resp, aplica_pct_val,
                             t_estatus, t_porcentaje, str(t_f_ini), str(t_f_base),
-                            str(t_f_proj), t_comentarios, today_str
+                            str(t_f_proj), f_real_str, t_comentarios, today_str
                         ))
                         
                         conn.commit()
@@ -614,29 +712,44 @@ elif vista_seleccionada == "📝 Gestión y Carga de Datos (Subgerencia)":
                             curr_pct = int(t_data["tarea_porcentaje"]) if t_data["tarea_porcentaje"] is not None else 0
                             new_pct = st.slider("% Avance Actualizado:", 0, 100, curr_pct)
                         else:
-                            st.info("ℹ️ Tarea configurada como **Hito por Estatus**. No requiere porcentaje numérico.")
-                            new_pct = 0
+                            st.info("ℹ️ Tarea configurada como **Hito por Estatus**.")
+                            new_pct = 100 if new_estatus == "Completada" else 0
                     
-                    try:
-                        f_proj_init = datetime.strptime(t_data["tarea_fecha_fin_proyectada"], "%Y-%m-%d").date()
-                    except:
-                        f_proj_init = date.today()
-                        
-                    new_f_proj = st.date_input("Nueva Fecha Fin Proyectada:", value=f_proj_init)
+                    c_fp1, c_fp2 = st.columns(2)
+                    with c_fp1:
+                        try:
+                            f_proj_init = datetime.strptime(t_data["tarea_fecha_fin_proyectada"], "%Y-%m-%d").date()
+                        except:
+                            f_proj_init = date.today()
+                        new_f_proj = st.date_input("Nueva Fecha Fin Proyectada:", value=f_proj_init)
+                    
+                    with c_fp2:
+                        # Show Fecha Fin Real when Completed
+                        if new_estatus == "Completada":
+                            try:
+                                f_real_init = datetime.strptime(t_data["tarea_fecha_fin_real"], "%Y-%m-%d").date() if t_data["tarea_fecha_fin_real"] else date.today()
+                            except:
+                                f_real_init = date.today()
+                            new_f_real = st.date_input("Fecha Fin Real (Término):", value=f_real_init)
+                        else:
+                            new_f_real = None
+                            
                     new_comentarios = st.text_area("Alertas, Avances o Comentarios Recientes:", value=t_data["tarea_comentarios"] or "")
                     
-                    submit_update = st.form_submit_button("🚀 Actualizar Avance y Notificar", use_container_width=True)
+                    submit_update = st.form_submit_button("🚀 Actualizar Avance y Guardar", use_container_width=True)
                     
                     if submit_update:
                         conn = get_db_connection()
                         cursor = conn.cursor()
                         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         
+                        f_real_val_str = str(new_f_real) if new_f_real else None
+                        
                         cursor.execute("""
                             UPDATE Tareas
-                            SET tarea_estatus = ?, tarea_porcentaje = ?, tarea_fecha_fin_proyectada = ?, tarea_comentarios = ?, fecha_ultima_actualizacion = ?
+                            SET tarea_estatus = ?, tarea_porcentaje = ?, tarea_fecha_fin_proyectada = ?, tarea_fecha_fin_real = ?, tarea_comentarios = ?, fecha_ultima_actualizacion = ?
                             WHERE tarea_id = ?
-                        """, (new_estatus, new_pct, str(new_f_proj), new_comentarios, now_str, t_id_cur))
+                        """, (new_estatus, new_pct, str(new_f_proj), f_real_val_str, new_comentarios, now_str, t_id_cur))
                         
                         conn.commit()
                         conn.close()
@@ -644,10 +757,10 @@ elif vista_seleccionada == "📝 Gestión y Carga de Datos (Subgerencia)":
                         st.rerun()
 
 # ---------------------------------------------------------
-# VISTA 3: ⚙️ ADMINISTRACIÓN Y DATOS SEMILLA
+# VISTA 3: ADMIN
 # ---------------------------------------------------------
 else:
-    st.subheader("⚙️ Mantenimiento del Sistema y Diagnóstico (Administrador)")
+    st.subheader("⚙️ Mantenimiento del Sistema (ADMIN)")
     st.caption("Herramientas para reiniciar el entorno, cargar datos iniciales de prueba e inspeccionar las tablas SQLite directamente.")
     
     col_adm1, col_adm2 = st.columns(2)
