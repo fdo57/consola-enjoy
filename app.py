@@ -56,8 +56,8 @@ st.markdown("""
         font-weight: 700 !important;
     }
     
-    /* Circle styling for secondary buttons (Dark Gray) */
-    button[data-testid="stBaseButton-secondary"] {
+    /* Scope circle styling ONLY to circle-btn containers */
+    div.circle-btn-dark button {
         background-color: #1e293b !important;
         color: #ffffff !important;
         border-radius: 50% !important;
@@ -72,22 +72,20 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
         margin: 0 !important;
     }
-    button[data-testid="stBaseButton-secondary"]:hover,
-    button[data-testid="stBaseButton-secondary"]:focus,
-    button[data-testid="stBaseButton-secondary"]:active {
+    div.circle-btn-dark button:hover,
+    div.circle-btn-dark button:focus,
+    div.circle-btn-dark button:active {
         background-color: #334155 !important;
         color: #ffffff !important;
-        border: none !important;
     }
-    button[data-testid="stBaseButton-secondary"] p {
+    div.circle-btn-dark button p {
         color: #ffffff !important;
         font-weight: 800 !important;
         font-size: 0.9rem !important;
         margin: 0 !important;
     }
 
-    /* Circle styling for primary buttons (Red) */
-    button[data-testid="stBaseButton-primary"] {
+    div.circle-btn-red button {
         background-color: #ef4444 !important;
         color: #ffffff !important;
         border-radius: 50% !important;
@@ -102,18 +100,39 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3) !important;
         margin: 0 !important;
     }
-    button[data-testid="stBaseButton-primary"]:hover,
-    button[data-testid="stBaseButton-primary"]:focus,
-    button[data-testid="stBaseButton-primary"]:active {
+    div.circle-btn-red button:hover,
+    div.circle-btn-red button:focus,
+    div.circle-btn-red button:active {
         background-color: #dc2626 !important;
         color: #ffffff !important;
-        border: none !important;
     }
-    button[data-testid="stBaseButton-primary"] p {
+    div.circle-btn-red button p {
         color: #ffffff !important;
         font-weight: 800 !important;
         font-size: 0.9rem !important;
         margin: 0 !important;
+    }
+
+    /* Section Button: Tareas Terminadas (Outline text style, no background fill) */
+    div.btn-completed-section button {
+        background-color: transparent !important;
+        color: #0f172a !important;
+        border: 2px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        width: 100% !important;
+        padding: 8px 16px !important;
+        font-weight: 700 !important;
+        font-size: 1.05rem !important;
+    }
+    div.btn-completed-section button:hover {
+        background-color: #f1f5f9 !important;
+        border-color: #94a3b8 !important;
+        color: #0284c7 !important;
+    }
+    div.btn-completed-section button p {
+        font-size: 1.05rem !important;
+        font-weight: 700 !important;
+        color: inherit !important;
     }
     
     /* Interactive Ficha Cards */
@@ -334,7 +353,7 @@ if st.session_state.nav_page == "DASHBOARD":
     if unidad_filtro == "Todas":
         c1, c2, c3 = st.columns(3)
         
-        # 1. Proyectos activos por unidad (Botón Círculo Gris Oscuro)
+        # 1. Proyectos activos por unidad (Círculo Gris Oscuro)
         with c1:
             st.markdown("#### 📍 Proyectos Activos por Unidad")
             st.markdown("---")
@@ -353,17 +372,19 @@ if st.session_state.nav_page == "DASHBOARD":
                         
                         col_btn, col_txt = st.columns([1, 4], vertical_alignment="center")
                         with col_btn:
-                            if st.button(f"{cnt}", key=f"dash_u_act_{u_name}", type="secondary", help=f"Ver proyectos de {u_name}"):
+                            st.markdown('<div class="circle-btn-dark">', unsafe_allow_html=True)
+                            if st.button(f"{cnt}", key=f"dash_u_act_{u_name}", help=f"Ver proyectos de {u_name}"):
                                 p_sub = df_p_activos[df_p_activos["unidad_negocio"] == u_name]
                                 if not p_sub.empty:
                                     open_ficha_proyecto(p_sub.iloc[0]["proyecto_id"])
                                     st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
                         with col_txt:
                             st.markdown(f"**{u_name}**")
             else:
                 st.write("No hay proyectos registrados.")
             
-        # 2. Tareas pendientes por proyecto (Botón Círculo Gris Oscuro)
+        # 2. Tareas pendientes por proyecto (Círculo Gris Oscuro)
         with c2:
             st.markdown("#### 📌 Tareas Pendientes por Proyecto")
             st.markdown("---")
@@ -382,15 +403,17 @@ if st.session_state.nav_page == "DASHBOARD":
                         
                         col_btn, col_txt = st.columns([1, 4], vertical_alignment="center")
                         with col_btn:
-                            if st.button(f"{cnt}", key=f"dash_proj_count_{p_row['proyecto_id']}", type="secondary", help="Ver Ficha de Proyecto"):
+                            st.markdown('<div class="circle-btn-dark">', unsafe_allow_html=True)
+                            if st.button(f"{cnt}", key=f"dash_proj_count_{p_row['proyecto_id']}", help="Ver Ficha de Proyecto"):
                                 open_ficha_proyecto(p_row['proyecto_id'])
                                 st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
                         with col_txt:
                             st.markdown(f"**{p_nom}**")
             else:
                 st.write("No hay tareas registradas.")
             
-        # 3. Requieren Atención (Botón Círculo Rojo)
+        # 3. Requieren Atención (Círculo Rojo)
         with c3:
             st.markdown("#### ⚠️ Requieren Atención")
             st.markdown("---")
@@ -413,11 +436,13 @@ if st.session_state.nav_page == "DASHBOARD":
                             cnt = a_row['proyecto_id']
                             col_btn, col_txt = st.columns([1, 4], vertical_alignment="center")
                             with col_btn:
-                                if st.button(f"{cnt}", key=f"dash_atn_p_{u_name}", type="primary", help=f"Ver elementos en atención en {u_name}"):
+                                st.markdown('<div class="circle-btn-red">', unsafe_allow_html=True)
+                                if st.button(f"{cnt}", key=f"dash_atn_p_{u_name}", help=f"Ver elementos en atención en {u_name}"):
                                     p_sub = df_atencion_proj[df_atencion_proj["unidad_negocio"] == u_name]
                                     if not p_sub.empty:
                                         open_ficha_proyecto(p_sub.iloc[0]["proyecto_id"])
                                         st.rerun()
+                                st.markdown('</div>', unsafe_allow_html=True)
                             with col_txt:
                                 st.markdown(f"**{u_name}**")
                 else:
@@ -426,11 +451,13 @@ if st.session_state.nav_page == "DASHBOARD":
                         cnt = a_row['tarea_id']
                         col_btn, col_txt = st.columns([1, 4], vertical_alignment="center")
                         with col_btn:
-                            if st.button(f"{cnt}", key=f"dash_atn_u_{u_name}", type="primary", help=f"Ver tareas en atención en {u_name}"):
+                            st.markdown('<div class="circle-btn-red">', unsafe_allow_html=True)
+                            if st.button(f"{cnt}", key=f"dash_atn_u_{u_name}", help=f"Ver tareas en atención en {u_name}"):
                                 p_sub = df_atencion_proj[df_atencion_proj["unidad_negocio"] == u_name]
                                 if not p_sub.empty:
                                     open_ficha_proyecto(p_sub.iloc[0]["proyecto_id"])
                                     st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
                         with col_txt:
                             st.markdown(f"**{u_name}**")
             else:
@@ -492,7 +519,7 @@ if st.session_state.nav_page == "DASHBOARD":
                     st.write("🟢 Ninguna tarea requiere atención urgente.")
                 else:
                     for _, a_row in merged_atencion_t.iterrows():
-                        if st.button(f"⚠️ {a_row['tarea_nombre']}", key=f"btn_atn_{a_row['tarea_id']}", type="primary", help="Abrir Ficha de Tarea"):
+                        if st.button(f"⚠️ {a_row['tarea_nombre']}", key=f"btn_atn_{a_row['tarea_id']}", help="Abrir Ficha de Tarea"):
                             open_ficha_tarea(a_row['tarea_id'], a_row['proyecto_id'])
                             st.rerun()
                         st.caption(f"{a_row['proyecto_nombre']} ({a_row['proyecto_salud']})")
@@ -507,7 +534,9 @@ if st.session_state.nav_page == "DASHBOARD":
     # ---------------------------------------------------------
     st.markdown("---")
     
+    st.markdown('<div class="btn-completed-section">', unsafe_allow_html=True)
     show_completed = st.button("📋 Ver Sección: Tareas Terminadas", use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     
     if "show_completed_state" not in st.session_state:
         st.session_state.show_completed_state = False
