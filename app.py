@@ -66,14 +66,19 @@ st.markdown("""
         padding-bottom: 6px;
     }
     
-    /* Reduce row spacing between projects and tasks by 40% */
+    /* Reduce row spacing between projects and tasks by another 30% */
     div[data-testid="stHorizontalBlock"] {
-        margin-bottom: -10px !important;
+        margin-bottom: -16px !important;
         padding-top: 0px !important;
         padding-bottom: 0px !important;
     }
     div[data-testid="element-container"] {
-        margin-bottom: 2px !important;
+        margin-bottom: 0px !important;
+        padding-bottom: 0px !important;
+    }
+    div.stButton {
+        margin: 0px !important;
+        padding: 0px !important;
     }
     
     /* Custom Circle Buttons Styling */
