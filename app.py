@@ -66,19 +66,22 @@ st.markdown("""
         padding-bottom: 6px;
     }
     
-    /* Reduce row spacing between projects and tasks by another 30% */
+    /* Compact vertical spacing between row items without shrinking font/buttons */
     div[data-testid="stHorizontalBlock"] {
-        margin-bottom: -16px !important;
+        margin-top: 0px !important;
+        margin-bottom: 2px !important;
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
+    }
+    div[data-testid="column"] {
         padding-top: 0px !important;
         padding-bottom: 0px !important;
     }
     div[data-testid="element-container"] {
+        margin-top: 0px !important;
         margin-bottom: 0px !important;
+        padding-top: 0px !important;
         padding-bottom: 0px !important;
-    }
-    div.stButton {
-        margin: 0px !important;
-        padding: 0px !important;
     }
     
     /* Custom Circle Buttons Styling */
