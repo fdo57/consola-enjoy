@@ -270,6 +270,30 @@ def init_db():
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, proyectos_seed)
 
+    # Auto-migrate tasks if table is empty or needs updated tasks
+    cursor.execute("SELECT COUNT(*) as count FROM Tareas")
+    t_cnt = cursor.fetchone()["count"]
+    if t_cnt == 0:
+        today_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        today_date = date.today().strftime("%Y-%m-%d")
+        tareas_seed = [
+            ("TAR-001", "PROJ-001", "Definición de Compra de Galpón", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+            ("TAR-002", "PROJ-002", "Reunión de coordinación con constructora.", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+            ("TAR-003", "PROJ-002", "Inicio de obras.", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+            ("TAR-004", "PROJ-003", "Definición de ampliación TGM exterior", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+            ("TAR-005", "PROJ-003", "Definición de ampliación terrazas", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+            ("TAR-006", "PROJ-003", "Definición de aumentos en CENIT", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+            ("TAR-007", "PROJ-004", "Envío de expediente a revisora", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+            ("TAR-008", "PROJ-006", "Definición sobre costos de regularización", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str)
+        ]
+        cursor.executemany("""
+            INSERT INTO Tareas (
+                tarea_id, proyecto_id, tarea_nombre, tarea_responsable, aplica_porcentaje,
+                tarea_estatus, tarea_porcentaje, tarea_fecha_inicio, tarea_fecha_fin_base,
+                tarea_fecha_fin_proyectada, tarea_fecha_fin_real, tarea_comentarios, fecha_ultima_actualizacion
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, tareas_seed)
+
     conn.commit()
     conn.close()
 
@@ -294,6 +318,27 @@ def seed_demo_data():
         INSERT INTO Proyectos (proyecto_id, proyecto_nombre, unidad_negocio, proyecto_estatus, proyecto_salud, proyecto_descripcion, proyecto_responsable)
         VALUES (?, ?, ?, ?, ?, ?, ?)
     """, proyectos_seed)
+
+    today_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    today_date = date.today().strftime("%Y-%m-%d")
+    tareas_seed = [
+        ("TAR-001", "PROJ-001", "Definición de Compra de Galpón", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+        ("TAR-002", "PROJ-002", "Reunión de coordinación con constructora.", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+        ("TAR-003", "PROJ-002", "Inicio de obras.", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+        ("TAR-004", "PROJ-003", "Definición de ampliación TGM exterior", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+        ("TAR-005", "PROJ-003", "Definición de ampliación terrazas", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+        ("TAR-006", "PROJ-003", "Definición de aumentos en CENIT", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+        ("TAR-007", "PROJ-004", "Envío de expediente a revisora", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+        ("TAR-008", "PROJ-006", "Definición sobre costos de regularización", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str)
+    ]
+    
+    cursor.executemany("""
+        INSERT INTO Tareas (
+            tarea_id, proyecto_id, tarea_nombre, tarea_responsable, aplica_porcentaje,
+            tarea_estatus, tarea_porcentaje, tarea_fecha_inicio, tarea_fecha_fin_base,
+            tarea_fecha_fin_proyectada, tarea_fecha_fin_real, tarea_comentarios, fecha_ultima_actualizacion
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, tareas_seed)
     
     conn.commit()
     conn.close()
