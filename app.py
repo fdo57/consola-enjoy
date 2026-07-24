@@ -599,7 +599,7 @@ if st.session_state.nav_page == "DASHBOARD":
         st.session_state.show_completed_state = not st.session_state.show_completed_state
 
     if st.session_state.show_completed_state:
-        st.markdown("### 🏁 Tareas Terminadas")
+        st.markdown("### Tareas Terminadas")
         st.caption("Matriz de historial de tareas completadas y fechas de término reales.")
         
         if not df_t.empty and not df_p.empty:
