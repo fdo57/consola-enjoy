@@ -48,43 +48,40 @@ st.markdown("""
         color: #ffffff !important;
     }
     
-    /* Custom Indicator Cards with Homogenized Height */
+    /* Compact Indicator Cards */
     .metric-card {
         background: white;
         border-radius: 10px;
-        padding: 1.2rem;
+        padding: 0.8rem 1rem;
         border: 1px solid #e2e8f0;
         box-shadow: 0 2px 4px rgba(0,0,0,0.03);
-        min-height: 280px;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-start;
+        margin-bottom: 0.8rem;
     }
     .metric-card h4 {
-        margin: 0 0 12px 0;
+        margin: 0 0 8px 0;
         color: #1e293b;
-        font-size: 1.1rem;
+        font-size: 1.05rem;
         font-weight: 700;
         border-bottom: 2px solid #e2e8f0;
-        padding-bottom: 8px;
+        padding-bottom: 6px;
     }
     
-    /* Standardized List Items */
+    /* Standardized Compact List Items */
     .metric-item {
         display: flex;
         align-items: center;
         justify-content: flex-start;
-        gap: 12px;
-        padding: 8px 0;
+        gap: 10px;
+        padding: 6px 0;
         border-bottom: 1px solid #f1f5f9;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
     }
     .metric-item:last-child {
         border-bottom: none;
     }
     
     .unit-list-item {
-        padding: 10px 0;
+        padding: 6px 0;
         border-bottom: 1px solid #f1f5f9;
         display: flex;
         flex-direction: column;
@@ -96,16 +93,16 @@ st.markdown("""
     }
     
     .unit-item-title {
-        font-size: 1rem;
+        font-size: 0.95rem;
         font-weight: 700;
         color: #0f172a;
-        margin-bottom: 4px;
-        line-height: 1.3;
+        margin-bottom: 2px;
+        line-height: 1.2;
     }
     .unit-item-subtitle {
-        font-size: 0.88rem;
+        font-size: 0.85rem;
         color: #475569;
-        line-height: 1.4;
+        line-height: 1.3;
     }
     
     /* Circle Badges for Numbers Only (Left Aligned) */
@@ -113,13 +110,13 @@ st.markdown("""
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-width: 32px;
-        height: 32px;
+        min-width: 28px;
+        height: 28px;
         border-radius: 50%;
         background-color: #1e293b;
         color: #ffffff;
         font-weight: 800;
-        font-size: 0.95rem;
+        font-size: 0.88rem;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         flex-shrink: 0;
     }
@@ -127,13 +124,13 @@ st.markdown("""
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-width: 32px;
-        height: 32px;
+        min-width: 28px;
+        height: 28px;
         border-radius: 50%;
         background-color: #ef4444;
         color: #ffffff;
         font-weight: 800;
-        font-size: 0.95rem;
+        font-size: 0.88rem;
         box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
         flex-shrink: 0;
     }
@@ -410,7 +407,7 @@ if vista_seleccionada == "DASHBOARD":
         
         c1, c2, c3 = st.columns(3)
         
-        # 1. Proyectos activos (Título sin nombre de unidad)
+        # 1. Proyectos activos (Título sin nombre de unidad, altura compacta)
         with c1:
             st.markdown("""
                 <div class="metric-card">
@@ -419,7 +416,7 @@ if vista_seleccionada == "DASHBOARD":
             
             df_activos_sub = df_p_sub[df_p_sub["proyecto_estatus"] != "Finalizado"]
             if df_activos_sub.empty:
-                st.write("No hay proyectos activos en esta unidad.")
+                st.write("No hay proyectos activos.")
             else:
                 for _, p_row in df_activos_sub.iterrows():
                     st.markdown(f"""
@@ -440,7 +437,7 @@ if vista_seleccionada == "DASHBOARD":
             if not df_t.empty and not df_p_sub.empty:
                 merged_sub_t = pd.merge(df_t[df_t["tarea_estatus"] != "Completada"], df_p_sub, on="proyecto_id", how="inner")
                 if merged_sub_t.empty:
-                    st.write("No hay tareas pendientes en esta unidad.")
+                    st.write("No hay tareas pendientes.")
                 else:
                     for _, t_row in merged_sub_t.iterrows():
                         st.markdown(f"""
