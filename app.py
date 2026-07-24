@@ -480,7 +480,7 @@ if st.session_state.nav_page == "DASHBOARD":
                         u_name = u_row['unidad_negocio']
                         cnt = u_row['proyecto_id']
                         
-                        col_btn, col_txt = st.columns([1, 4], vertical_alignment="center")
+                        col_btn, col_txt = st.columns([1, 4])
                         with col_btn:
                             st.markdown('<div class="btn-dark-gray">', unsafe_allow_html=True)
                             if st.button(f"{cnt}", key=f"dash_u_act_{u_name}", help=f"Ver proyectos de {u_name}"):
@@ -514,7 +514,7 @@ if st.session_state.nav_page == "DASHBOARD":
                         cnt = p_row['tarea_id']
                         p_nom = p_row['proyecto_nombre']
                         
-                        col_btn, col_txt = st.columns([1, 4], vertical_alignment="center")
+                        col_btn, col_txt = st.columns([1, 4])
                         with col_btn:
                             st.markdown('<div class="btn-dark-gray">', unsafe_allow_html=True)
                             if st.button(f"{cnt}", key=f"dash_proj_count_{p_row['proyecto_id']}", help="Ver Ficha de Proyecto"):
@@ -550,7 +550,7 @@ if st.session_state.nav_page == "DASHBOARD":
                         for _, a_row in unit_atencion_proj.iterrows():
                             u_name = a_row['unidad_negocio']
                             cnt = a_row['proyecto_id']
-                            col_btn, col_txt = st.columns([1, 4], vertical_alignment="center")
+                            col_btn, col_txt = st.columns([1, 4])
                             with col_btn:
                                 st.markdown('<div class="btn-red">', unsafe_allow_html=True)
                                 if st.button(f"{cnt}", key=f"dash_atn_p_{u_name}", help=f"Ver elementos en atención en {u_name}"):
@@ -565,7 +565,7 @@ if st.session_state.nav_page == "DASHBOARD":
                     for _, a_row in unit_atencion.iterrows():
                         u_name = a_row['unidad_negocio']
                         cnt = a_row['tarea_id']
-                        col_btn, col_txt = st.columns([1, 4], vertical_alignment="center")
+                        col_btn, col_txt = st.columns([1, 4])
                         with col_btn:
                             st.markdown('<div class="btn-red">', unsafe_allow_html=True)
                             if st.button(f"{cnt}", key=f"dash_atn_u_{u_name}", help=f"Ver tareas en atención en {u_name}"):
@@ -714,7 +714,7 @@ elif st.session_state.nav_page == "PROYECTOS":
     df_t_all = pd.read_sql_query("SELECT * FROM Tareas", conn)
     conn.close()
     
-    col_title, col_sel = st.columns([1, 1], vertical_alignment="bottom")
+    col_title, col_sel = st.columns([1, 1])
     with col_title:
         st.subheader("Proyectos")
     with col_sel:
