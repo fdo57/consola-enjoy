@@ -374,6 +374,9 @@ init_db()
 # ---------------------------------------------------------
 # SESSION STATE INITIALIZATION & ROUTING
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# SESSION STATE INITIALIZATION & ROUTING
+# ---------------------------------------------------------
 if "nav_page" not in st.session_state:
     st.session_state.nav_page = "DASHBOARD"
 if "sidebar_nav" not in st.session_state:
@@ -384,6 +387,9 @@ if "selected_task_id" not in st.session_state:
     st.session_state.selected_task_id = None
 if "proyectos_subtab" not in st.session_state:
     st.session_state.proyectos_subtab = "📁 Ficha de Proyecto"
+
+def on_sidebar_nav_change():
+    st.session_state.nav_page = st.session_state.sidebar_nav
 
 def open_ficha_proyecto(p_id):
     st.session_state.selected_proj_id = p_id
@@ -406,8 +412,9 @@ st.sidebar.markdown("## NAVEGACIÓN")
 
 nav_options = ["DASHBOARD", "PROYECTOS", "ADMIN"]
 
-def on_sidebar_nav_change():
-    st.session_state.nav_page = st.session_state.sidebar_nav
+# Keep sidebar_nav in sync if nav_page changed programmatically
+if st.session_state.sidebar_nav != st.session_state.nav_page:
+    st.session_state.sidebar_nav = st.session_state.nav_page
 
 st.sidebar.radio(
     "Navegación principal:",
@@ -721,22 +728,17 @@ elif st.session_state.nav_page == "PROYECTOS":
                         default_index = idx
                         break
 
-            def on_change_top_proyecto():
-                chosen_name = st.session_state.sb_top_proyecto
-                if chosen_name in proj_dict:
-                    st.session_state.selected_proj_id = proj_dict[chosen_name]
-                    st.session_state.nav_page = "PROYECTOS"
-                    st.session_state.proyectos_subtab = "📁 Ficha de Proyecto"
-                        
             st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
-            st.selectbox(
+            sel_proj_name = st.selectbox(
                 "Seleccionar Proyecto:",
                 list(proj_dict.keys()),
                 index=default_index,
                 label_visibility="collapsed",
-                key="sb_top_proyecto",
-                on_change=on_change_top_proyecto
+                key="sb_top_proyecto"
             )
+            if sel_proj_name and proj_dict[sel_proj_name] != st.session_state.selected_proj_id:
+                st.session_state.selected_proj_id = proj_dict[sel_proj_name]
+                st.rerun()
     
     subtab_list = ["📁 Ficha de Proyecto", "📌 Ficha de Tarea", "📝 Carga / Edición"]
     sub_index = subtab_list.index(st.session_state.proyectos_subtab) if st.session_state.proyectos_subtab in subtab_list else 0
