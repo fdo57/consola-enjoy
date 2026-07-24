@@ -21,6 +21,18 @@ st.markdown("""
         background-color: #f8f9fa;
     }
     
+    /* Align Main Content & Sidebar to the Top Edge */
+    .block-container {
+        padding-top: 1.2rem !important;
+        padding-bottom: 1rem !important;
+    }
+    section[data-testid="stSidebar"] > div:first-child {
+        padding-top: 1.2rem !important;
+    }
+    section[data-testid="stSidebar"] {
+        padding-top: 0rem !important;
+    }
+    
     /* Sidebar Radio Customization - Large Font, No Icons */
     div[data-testid="stRadio"] label {
         padding: 10px 14px !important;
@@ -430,7 +442,7 @@ if st.session_state.nav_page == "DASHBOARD":
     df_t = pd.read_sql_query("SELECT * FROM Tareas", conn)
     conn.close()
     
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom:6px;'></div>", unsafe_allow_html=True)
     
     # ---------------------------------------------------------
     # CASO A: FILTRO = "Todas"
