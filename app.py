@@ -249,6 +249,27 @@ def init_db():
     if "tarea_fecha_fin_real" not in cols:
         cursor.execute("ALTER TABLE Tareas ADD COLUMN tarea_fecha_fin_real DATE")
         
+    # Auto-migrate old sample projects to official Enjoy project list
+    cursor.execute("SELECT proyecto_nombre FROM Proyectos WHERE proyecto_id = 'PROJ-001'")
+    row = cursor.fetchone()
+    if not row or row["proyecto_nombre"] == "Remodelación Salón VIP":
+        cursor.execute("DELETE FROM Tareas")
+        cursor.execute("DELETE FROM Proyectos")
+        
+        proyectos_seed = [
+            ("PROJ-001", "ARENA", "Enjoy Rinconada", "En Ejecución", "🟢 Verde", "Proyecto ARENA Rinconada", "Por asignar"),
+            ("PROJ-002", "REMODELACIÓN OFICINA", "Enjoy Rinconada", "En Ejecución", "🟢 Verde", "Remodelación de oficinas Rinconada", "Por asignar"),
+            ("PROJ-003", "NUEVAS INICIATIVAS", "Enjoy Rinconada", "En Planificación", "🟢 Verde", "Nuevas iniciativas Rinconada", "Por asignar"),
+            ("PROJ-004", "RECEPCIÓN FINAL SALÓN AMERICANO", "Enjoy Viña", "En Ejecución", "🟢 Verde", "Recepción final salón americano Viña", "Por asignar"),
+            ("PROJ-005", "REGULARIZACIÓN CASINO", "Enjoy Pucón", "En Ejecución", "🟢 Verde", "Regularización Casino Pucón", "Por asignar"),
+            ("PROJ-006", "OVO BEACH", "Enjoy Coquimbo", "En Ejecución", "🟢 Verde", "OVO Beach Coquimbo", "Por asignar"),
+            ("PROJ-007", "MANTENIMIENTO", "Enjoy Transversal", "En Ejecución", "🟢 Verde", "Mantenimiento Transversal", "Por asignar")
+        ]
+        cursor.executemany("""
+            INSERT INTO Proyectos (proyecto_id, proyecto_nombre, unidad_negocio, proyecto_estatus, proyecto_salud, proyecto_descripcion, proyecto_responsable)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, proyectos_seed)
+
     conn.commit()
     conn.close()
 
@@ -260,34 +281,19 @@ def seed_demo_data():
     cursor.execute("DELETE FROM Proyectos")
     
     proyectos_seed = [
-        ("PROJ-001", "Remodelación Salón VIP", "Casino Pucón", "En Ejecución", "🟢 Verde", "Actualización de infraestructura y servicios del salón VIP.", "Carlos Mendoza"),
-        ("PROJ-002", "Renovación Climatización HVAC", "Hotel Coquimbo", "En Ejecución", "🟡 Amarillo", "Mantenimiento y reemplazo de climatización en torre A.", "Ana María Silva"),
-        ("PROJ-003", "Kioscos Autoatención Play", "Enjoy Viña", "En Planificación", "🟢 Verde", "Implementación de tótems digitales para agilizar la atención.", "Roberto Gómez"),
-        ("PROJ-004", "Ampliación Red Wi-Fi Huéspedes", "Enjoy Santiago", "Pausado", "🔴 Rojo", "Reemplazo de antenas por demoras en proveedor de fibra.", "Marcela Fuentes")
+        ("PROJ-001", "ARENA", "Enjoy Rinconada", "En Ejecución", "🟢 Verde", "Proyecto ARENA Rinconada", "Por asignar"),
+        ("PROJ-002", "REMODELACIÓN OFICINA", "Enjoy Rinconada", "En Ejecución", "🟢 Verde", "Remodelación de oficinas Rinconada", "Por asignar"),
+        ("PROJ-003", "NUEVAS INICIATIVAS", "Enjoy Rinconada", "En Planificación", "🟢 Verde", "Nuevas iniciativas Rinconada", "Por asignar"),
+        ("PROJ-004", "RECEPCIÓN FINAL SALÓN AMERICANO", "Enjoy Viña", "En Ejecución", "🟢 Verde", "Recepción final salón americano Viña", "Por asignar"),
+        ("PROJ-005", "REGULARIZACIÓN CASINO", "Enjoy Pucón", "En Ejecución", "🟢 Verde", "Regularización Casino Pucón", "Por asignar"),
+        ("PROJ-006", "OVO BEACH", "Enjoy Coquimbo", "En Ejecución", "🟢 Verde", "OVO Beach Coquimbo", "Por asignar"),
+        ("PROJ-007", "MANTENIMIENTO", "Enjoy Transversal", "En Ejecución", "🟢 Verde", "Mantenimiento Transversal", "Por asignar")
     ]
     
     cursor.executemany("""
         INSERT INTO Proyectos (proyecto_id, proyecto_nombre, unidad_negocio, proyecto_estatus, proyecto_salud, proyecto_descripcion, proyecto_responsable)
         VALUES (?, ?, ?, ?, ?, ?, ?)
     """, proyectos_seed)
-    
-    today_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    tareas_seed = [
-        ("TAR-001", "PROJ-001", "Diseño e iluminación decorativa", "Felipe Soto", 1, "Completada", 100, "2026-06-01", "2026-06-30", "2026-06-30", "2026-06-28", "Entregado a conformidad por arquitecto.", today_str),
-        ("TAR-002", "PROJ-001", "Instalación alfombra alto tráfico", "Jorge Rivas", 1, "En Proceso", 65, "2026-07-01", "2026-07-25", "2026-07-28", None, "Avance continuo, leve espera de remate.", today_str),
-        ("TAR-003", "PROJ-001", "Permiso Municipal de Funcionamiento", "Felipe Soto", 0, "En Proceso", 0, "2026-06-15", "2026-07-30", "2026-08-05", None, "Trámite en inspección municipal (Sin % numérico - Hito por Estatus).", today_str),
-        ("TAR-004", "PROJ-002", "Desmontaje de chillers antiguos", "Marcos Ugarte", 1, "Completada", 100, "2026-06-10", "2026-06-20", "2026-06-20", "2026-06-19", "Completado sin observaciones.", today_str),
-        ("TAR-005", "PROJ-002", "Aprobación de Importación de Tuberías", "Ana María Silva", 0, "En Proceso", 0, "2026-06-21", "2026-07-15", "2026-08-10", None, "Aduana solicitó certificación ambiental (Alerta activada).", today_str),
-        ("TAR-006", "PROJ-003", "Licitación Tótems Kiosco", "Roberto Gómez", 0, "Pendiente", 0, "2026-08-01", "2026-08-20", "2026-08-20", None, "Pliegos listos para publicación.", today_str),
-        ("TAR-007", "PROJ-003", "Integración Software POS", "Camila Torres", 1, "En Proceso", 35, "2026-07-10", "2026-09-01", "2026-09-01", None, "Desarrollo de API en etapa de testing.", today_str),
-        ("TAR-008", "PROJ-004", "Estudio de Cobertura Radiante", "Marcela Fuentes", 1, "Completada", 100, "2026-05-01", "2026-05-15", "2026-05-15", "2026-05-14", "Informe técnico aprobatorio.", today_str),
-        ("TAR-009", "PROJ-004", "Firma de Contrato Proveedor Fibra", "Marcela Fuentes", 0, "Pendiente", 0, "2026-06-01", "2026-06-15", "2026-08-30", None, "Detenido por negociación presupuestaria.", today_str)
-    ]
-    
-    cursor.executemany("""
-        INSERT INTO Tareas (tarea_id, proyecto_id, tarea_nombre, tarea_responsable, aplica_porcentaje, tarea_estatus, tarea_porcentaje, tarea_fecha_inicio, tarea_fecha_fin_base, tarea_fecha_fin_proyectada, tarea_fecha_fin_real, tarea_comentarios, fecha_ultima_actualizacion)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, tareas_seed)
     
     conn.commit()
     conn.close()
@@ -357,9 +363,11 @@ if vista_seleccionada != st.session_state.nav_page:
     st.session_state.nav_page = vista_seleccionada
 
 UNIDADES_NEGOCIO = [
-    "Casino Pucón",
-    "Hotel Coquimbo",
+    "Enjoy Rinconada",
     "Enjoy Viña",
+    "Enjoy Pucón",
+    "Enjoy Coquimbo",
+    "Enjoy Transversal",
     "Enjoy Santiago",
     "Enjoy Antofagasta",
     "Enjoy Chiloé",
