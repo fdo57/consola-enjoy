@@ -76,21 +76,33 @@ st.markdown("""
     .metric-item:last-child {
         border-bottom: none;
     }
-    .metric-val {
-        font-weight: 700;
-        background-color: #e2e8f0;
-        color: #0f172a;
-        padding: 2px 10px;
-        border-radius: 12px;
-        font-size: 0.85rem;
+    
+    /* Circle Badges for Numbers Only */
+    .metric-val-circle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: #1e293b;
+        color: #ffffff;
+        font-weight: 800;
+        font-size: 0.95rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    .badge-atencion {
-        background-color: #fee2e2;
-        color: #991b1b;
-        font-weight: 700;
-        padding: 2px 10px;
-        border-radius: 12px;
-        font-size: 0.85rem;
+    .badge-atencion-circle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: #ef4444;
+        color: #ffffff;
+        font-weight: 800;
+        font-size: 0.95rem;
+        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -285,7 +297,7 @@ if vista_seleccionada == "DASHBOARD":
                         st.markdown(f"""
                             <div class="metric-item">
                                 <span><b>{u_row['unidad_negocio']}</b></span>
-                                <span class="metric-val">{u_row['proyecto_id']} proyecto(s)</span>
+                                <span class="metric-val-circle">{u_row['proyecto_id']}</span>
                             </div>
                         """, unsafe_allow_html=True)
             else:
@@ -311,7 +323,7 @@ if vista_seleccionada == "DASHBOARD":
                         st.markdown(f"""
                             <div class="metric-item">
                                 <span><b>{p_row['proyecto_nombre']}</b> <small style="color:#64748b;">({p_row['proyecto_id']})</small></span>
-                                <span class="metric-val">{p_row['tarea_id']} pendiente(s)</span>
+                                <span class="metric-val-circle">{p_row['tarea_id']}</span>
                             </div>
                         """, unsafe_allow_html=True)
             else:
@@ -326,7 +338,6 @@ if vista_seleccionada == "DASHBOARD":
             """, unsafe_allow_html=True)
             
             if not df_p.empty:
-                # Projects in Yellow or Red, or tasks pending in those projects
                 df_atencion_proj = df_p[df_p["proyecto_salud"].isin(["🟡 Amarillo", "🔴 Rojo"])]
                 if not df_t.empty:
                     merged_atencion = pd.merge(df_t[df_t["tarea_estatus"] != "Completada"], df_atencion_proj, on="proyecto_id", how="inner")
@@ -335,7 +346,6 @@ if vista_seleccionada == "DASHBOARD":
                     unit_atencion = pd.DataFrame()
                     
                 if unit_atencion.empty:
-                    # Fallback to counts of Yellow/Red projects per unit
                     unit_atencion_proj = df_atencion_proj.groupby("unidad_negocio")["proyecto_id"].count().reset_index()
                     if unit_atencion_proj.empty:
                         st.write("🟢 Todas las unidades están en regla.")
@@ -344,7 +354,7 @@ if vista_seleccionada == "DASHBOARD":
                             st.markdown(f"""
                                 <div class="metric-item">
                                     <span><b>{a_row['unidad_negocio']}</b></span>
-                                    <span class="badge-atencion">{a_row['proyecto_id']} proyecto(s) en riesgo</span>
+                                    <span class="badge-atencion-circle">{a_row['proyecto_id']}</span>
                                 </div>
                             """, unsafe_allow_html=True)
                 else:
@@ -352,7 +362,7 @@ if vista_seleccionada == "DASHBOARD":
                         st.markdown(f"""
                             <div class="metric-item">
                                 <span><b>{a_row['unidad_negocio']}</b></span>
-                                <span class="badge-atencion">{a_row['tarea_id']} tarea(s) en atención</span>
+                                <span class="badge-atencion-circle">{a_row['tarea_id']}</span>
                             </div>
                         """, unsafe_allow_html=True)
             else:
@@ -405,7 +415,7 @@ if vista_seleccionada == "DASHBOARD":
                         st.markdown(f"""
                             <div class="metric-item" style="flex-direction: column; align-items: flex-start; margin-bottom: 4px;">
                                 <div><small style="color:#0284c7; font-weight:bold;">{t_row['proyecto_nombre']}:</small></div>
-                                <div><b>{t_row['tarea_nombre']}</b> <span class="metric-val">{t_row['tarea_estatus']}</span></div>
+                                <div><b>{t_row['tarea_nombre']}</b> <span style="font-size:0.8rem; background-color:#e2e8f0; padding:2px 6px; border-radius:4px;">{t_row['tarea_estatus']}</span></div>
                             </div>
                         """, unsafe_allow_html=True)
             else:
@@ -445,7 +455,6 @@ if vista_seleccionada == "DASHBOARD":
     
     show_completed = st.button("📋 Ver Sección: Tareas Terminadas", use_container_width=True)
     
-    # Store toggle in session state so it stays open when clicked
     if "show_completed_state" not in st.session_state:
         st.session_state.show_completed_state = False
         
@@ -467,12 +476,8 @@ if vista_seleccionada == "DASHBOARD":
                 st.info("No hay tareas completadas para la unidad seleccionada.")
             else:
                 matrix_df = pd.merge(df_completed_t, df_p, on="proyecto_id", how="inner")
-                
-                # Fill missing fecha_fin_real with fecha_fin_proyectada if empty
                 matrix_df["tarea_fecha_fin_real"] = matrix_df["tarea_fecha_fin_real"].fillna(matrix_df["tarea_fecha_fin_proyectada"])
                 
-                # Format final matrix view with exact required headers:
-                # Unidad | Proyecto | Tarea | Fecha de inicio | Fecha de término
                 final_matrix = matrix_df[[
                     "unidad_negocio",
                     "proyecto_nombre",
@@ -724,7 +729,6 @@ elif vista_seleccionada == "GESTIÓN DE PROYECTOS":
                         new_f_proj = st.date_input("Nueva Fecha Fin Proyectada:", value=f_proj_init)
                     
                     with c_fp2:
-                        # Show Fecha Fin Real when Completed
                         if new_estatus == "Completada":
                             try:
                                 f_real_init = datetime.strptime(t_data["tarea_fecha_fin_real"], "%Y-%m-%d").date() if t_data["tarea_fecha_fin_real"] else date.today()
