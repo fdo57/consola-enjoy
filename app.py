@@ -34,7 +34,7 @@ st.markdown("""
     }
     
     /* Sidebar Radio Customization - Large Font, No Icons */
-    div[data-testid="stSidebar"] div[data-testid="stRadio"] label {
+    div[data-testid="stRadio"] label {
         padding: 10px 14px !important;
         margin-bottom: 8px !important;
         border-radius: 8px !important;
@@ -42,21 +42,21 @@ st.markdown("""
         border: 1px solid #cbd5e1;
         transition: all 0.2s ease-in-out;
     }
-    div[data-testid="stSidebar"] div[data-testid="stRadio"] label:hover {
+    div[data-testid="stRadio"] label:hover {
         background-color: #e2e8f0;
     }
-    div[data-testid="stSidebar"] div[data-testid="stRadio"] label p {
+    div[data-testid="stRadio"] label p {
         font-size: 1.25rem !important;
         font-weight: 800 !important;
         color: #0f172a !important;
         letter-spacing: 0.5px !important;
         margin: 0 !important;
     }
-    div[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] {
+    div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] {
         background-color: #1e293b !important;
         border-color: #0f172a !important;
     }
-    div[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] p {
+    div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] p {
         color: #ffffff !important;
     }
     
@@ -64,30 +64,28 @@ st.markdown("""
     .metric-card {
         background: white;
         border-radius: 10px;
-        padding: 1.2rem;
+        padding: 1rem;
         border: 1px solid #e2e8f0;
         box-shadow: 0 2px 4px rgba(0,0,0,0.03);
         margin-bottom: 0.8rem;
     }
     .metric-card h4 {
-        margin: 0 0 10px 0;
+        margin: 0 0 8px 0;
         color: #1e293b;
         font-size: 1.1rem;
         font-weight: 700;
         border-bottom: 2px solid #e2e8f0;
         padding-bottom: 6px;
     }
-    .metric-item {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        gap: 12px;
-        padding: 8px 0;
-        border-bottom: 1px solid #f1f5f9;
-        font-size: 0.95rem;
+    
+    /* Reduce row spacing between projects and tasks by 40% */
+    div[data-testid="stHorizontalBlock"] {
+        margin-bottom: -10px !important;
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
     }
-    .metric-item:last-child {
-        border-bottom: none;
+    div[data-testid="element-container"] {
+        margin-bottom: 2px !important;
     }
     
     /* Custom Circle Buttons Styling */
@@ -181,30 +179,6 @@ st.markdown("""
         font-size: 1.05rem !important;
         font-weight: 700 !important;
         color: inherit !important;
-    }
-    
-    /* Interactive Ficha Cards */
-    .ficha-card {
-        background: white;
-        border-radius: 12px;
-        padding: 1.2rem;
-        border: 1px solid #cbd5e1;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        margin-bottom: 1rem;
-    }
-    .ficha-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 2px solid #e2e8f0;
-        padding-bottom: 8px;
-        margin-bottom: 12px;
-    }
-    .ficha-title {
-        font-size: 1.4rem;
-        font-weight: 800;
-        color: #0f172a;
-        margin: 0;
     }
     
     /* Health Badges */
@@ -427,14 +401,17 @@ def open_ficha_tarea(t_id, p_id=None):
 st.sidebar.markdown("## NAVEGACIÓN")
 
 nav_options = ["DASHBOARD", "PROYECTOS", "ADMIN"]
+nav_index = nav_options.index(st.session_state.nav_page) if st.session_state.nav_page in nav_options else 0
 
-# Robust bidirectional binding with key="nav_page"
-st.sidebar.radio(
+vista_seleccionada = st.sidebar.radio(
     "Navegación principal:",
     nav_options,
-    key="nav_page",
+    index=nav_index,
     label_visibility="collapsed"
 )
+
+if vista_seleccionada != st.session_state.nav_page:
+    st.session_state.nav_page = vista_seleccionada
 
 UNIDADES_NEGOCIO = [
     "Enjoy Rinconada",
@@ -728,21 +705,14 @@ elif st.session_state.nav_page == "PROYECTOS":
     conn.close()
     
     subtab_list = ["📁 Ficha de Proyecto", "📌 Ficha de Tarea", "📝 Carga / Edición"]
-    if st.session_state.proyectos_subtab not in subtab_list:
-        st.session_state.proyectos_subtab = "📁 Ficha de Proyecto"
-        
-    st.radio(
-        "Subnavegación:",
-        subtab_list,
-        key="proyectos_subtab",
-        horizontal=True,
-        label_visibility="collapsed"
-    )
+    sub_index = subtab_list.index(st.session_state.proyectos_subtab) if st.session_state.proyectos_subtab in subtab_list else 0
+    
+    subtab1, subtab2, subtab3 = st.tabs(subtab_list)
     
     # ---------------------------------------------------------
     # SUBTAB 1: FICHA INTERACTIVA DE PROYECTO
     # ---------------------------------------------------------
-    if st.session_state.proyectos_subtab == "📁 Ficha de Proyecto":
+    with subtab1:
         if df_p_all.empty:
             st.warning("No hay proyectos registrados en el sistema.")
         else:
@@ -824,7 +794,7 @@ elif st.session_state.nav_page == "PROYECTOS":
     # ---------------------------------------------------------
     # SUBTAB 2: FICHA INTERACTIVA DE TAREA
     # ---------------------------------------------------------
-    elif st.session_state.proyectos_subtab == "📌 Ficha de Tarea":
+    with subtab2:
         if df_t_all.empty:
             st.warning("No hay tareas registradas en el sistema.")
         else:
@@ -924,7 +894,7 @@ elif st.session_state.nav_page == "PROYECTOS":
     # ---------------------------------------------------------
     # SUBTAB 3: CARGA / EDICIÓN (FORMULARIOS)
     # ---------------------------------------------------------
-    else:
+    with subtab3:
         st.markdown("#### 📝 Carga y Edición General")
         
         tab_a, tab_b = st.tabs(["Formulario A: Crear / Editar Proyecto", "Formulario B: Nueva Tarea"])
