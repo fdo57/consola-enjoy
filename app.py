@@ -376,6 +376,8 @@ init_db()
 # ---------------------------------------------------------
 if "nav_page" not in st.session_state:
     st.session_state.nav_page = "DASHBOARD"
+if "sidebar_nav" not in st.session_state:
+    st.session_state.sidebar_nav = "DASHBOARD"
 if "selected_proj_id" not in st.session_state:
     st.session_state.selected_proj_id = None
 if "selected_task_id" not in st.session_state:
@@ -386,6 +388,7 @@ if "proyectos_subtab" not in st.session_state:
 def open_ficha_proyecto(p_id):
     st.session_state.selected_proj_id = p_id
     st.session_state.nav_page = "PROYECTOS"
+    st.session_state.sidebar_nav = "PROYECTOS"
     st.session_state.proyectos_subtab = "📁 Ficha de Proyecto"
 
 def open_ficha_tarea(t_id, p_id=None):
@@ -393,6 +396,7 @@ def open_ficha_tarea(t_id, p_id=None):
     if p_id:
         st.session_state.selected_proj_id = p_id
     st.session_state.nav_page = "PROYECTOS"
+    st.session_state.sidebar_nav = "PROYECTOS"
     st.session_state.proyectos_subtab = "📌 Ficha de Tarea"
 
 # ---------------------------------------------------------
@@ -401,17 +405,17 @@ def open_ficha_tarea(t_id, p_id=None):
 st.sidebar.markdown("## NAVEGACIÓN")
 
 nav_options = ["DASHBOARD", "PROYECTOS", "ADMIN"]
-nav_index = nav_options.index(st.session_state.nav_page) if st.session_state.nav_page in nav_options else 0
 
-vista_seleccionada = st.sidebar.radio(
+def on_sidebar_nav_change():
+    st.session_state.nav_page = st.session_state.sidebar_nav
+
+st.sidebar.radio(
     "Navegación principal:",
     nav_options,
-    index=nav_index,
+    key="sidebar_nav",
+    on_change=on_sidebar_nav_change,
     label_visibility="collapsed"
 )
-
-if vista_seleccionada != st.session_state.nav_page:
-    st.session_state.nav_page = vista_seleccionada
 
 UNIDADES_NEGOCIO = [
     "Enjoy Rinconada",
