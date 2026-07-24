@@ -67,8 +67,9 @@ st.markdown("""
     }
     .metric-item {
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        justify-content: flex-start;
+        gap: 12px;
         padding: 8px 0;
         border-bottom: 1px stroke #f1f5f9;
         font-size: 0.95rem;
@@ -77,12 +78,12 @@ st.markdown("""
         border-bottom: none;
     }
     
-    /* Circle Badges for Numbers Only */
+    /* Circle Badges for Numbers Only (Left Aligned) */
     .metric-val-circle {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 32px;
+        min-width: 32px;
         height: 32px;
         border-radius: 50%;
         background-color: #1e293b;
@@ -90,12 +91,13 @@ st.markdown("""
         font-weight: 800;
         font-size: 0.95rem;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        flex-shrink: 0;
     }
     .badge-atencion-circle {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 32px;
+        min-width: 32px;
         height: 32px;
         border-radius: 50%;
         background-color: #ef4444;
@@ -103,6 +105,7 @@ st.markdown("""
         font-weight: 800;
         font-size: 0.95rem;
         box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+        flex-shrink: 0;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -296,15 +299,15 @@ if vista_seleccionada == "DASHBOARD":
                     for _, u_row in unit_counts.iterrows():
                         st.markdown(f"""
                             <div class="metric-item">
-                                <span><b>{u_row['unidad_negocio']}</b></span>
                                 <span class="metric-val-circle">{u_row['proyecto_id']}</span>
+                                <span><b>{u_row['unidad_negocio']}</b></span>
                             </div>
                         """, unsafe_allow_html=True)
             else:
                 st.write("No hay proyectos registrados.")
             st.markdown("</div>", unsafe_allow_html=True)
             
-        # 2. Tareas pendientes por proyecto
+        # 2. Tareas pendientes por proyecto (sin proyecto_id)
         with c2:
             st.markdown("""
                 <div class="metric-card">
@@ -322,8 +325,8 @@ if vista_seleccionada == "DASHBOARD":
                     for _, p_row in proj_t_counts.iterrows():
                         st.markdown(f"""
                             <div class="metric-item">
-                                <span><b>{p_row['proyecto_nombre']}</b> <small style="color:#64748b;">({p_row['proyecto_id']})</small></span>
                                 <span class="metric-val-circle">{p_row['tarea_id']}</span>
+                                <span><b>{p_row['proyecto_nombre']}</b></span>
                             </div>
                         """, unsafe_allow_html=True)
             else:
@@ -353,16 +356,16 @@ if vista_seleccionada == "DASHBOARD":
                         for _, a_row in unit_atencion_proj.iterrows():
                             st.markdown(f"""
                                 <div class="metric-item">
-                                    <span><b>{a_row['unidad_negocio']}</b></span>
                                     <span class="badge-atencion-circle">{a_row['proyecto_id']}</span>
+                                    <span><b>{a_row['unidad_negocio']}</b></span>
                                 </div>
                             """, unsafe_allow_html=True)
                 else:
                     for _, a_row in unit_atencion.iterrows():
                         st.markdown(f"""
                             <div class="metric-item">
-                                <span><b>{a_row['unidad_negocio']}</b></span>
                                 <span class="badge-atencion-circle">{a_row['tarea_id']}</span>
+                                <span><b>{a_row['unidad_negocio']}</b></span>
                             </div>
                         """, unsafe_allow_html=True)
             else:
@@ -391,7 +394,7 @@ if vista_seleccionada == "DASHBOARD":
                 for _, p_row in df_activos_sub.iterrows():
                     st.markdown(f"""
                         <div class="metric-item" style="flex-direction: column; align-items: flex-start;">
-                            <div><b>{p_row['proyecto_nombre']}</b> <span style="font-size:0.8rem; color:#64748b;">({p_row['proyecto_id']})</span></div>
+                            <div><b>{p_row['proyecto_nombre']}</b></div>
                             <div style="font-size:0.85rem; color:#475569; margin-top:3px;">
                                 Salud: {p_row['proyecto_salud']} | Estatus: <code>{p_row['proyecto_estatus']}</code>
                             </div>
