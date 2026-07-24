@@ -79,7 +79,9 @@ st.markdown("""
     }
     
     /* Custom Circle Buttons Styling */
-    .btn-dark-gray div.stButton > button {
+    .btn-dark-gray div.stButton > button,
+    .btn-dark-gray div.stButton > button:enabled,
+    .btn-dark-gray div.stButton > button[data-testid="stBaseButton-secondary"] {
         border-radius: 50% !important;
         width: 34px !important;
         height: 34px !important;
@@ -91,20 +93,28 @@ st.markdown("""
         font-weight: 800 !important;
         font-size: 0.95rem !important;
         background-color: #1e293b !important;
+        background: #1e293b !important;
         color: #ffffff !important;
         border: none !important;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
     }
-    .btn-dark-gray div.stButton > button:hover {
+    .btn-dark-gray div.stButton > button:hover,
+    .btn-dark-gray div.stButton > button:focus,
+    .btn-dark-gray div.stButton > button:active {
         background-color: #334155 !important;
+        background: #334155 !important;
         color: #ffffff !important;
     }
-    .btn-dark-gray div.stButton > button p {
+    .btn-dark-gray div.stButton > button p,
+    .btn-dark-gray div.stButton > button span {
         color: #ffffff !important;
         font-weight: 800 !important;
     }
     
-    .btn-red div.stButton > button {
+    .btn-red div.stButton > button,
+    .btn-red div.stButton > button:enabled,
+    .btn-red div.stButton > button[data-testid="stBaseButton-secondary"],
+    .btn-red div.stButton > button[data-testid="stBaseButton-primary"] {
         border-radius: 50% !important;
         width: 34px !important;
         height: 34px !important;
@@ -116,15 +126,20 @@ st.markdown("""
         font-weight: 800 !important;
         font-size: 0.95rem !important;
         background-color: #ef4444 !important;
+        background: #ef4444 !important;
         color: #ffffff !important;
         border: none !important;
         box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2) !important;
     }
-    .btn-red div.stButton > button:hover {
+    .btn-red div.stButton > button:hover,
+    .btn-red div.stButton > button:focus,
+    .btn-red div.stButton > button:active {
         background-color: #dc2626 !important;
+        background: #dc2626 !important;
         color: #ffffff !important;
     }
-    .btn-red div.stButton > button p {
+    .btn-red div.stButton > button p,
+    .btn-red div.stButton > button span {
         color: #ffffff !important;
         font-weight: 800 !important;
     }
@@ -132,6 +147,7 @@ st.markdown("""
     /* Section Button: Tareas Terminadas (Outline text style, no background fill) */
     .btn-completed-link div.stButton > button {
         background-color: transparent !important;
+        background: transparent !important;
         color: #0f172a !important;
         border: 2px solid #cbd5e1 !important;
         border-radius: 8px !important;
@@ -144,10 +160,12 @@ st.markdown("""
     }
     .btn-completed-link div.stButton > button:hover {
         background-color: #f1f5f9 !important;
+        background: #f1f5f9 !important;
         border-color: #94a3b8 !important;
         color: #0284c7 !important;
     }
-    .btn-completed-link div.stButton > button p {
+    .btn-completed-link div.stButton > button p,
+    .btn-completed-link div.stButton > button span {
         font-size: 1.05rem !important;
         font-weight: 700 !important;
         color: inherit !important;
