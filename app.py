@@ -60,6 +60,34 @@ st.markdown("""
         color: #ffffff !important;
     }
     
+    /* Interactive Ficha Cards */
+    .ficha-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.4rem;
+        border: 1px solid #cbd5e1;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        margin-bottom: 1rem;
+        margin-top: 0.5rem;
+    }
+    .ficha-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #e2e8f0;
+        padding-top: 8px;
+        padding-bottom: 10px;
+        margin-bottom: 14px;
+    }
+    .ficha-title {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 8px 0 4px 0 !important;
+        padding-top: 4px !important;
+        line-height: 1.4 !important;
+    }
+
     /* Custom Indicator Cards */
     .metric-card {
         background: white;
