@@ -697,12 +697,34 @@ if st.session_state.nav_page == "DASHBOARD":
 # ---------------------------------------------------------
 elif st.session_state.nav_page == "PROYECTOS":
     st.markdown("<div style='margin-top: 14px;'></div>", unsafe_allow_html=True)
-    st.subheader("📁 Módulo de Proyectos y Fichas Interactivas")
     
     conn = get_db_connection()
     df_p_all = pd.read_sql_query("SELECT * FROM Proyectos", conn)
     df_t_all = pd.read_sql_query("SELECT * FROM Tareas", conn)
     conn.close()
+    
+    col_title, col_sel = st.columns([1, 1], vertical_alignment="center")
+    with col_title:
+        st.subheader("Proyectos")
+    with col_sel:
+        if not df_p_all.empty:
+            proj_dict = {r['proyecto_nombre']: r['proyecto_id'] for _, r in df_p_all.iterrows()}
+            
+            default_index = 0
+            if st.session_state.selected_proj_id:
+                for idx, pid in enumerate(proj_dict.values()):
+                    if pid == st.session_state.selected_proj_id:
+                        default_index = idx
+                        break
+                        
+            selected_proj_label = st.selectbox(
+                "Seleccionar Proyecto:",
+                list(proj_dict.keys()),
+                index=default_index,
+                label_visibility="collapsed",
+                key="sb_top_proyecto"
+            )
+            st.session_state.selected_proj_id = proj_dict[selected_proj_label]
     
     subtab_list = ["📁 Ficha de Proyecto", "📌 Ficha de Tarea", "📝 Carga / Edición"]
     sub_index = subtab_list.index(st.session_state.proyectos_subtab) if st.session_state.proyectos_subtab in subtab_list else 0
