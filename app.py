@@ -66,21 +66,7 @@ st.markdown("""
         padding-bottom: 6px;
     }
     
-    /* Standardized Compact List Items */
-    .metric-item {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        gap: 10px;
-        padding: 6px 0;
-        border-bottom: 1px solid #f1f5f9;
-        font-size: 0.9rem;
-    }
-    .metric-item:last-child {
-        border-bottom: none;
-    }
-    
-    /* Interactive Card Styling */
+    /* Interactive Ficha Cards */
     .ficha-card {
         background: white;
         border-radius: 12px;
@@ -104,34 +90,47 @@ st.markdown("""
         margin: 0;
     }
     
-    /* Circle Badges for Numbers Only (Left Aligned) */
-    .metric-val-circle {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        background-color: #1e293b;
-        color: #ffffff;
-        font-weight: 800;
-        font-size: 0.88rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        flex-shrink: 0;
+    /* Custom Circle Buttons Styling */
+    .btn-dark-gray div.stButton > button {
+        border-radius: 50% !important;
+        width: 34px !important;
+        height: 34px !important;
+        min-width: 34px !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-weight: 800 !important;
+        font-size: 0.95rem !important;
+        background-color: #1e293b !important;
+        color: #ffffff !important;
+        border: none !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
     }
-    .badge-atencion-circle {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        background-color: #ef4444;
-        color: #ffffff;
-        font-weight: 800;
-        font-size: 0.88rem;
-        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
-        flex-shrink: 0;
+    .btn-dark-gray div.stButton > button:hover {
+        background-color: #334155 !important;
+        color: #ffffff !important;
+    }
+    
+    .btn-red div.stButton > button {
+        border-radius: 50% !important;
+        width: 34px !important;
+        height: 34px !important;
+        min-width: 34px !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-weight: 800 !important;
+        font-size: 0.95rem !important;
+        background-color: #ef4444 !important;
+        color: #ffffff !important;
+        border: none !important;
+        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.25) !important;
+    }
+    .btn-red div.stButton > button:hover {
+        background-color: #dc2626 !important;
+        color: #ffffff !important;
     }
     
     /* Health Badges */
@@ -317,7 +316,6 @@ vista_seleccionada = st.sidebar.radio(
     label_visibility="collapsed"
 )
 
-# Update session state if changed manually via sidebar
 if vista_seleccionada != st.session_state.nav_page:
     st.session_state.nav_page = vista_seleccionada
 
@@ -356,7 +354,7 @@ if st.session_state.nav_page == "DASHBOARD":
     if unidad_filtro == "Todas":
         c1, c2, c3 = st.columns(3)
         
-        # 1. Proyectos activos por unidad
+        # 1. Proyectos activos por unidad (Botón Círculo Gris Oscuro)
         with c1:
             st.markdown("""
                 <div class="metric-card">
@@ -372,17 +370,26 @@ if st.session_state.nav_page == "DASHBOARD":
                     st.write("No hay proyectos activos.")
                 else:
                     for _, u_row in unit_counts.iterrows():
-                        st.markdown(f"""
-                            <div class="metric-item">
-                                <span class="metric-val-circle">{u_row['proyecto_id']}</span>
-                                <span><b>{u_row['unidad_negocio']}</b></span>
-                            </div>
-                        """, unsafe_allow_html=True)
+                        u_name = u_row['unidad_negocio']
+                        cnt = u_row['proyecto_id']
+                        
+                        col_btn, col_txt = st.columns([1, 4], vertical_alignment="center")
+                        with col_btn:
+                            st.markdown('<div class="btn-dark-gray">', unsafe_allow_html=True)
+                            if st.button(f"{cnt}", key=f"dash_u_act_{u_name}", help=f"Ver proyectos de {u_name}"):
+                                p_sub = df_p_activos[df_p_activos["unidad_negocio"] == u_name]
+                                if not p_sub.empty:
+                                    open_ficha_proyecto(p_sub.iloc[0]["proyecto_id"])
+                                    st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        with col_txt:
+                            st.markdown(f"<div style='font-size:0.95rem; font-weight:700; color:#0f172a; line-height:1.2;'>{u_name}</div>", unsafe_allow_html=True)
+                        st.markdown("<div style='margin-bottom:6px;'></div>", unsafe_allow_html=True)
             else:
                 st.write("No hay proyectos registrados.")
             st.markdown("</div>", unsafe_allow_html=True)
             
-        # 2. Tareas pendientes por proyecto (Interactivas)
+        # 2. Tareas pendientes por proyecto (Botón Círculo Gris Oscuro)
         with c2:
             st.markdown("""
                 <div class="metric-card">
@@ -398,18 +405,24 @@ if st.session_state.nav_page == "DASHBOARD":
                     st.write("No hay tareas pendientes.")
                 else:
                     for _, p_row in proj_t_counts.iterrows():
-                        col_btn, col_lbl = st.columns([1, 4])
+                        cnt = p_row['tarea_id']
+                        p_nom = p_row['proyecto_nombre']
+                        
+                        col_btn, col_txt = st.columns([1, 4], vertical_alignment="center")
                         with col_btn:
-                            if st.button(f"{p_row['tarea_id']}", key=f"dash_proj_count_{p_row['proyecto_id']}", help="Ver Ficha de Proyecto"):
+                            st.markdown('<div class="btn-dark-gray">', unsafe_allow_html=True)
+                            if st.button(f"{cnt}", key=f"dash_proj_count_{p_row['proyecto_id']}", help="Ver Ficha de Proyecto"):
                                 open_ficha_proyecto(p_row['proyecto_id'])
                                 st.rerun()
-                        with col_lbl:
-                            st.write(f"**{p_row['proyecto_nombre']}**")
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        with col_txt:
+                            st.markdown(f"<div style='font-size:0.95rem; font-weight:700; color:#0f172a; line-height:1.2;'>{p_nom}</div>", unsafe_allow_html=True)
+                        st.markdown("<div style='margin-bottom:6px;'></div>", unsafe_allow_html=True)
             else:
                 st.write("No hay tareas registradas.")
             st.markdown("</div>", unsafe_allow_html=True)
             
-        # 3. Requieren Atención (por unidad)
+        # 3. Requieren Atención (Botón Círculo Rojo)
         with c3:
             st.markdown("""
                 <div class="metric-card">
@@ -430,20 +443,36 @@ if st.session_state.nav_page == "DASHBOARD":
                         st.write("🟢 Todas las unidades están en regla.")
                     else:
                         for _, a_row in unit_atencion_proj.iterrows():
-                            st.markdown(f"""
-                                <div class="metric-item">
-                                    <span class="badge-atencion-circle">{a_row['proyecto_id']}</span>
-                                    <span><b>{a_row['unidad_negocio']}</b></span>
-                                </div>
-                            """, unsafe_allow_html=True)
+                            u_name = a_row['unidad_negocio']
+                            cnt = a_row['proyecto_id']
+                            col_btn, col_txt = st.columns([1, 4], vertical_alignment="center")
+                            with col_btn:
+                                st.markdown('<div class="btn-red">', unsafe_allow_html=True)
+                                if st.button(f"{cnt}", key=f"dash_atn_p_{u_name}", help=f"Ver elementos en atención en {u_name}"):
+                                    p_sub = df_atencion_proj[df_atencion_proj["unidad_negocio"] == u_name]
+                                    if not p_sub.empty:
+                                        open_ficha_proyecto(p_sub.iloc[0]["proyecto_id"])
+                                        st.rerun()
+                                st.markdown('</div>', unsafe_allow_html=True)
+                            with col_txt:
+                                st.markdown(f"<div style='font-size:0.95rem; font-weight:700; color:#0f172a; line-height:1.2;'>{u_name}</div>", unsafe_allow_html=True)
+                            st.markdown("<div style='margin-bottom:6px;'></div>", unsafe_allow_html=True)
                 else:
                     for _, a_row in unit_atencion.iterrows():
-                        st.markdown(f"""
-                            <div class="metric-item">
-                                <span class="badge-atencion-circle">{a_row['tarea_id']}</span>
-                                <span><b>{a_row['unidad_negocio']}</b></span>
-                            </div>
-                        """, unsafe_allow_html=True)
+                        u_name = a_row['unidad_negocio']
+                        cnt = a_row['tarea_id']
+                        col_btn, col_txt = st.columns([1, 4], vertical_alignment="center")
+                        with col_btn:
+                            st.markdown('<div class="btn-red">', unsafe_allow_html=True)
+                            if st.button(f"{cnt}", key=f"dash_atn_u_{u_name}", help=f"Ver tareas en atención en {u_name}"):
+                                p_sub = df_atencion_proj[df_atencion_proj["unidad_negocio"] == u_name]
+                                if not p_sub.empty:
+                                    open_ficha_proyecto(p_sub.iloc[0]["proyecto_id"])
+                                    st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        with col_txt:
+                            st.markdown(f"<div style='font-size:0.95rem; font-weight:700; color:#0f172a; line-height:1.2;'>{u_name}</div>", unsafe_allow_html=True)
+                        st.markdown("<div style='margin-bottom:6px;'></div>", unsafe_allow_html=True)
             else:
                 st.write("Sin datos.")
             st.markdown("</div>", unsafe_allow_html=True)
@@ -456,7 +485,7 @@ if st.session_state.nav_page == "DASHBOARD":
         
         c1, c2, c3 = st.columns(3)
         
-        # 1. Proyectos activos (Interactivos)
+        # 1. Proyectos activos
         with c1:
             st.markdown("""
                 <div class="metric-card">
@@ -475,7 +504,7 @@ if st.session_state.nav_page == "DASHBOARD":
                     st.divider()
             st.markdown("</div>", unsafe_allow_html=True)
 
-        # 2. Tareas pendientes por proyecto (Interactivas)
+        # 2. Tareas pendientes por proyecto
         with c2:
             st.markdown("""
                 <div class="metric-card">
@@ -497,7 +526,7 @@ if st.session_state.nav_page == "DASHBOARD":
                 st.write("No hay tareas pendientes.")
             st.markdown("</div>", unsafe_allow_html=True)
 
-        # 3. Requiere atención (Interactivas)
+        # 3. Requiere atención
         with c3:
             st.markdown("""
                 <div class="metric-card">
@@ -577,16 +606,16 @@ if st.session_state.nav_page == "DASHBOARD":
 elif st.session_state.nav_page == "PROYECTOS":
     st.subheader("📁 Módulo de Proyectos y Fichas Interactivas")
     
-    subtab1, subtab2, subtab3 = st.tabs([
-        "📁 Ficha de Proyecto",
-        "📌 Ficha de Tarea",
-        "📝 Carga / Edición"
-    ])
-    
     conn = get_db_connection()
     df_p_all = pd.read_sql_query("SELECT * FROM Proyectos", conn)
     df_t_all = pd.read_sql_query("SELECT * FROM Tareas", conn)
     conn.close()
+    
+    # Subtabs
+    subtab_list = ["📁 Ficha de Proyecto", "📌 Ficha de Tarea", "📝 Carga / Edición"]
+    sub_index = subtab_list.index(st.session_state.proyectos_subtab) if st.session_state.proyectos_subtab in subtab_list else 0
+    
+    subtab1, subtab2, subtab3 = st.tabs(subtab_list)
     
     # ---------------------------------------------------------
     # SUBTAB 1: FICHA INTERACTIVA DE PROYECTO
@@ -597,7 +626,6 @@ elif st.session_state.nav_page == "PROYECTOS":
         else:
             proj_dict = {f"{r['proyecto_id']} - {r['proyecto_nombre']} ({r['unidad_negocio']})": r['proyecto_id'] for _, r in df_p_all.iterrows()}
             
-            # Pre-select if redirected from Dashboard
             default_index = 0
             if st.session_state.selected_proj_id:
                 for idx, pid in enumerate(proj_dict.values()):
@@ -612,12 +640,10 @@ elif st.session_state.nav_page == "PROYECTOS":
             p_data = df_p_all[df_p_all["proyecto_id"] == cur_p_id].iloc[0]
             df_t_proj = df_t_all[df_t_all["proyecto_id"] == cur_p_id]
             
-            # Calculate project stats
             total_t = len(df_t_proj)
             comp_t = len(df_t_proj[df_t_proj["tarea_estatus"] == "Completada"])
             pend_t = total_t - comp_t
             
-            # Ficha Header Card
             st.markdown(f"""
                 <div class="ficha-card">
                     <div class="ficha-header">
@@ -639,13 +665,11 @@ elif st.session_state.nav_page == "PROYECTOS":
                 </div>
             """, unsafe_allow_html=True)
             
-            # Metrics Row
             m1, m2, m3, m4 = st.columns(4)
             m1.metric("Total Tareas", f"{total_t}")
             m2.metric("Pendientes", f"{pend_t}")
             m3.metric("Completadas", f"{comp_t}")
             
-            # Calculate weighted average progress
             if total_t > 0:
                 def calc_eff(r):
                     if r["aplica_porcentaje"] == 1:
