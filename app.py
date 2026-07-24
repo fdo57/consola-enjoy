@@ -250,7 +250,7 @@ def init_db():
     # Auto-migrate projects to have unit prefixes
     cursor.execute("SELECT proyecto_nombre FROM Proyectos WHERE proyecto_id = 'PROJ-001'")
     row = cursor.fetchone()
-    if not row or row["proyecto_nombre"] == "ARENA":
+    if not row or row["proyecto_nombre"] != "RI - ARENA":
         cursor.execute("DELETE FROM Tareas")
         cursor.execute("DELETE FROM Proyectos")
         
