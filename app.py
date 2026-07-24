@@ -715,19 +715,10 @@ elif st.session_state.nav_page == "PROYECTOS":
         if df_p_all.empty:
             st.warning("No hay proyectos registrados en el sistema.")
         else:
-            proj_dict = {f"{r['proyecto_id']} - {r['proyecto_nombre']} ({r['unidad_negocio']})": r['proyecto_id'] for _, r in df_p_all.iterrows()}
-            
-            default_index = 0
-            if st.session_state.selected_proj_id:
-                for idx, pid in enumerate(proj_dict.values()):
-                    if pid == st.session_state.selected_proj_id:
-                        default_index = idx
-                        break
-                        
-            selected_proj_label = st.selectbox("🔍 Selecciona un Proyecto para consultar su Ficha:", list(proj_dict.keys()), index=default_index, key="sb_ficha_proj")
-            cur_p_id = proj_dict[selected_proj_label]
-            st.session_state.selected_proj_id = cur_p_id
-            
+            if not st.session_state.selected_proj_id or st.session_state.selected_proj_id not in df_p_all["proyecto_id"].values:
+                st.session_state.selected_proj_id = df_p_all.iloc[0]["proyecto_id"]
+                
+            cur_p_id = st.session_state.selected_proj_id
             p_data = df_p_all[df_p_all["proyecto_id"] == cur_p_id].iloc[0]
             df_t_proj = df_t_all[df_t_all["proyecto_id"] == cur_p_id]
             
@@ -740,7 +731,6 @@ elif st.session_state.nav_page == "PROYECTOS":
                     <div class="ficha-header">
                         <div>
                             <h2 class="ficha-title">{p_data['proyecto_nombre']}</h2>
-                            <small style="color:#64748b; font-size:0.95rem;">Código: <b>{p_data['proyecto_id']}</b> &nbsp;|&nbsp; 📍 Unidad: <b>{p_data['unidad_negocio']}</b></small>
                         </div>
                         <div>
                             <span class="badge-verde">{p_data['proyecto_salud']}</span>
