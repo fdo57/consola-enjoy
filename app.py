@@ -703,7 +703,7 @@ elif st.session_state.nav_page == "PROYECTOS":
     df_t_all = pd.read_sql_query("SELECT * FROM Tareas", conn)
     conn.close()
     
-    col_title, col_sel = st.columns([1, 1], vertical_alignment="center")
+    col_title, col_sel = st.columns([1, 1], vertical_alignment="bottom")
     with col_title:
         st.subheader("Proyectos")
     with col_sel:
@@ -716,15 +716,23 @@ elif st.session_state.nav_page == "PROYECTOS":
                     if pid == st.session_state.selected_proj_id:
                         default_index = idx
                         break
+
+            def on_change_top_proyecto():
+                chosen_name = st.session_state.sb_top_proyecto
+                if chosen_name in proj_dict:
+                    st.session_state.selected_proj_id = proj_dict[chosen_name]
+                    st.session_state.nav_page = "PROYECTOS"
+                    st.session_state.proyectos_subtab = "📁 Ficha de Proyecto"
                         
-            selected_proj_label = st.selectbox(
+            st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
+            st.selectbox(
                 "Seleccionar Proyecto:",
                 list(proj_dict.keys()),
                 index=default_index,
                 label_visibility="collapsed",
-                key="sb_top_proyecto"
+                key="sb_top_proyecto",
+                on_change=on_change_top_proyecto
             )
-            st.session_state.selected_proj_id = proj_dict[selected_proj_label]
     
     subtab_list = ["📁 Ficha de Proyecto", "📌 Ficha de Tarea", "📝 Carga / Edición"]
     sub_index = subtab_list.index(st.session_state.proyectos_subtab) if st.session_state.proyectos_subtab in subtab_list else 0
