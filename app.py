@@ -52,30 +52,28 @@ st.markdown("""
     .metric-card {
         background: white;
         border-radius: 10px;
-        padding: 1.2rem;
+        padding: 1rem;
         border: 1px solid #e2e8f0;
         box-shadow: 0 2px 4px rgba(0,0,0,0.03);
         margin-bottom: 0.8rem;
     }
     .metric-card h4 {
-        margin: 0 0 10px 0;
+        margin: 0 0 8px 0;
         color: #1e293b;
         font-size: 1.1rem;
         font-weight: 700;
         border-bottom: 2px solid #e2e8f0;
         padding-bottom: 6px;
     }
-    .metric-item {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        gap: 12px;
-        padding: 8px 0;
-        border-bottom: 1px solid #f1f5f9;
-        font-size: 0.95rem;
+    
+    /* Reduce row spacing between projects and tasks by 40% */
+    div[data-testid="stHorizontalBlock"] {
+        margin-bottom: -10px !important;
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
     }
-    .metric-item:last-child {
-        border-bottom: none;
+    div[data-testid="element-container"] {
+        margin-bottom: 2px !important;
     }
     
     /* Custom Circle Buttons Styling */
@@ -277,14 +275,14 @@ def init_db():
         today_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         today_date = date.today().strftime("%Y-%m-%d")
         tareas_seed = [
-            ("TAR-001", "PROJ-001", "Definición de Compra de Galpón", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
-            ("TAR-002", "PROJ-002", "Reunión de coordinación con constructora.", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
-            ("TAR-003", "PROJ-002", "Inicio de obras.", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
-            ("TAR-004", "PROJ-003", "Definición de ampliación TGM exterior", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
-            ("TAR-005", "PROJ-003", "Definición de ampliación terrazas", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
-            ("TAR-006", "PROJ-003", "Definición de aumentos en CENIT", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
-            ("TAR-007", "PROJ-004", "Envío de expediente a revisora", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
-            ("TAR-008", "PROJ-006", "Definición sobre costos de regularización", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str)
+            ("TAR-001", "PROJ-001", "RI - Definición de Compra de Galpón", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+            ("TAR-002", "PROJ-002", "RI - Reunión de coordinación con constructora.", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+            ("TAR-003", "PROJ-002", "RI - Inicio de obras.", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+            ("TAR-004", "PROJ-003", "RI - Definición de ampliación TGM exterior", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+            ("TAR-005", "PROJ-003", "RI - Definición de ampliación terrazas", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+            ("TAR-006", "PROJ-003", "RI - Definición de aumentos en CENIT", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+            ("TAR-007", "PROJ-004", "VI - Envío de expediente a revisora", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+            ("TAR-008", "PROJ-006", "CQ - Definición sobre costos de regularización", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str)
         ]
         cursor.executemany("""
             INSERT INTO Tareas (
@@ -322,14 +320,14 @@ def seed_demo_data():
     today_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     today_date = date.today().strftime("%Y-%m-%d")
     tareas_seed = [
-        ("TAR-001", "PROJ-001", "Definición de Compra de Galpón", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
-        ("TAR-002", "PROJ-002", "Reunión de coordinación con constructora.", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
-        ("TAR-003", "PROJ-002", "Inicio de obras.", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
-        ("TAR-004", "PROJ-003", "Definición de ampliación TGM exterior", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
-        ("TAR-005", "PROJ-003", "Definición de ampliación terrazas", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
-        ("TAR-006", "PROJ-003", "Definición de aumentos en CENIT", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
-        ("TAR-007", "PROJ-004", "Envío de expediente a revisora", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
-        ("TAR-008", "PROJ-006", "Definición sobre costos de regularización", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str)
+        ("TAR-001", "PROJ-001", "RI - Definición de Compra de Galpón", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+        ("TAR-002", "PROJ-002", "RI - Reunión de coordinación con constructora.", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+        ("TAR-003", "PROJ-002", "RI - Inicio de obras.", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+        ("TAR-004", "PROJ-003", "RI - Definición de ampliación TGM exterior", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+        ("TAR-005", "PROJ-003", "RI - Definición de ampliación terrazas", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+        ("TAR-006", "PROJ-003", "RI - Definición de aumentos en CENIT", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+        ("TAR-007", "PROJ-004", "VI - Envío de expediente a revisora", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str),
+        ("TAR-008", "PROJ-006", "CQ - Definición sobre costos de regularización", "Por asignar", 1, "Pendiente", 0, today_date, today_date, today_date, None, "", today_str)
     ]
     
     cursor.executemany("""
