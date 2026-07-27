@@ -25,6 +25,9 @@ headers = [str(h).strip() for h in rows[0]]
 if "proyecto_descripcion" not in headers:
     headers.insert(4, "proyecto_descripcion")
 
+if "tarea_fecha_creacion" not in headers:
+    headers.append("tarea_fecha_creacion")
+
 proj_id_map = {}
 proj_task_counter = {}
 
@@ -36,11 +39,6 @@ for row in rows[1:]:
     for h, cell in zip(headers, row):
         item[h] = clean_val(cell) if cell is not None else ""
 
-    # Clean accents if any encoding glitches exist
-    for k in ["unidad_nombre", "proyecto_nombre", "tarea_nombre", "tarea_descripcion", "tarea_contraparte"]:
-        if item.get(k):
-            item[k] = item[k].replace("", "")
-            
     u_name = item.get("unidad_nombre", "")
     p_name = item.get("proyecto_nombre", "")
     key = (u_name, p_name)
@@ -52,7 +50,6 @@ for row in rows[1:]:
         base_id = item.get("proyecto_id", "")
         existing_ids = list(proj_id_map.values())
         if base_id in existing_ids:
-            # Generate next correlative project ID e.g. 2025_PU019
             parts = base_id.split("_")
             if len(parts) == 2:
                 year, un_code = parts[0], parts[1][:2]
@@ -75,22 +72,21 @@ for row in rows[1:]:
     t_seq = proj_task_counter[key]
     item["tarea_id"] = f"{item['proyecto_id']}_{t_seq:03d}"
 
-    # Ensure proyecto_descripcion field exists
     if "proyecto_descripcion" not in item:
         item["proyecto_descripcion"] = ""
 
-    # Standardize tarea_estado ("en proceso" -> "en desarrollo")
+    if not item.get("tarea_fecha_creacion"):
+        item["tarea_fecha_creacion"] = item.get("fecha_inicio_proy") or item.get("fecha_legacy") or "2026-07-27"
+
     if item.get("tarea_estado", "").lower() == "en proceso":
         item["tarea_estado"] = "en desarrollo"
         
-    # Standardize con_alerta ("si" / "no")
     alerta_val = str(item.get("con_alerta", "")).lower()
     if alerta_val in ["si", "sí", "true", "1", "yes"]:
         item["con_alerta"] = "si"
     else:
         item["con_alerta"] = "no"
 
-    # Standardize pct
     try:
         if item.get("tarea_pct") != "":
             pct_num = float(item["tarea_pct"])
@@ -109,5 +105,3 @@ with open("data.js", "w", encoding="utf-8") as f:
     f.write(js_content)
 
 print(f"Successfully converted {len(data)} records into data.js with {len(proj_id_map)} distinct projects.")
-for k, v in proj_id_map.items():
-    print(f"  - Unit: '{k[0]}', Project: '{k[1]}' -> ID: '{v}'")
