@@ -51,9 +51,16 @@ function initDB() {
   const localData = localStorage.getItem("ENJOY_PROJECTS_DB");
   if (localData) {
     try {
-      db = JSON.parse(localData);
+      const parsed = JSON.parse(localData);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        db = parsed;
+      } else {
+        db = window.INITIAL_DATA || [];
+        saveDB();
+      }
     } catch (e) {
       db = window.INITIAL_DATA || [];
+      saveDB();
     }
   } else {
     db = window.INITIAL_DATA || [];
@@ -227,6 +234,19 @@ function renderDashboard() {
     }
   });
 
+function getSemaforoClass(task) {
+  const alerta = (task.con_alerta || "").toLowerCase().trim();
+  const estado = (task.tarea_estado || "").toLowerCase().trim();
+
+  if (alerta === "si" || alerta === "sí") {
+    return "semaforo-red";
+  }
+  if (estado === "detenida") {
+    return "semaforo-yellow";
+  }
+  return "semaforo-green";
+}
+
   // Zone 2: Tareas en Curso List (Dynamic tasks of selected project with Semáforo indicator)
   const taskListEl = document.getElementById("dash-task-list");
   taskListEl.innerHTML = "";
@@ -234,19 +254,13 @@ function renderDashboard() {
   if (dashSelectedProjectId) {
     const projTasks = db.filter(item => item.proyecto_id === dashSelectedProjectId && isProjectActive(item.proyecto_estado) && isTaskActive(item.tarea_estado));
     projTasks.forEach(task => {
-      const pct = parseInt(task.tarea_pct, 10) || 0;
-      let semaforoClass = "semaforo-green";
-      if ((task.con_alerta || "").toLowerCase() === "si" || task.tarea_estado === "detenida" || pct < 30) {
-        semaforoClass = "semaforo-red";
-      } else if (pct < 80 || task.tarea_estado === "por iniciar") {
-        semaforoClass = "semaforo-yellow";
-      }
+      const semaforoClass = getSemaforoClass(task);
 
       const li = document.createElement("li");
       li.className = "task-row-item";
       li.innerHTML = `
         <div style="display: flex; align-items: center;">
-          <span class="semaforo-dot ${semaforoClass}" title="Semáforo: ${pct}% de avance"></span>
+          <span class="semaforo-dot ${semaforoClass}" title="Estado: ${task.tarea_estado}, Alerta: ${task.con_alerta}"></span>
           <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
         </div>
         <span class="task-responsable-badge">${task.tarea_responsable || '-'}</span>
@@ -583,6 +597,13 @@ function downloadDBXLSX() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Base_de_Datos");
   XLSX.writeFile(wb, "base_de_datos_proyectos.xlsx");
+}
+
+function resetInitialDB() {
+  db = window.INITIAL_DATA || [];
+  saveDB();
+  alert("Base de datos restablecida correctamente desde carga_masiva.xlsx.");
+  switchView("proyectos");
 }
 
 function handleFileUpload(e) {
