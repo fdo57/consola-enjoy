@@ -48,32 +48,41 @@ let fechaInforme = new Date().toISOString().split('T')[0];
 
 // Initialize State
 function initDB() {
-  const localData = localStorage.getItem("ENJOY_PROJECTS_DB");
-  if (localData) {
-    try {
+  let loaded = false;
+  try {
+    const localData = localStorage.getItem("ENJOY_PROJECTS_DB_V2");
+    if (localData) {
       const parsed = JSON.parse(localData);
       if (Array.isArray(parsed) && parsed.length > 0) {
         db = parsed;
-      } else {
-        db = window.INITIAL_DATA || [];
-        saveDB();
+        loaded = true;
       }
-    } catch (e) {
-      db = window.INITIAL_DATA || [];
-      saveDB();
     }
-  } else {
-    db = window.INITIAL_DATA || [];
-    saveDB();
+  } catch (e) {
+    console.warn("localStorage access restricted or failed:", e);
   }
 
-  const savedFechaInforme = localStorage.getItem("ENJOY_FECHA_INFORME");
-  if (savedFechaInforme) fechaInforme = savedFechaInforme;
+  if (!loaded || !db || db.length === 0) {
+    db = (window.INITIAL_DATA && window.INITIAL_DATA.length > 0) ? window.INITIAL_DATA : [];
+    try {
+      localStorage.setItem("ENJOY_PROJECTS_DB_V2", JSON.stringify(db));
+    } catch (e) {}
+  }
+
+  try {
+    const savedFechaInforme = localStorage.getItem("ENJOY_FECHA_INFORME");
+    if (savedFechaInforme) fechaInforme = savedFechaInforme;
+  } catch (e) {}
+
   renderFechaInformeDisplay();
 }
 
 function saveDB() {
-  localStorage.setItem("ENJOY_PROJECTS_DB", JSON.stringify(db));
+  try {
+    localStorage.setItem("ENJOY_PROJECTS_DB_V2", JSON.stringify(db));
+  } catch (e) {
+    console.warn("localStorage write failed:", e);
+  }
 }
 
 function renderFechaInformeDisplay() {
