@@ -14,7 +14,7 @@ st.markdown("""
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
-        .block-container {
+        div.block-container {
             padding: 0rem !important;
             margin: 0rem !important;
             max-width: 100% !important;
@@ -26,7 +26,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Read component files
 dir_path = os.path.dirname(os.path.abspath(__file__))
 
 with open(os.path.join(dir_path, "index.html"), "r", encoding="utf-8") as f:
@@ -48,7 +47,6 @@ if os.path.exists(xlsx_js_path):
 else:
     xlsx_js = ""
 
-# Bundle all styles and scripts directly into HTML for standalone rendering
 bundled_html = html_content.replace(
     '<link rel="stylesheet" href="styles.css">',
     f'<style>\n{css_content}\n</style>'
@@ -63,5 +61,4 @@ bundled_html = html_content.replace(
     f'<script>\n{app_js}\n</script>'
 )
 
-# Render full viewport height app component
-components.html(bundled_html, height=950, scrolling=True)
+components.html(bundled_html, height=1000, scrolling=True)
