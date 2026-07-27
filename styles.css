@@ -249,6 +249,27 @@ p, span, label, li, td, th {
   transition: color 0.15s ease;
 }
 
+.semaforo-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+.semaforo-green {
+  background-color: #10B981;
+  box-shadow: 0 0 4px rgba(16, 185, 129, 0.4);
+}
+.semaforo-yellow {
+  background-color: #F59E0B;
+  box-shadow: 0 0 4px rgba(245, 158, 11, 0.4);
+}
+.semaforo-red {
+  background-color: #EF4444;
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.4);
+}
+
 .unit-link:hover, .item-link:hover {
   color: var(--color-title);
   text-decoration: underline;

@@ -7,7 +7,7 @@
 const EXCEL_HEADERS = [
   "proyecto_id", "unidad_nombre", "proyecto_nombre", "proyecto_estado", "proyecto_descripcion",
   "tarea_id", "tarea_nombre", "tarea_descripcion", "tarea_responsable",
-  "tarea_estado", "tarea_contraparte", "tarea_pct", "fecha_legacy",
+  "tarea_estado", "tarea_contraparte", "tarea_pct", "tarea_fecha_creacion", "fecha_legacy",
   "con_alerta", "fecha_inicio_proy", "fecha_inicio_real", "fecha_fin_proy", "fecha_fin_real"
 ];
 
@@ -44,6 +44,7 @@ let selectedUnit = "Enjoy Rinconada";
 let selectedProjectId = "";
 let selectedTaskId = "";
 let isEditingTarea = false;
+let fechaInforme = new Date().toISOString().split('T')[0];
 
 // Initialize State
 function initDB() {
@@ -58,6 +59,9 @@ function initDB() {
     db = window.INITIAL_DATA || [];
     saveDB();
   }
+
+  const savedFechaInforme = localStorage.getItem("ENJOY_FECHA_INFORME");
+  if (savedFechaInforme) fechaInforme = savedFechaInforme;
 }
 
 function saveDB() {
@@ -70,6 +74,7 @@ const ICON_DELETE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"
 const ICON_SAVE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`;
 const ICON_EDIT = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
 const ICON_CALENDAR = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+const ICON_ALERT_RED = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.5" style="vertical-align: middle; margin-left: 4px;" title="Proyecto con tareas en alerta"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
 
 // Helper filter functions
 function isProjectActive(status) {
@@ -114,6 +119,7 @@ function switchView(viewName) {
 
 function renderCurrentView() {
   if (currentView === "dashboard") renderDashboard();
+  else if (currentView === "fecha-informe") renderFechaInforme();
   else if (currentView === "proyectos") renderProyectosTable();
   else if (currentView === "admin") renderAdmin();
   else if (currentView === "ficha-unidad") renderFichaUnidad();
@@ -144,6 +150,23 @@ let dashSelectedProjectId = "";
 function selectDashProject(projId) {
   dashSelectedProjectId = projId;
   renderDashboard();
+}
+
+// ---------------------------------------------------------
+// View: Fecha de Informe
+// ---------------------------------------------------------
+function renderFechaInforme() {
+  const inputEl = document.getElementById("input-fecha-informe");
+  if (inputEl) inputEl.value = fechaInforme;
+}
+
+function updateFechaInforme(val) {
+  if (val) {
+    fechaInforme = val;
+    localStorage.setItem("ENJOY_FECHA_INFORME", fechaInforme);
+    alert(`Fecha de informe actualizada a ${fechaInforme}`);
+    renderCurrentView();
+  }
 }
 
 // ---------------------------------------------------------
@@ -203,10 +226,14 @@ function renderDashboard() {
 
       projIds.forEach(pid => {
         const pName = projs[pid];
+        const projTasks = db.filter(item => item.proyecto_id === pid && isTaskActive(item.tarea_estado));
+        const hasAlert = projTasks.some(t => (t.con_alerta || "").toLowerCase() === "si");
+        const alertIconHtml = hasAlert ? ICON_ALERT_RED : "";
+
         const li = document.createElement("li");
         const isSelected = pid === dashSelectedProjectId;
         li.innerHTML = `
-          <span class="dash-proj-link ${isSelected ? 'active' : ''}" onclick="selectDashProject('${pid}')">${pName}</span>
+          <span class="dash-proj-link ${isSelected ? 'active' : ''}" onclick="selectDashProject('${pid}')">${pName} ${alertIconHtml}</span>
         `;
         subUl.appendChild(li);
       });
@@ -216,40 +243,55 @@ function renderDashboard() {
     }
   });
 
-  // Zone 2: Tareas en Curso List (Dynamic tasks of selected project)
+  // Zone 2: Tareas en Curso List (Dynamic tasks of selected project with Semáforo indicator)
   const taskListEl = document.getElementById("dash-task-list");
   taskListEl.innerHTML = "";
 
   if (dashSelectedProjectId) {
     const projTasks = db.filter(item => item.proyecto_id === dashSelectedProjectId && isProjectActive(item.proyecto_estado) && isTaskActive(item.tarea_estado));
     projTasks.forEach(task => {
+      const pct = parseInt(task.tarea_pct, 10) || 0;
+      let semaforoClass = "semaforo-green";
+      if ((task.con_alerta || "").toLowerCase() === "si" || task.tarea_estado === "detenida" || pct < 30) {
+        semaforoClass = "semaforo-red";
+      } else if (pct < 80 || task.tarea_estado === "por iniciar") {
+        semaforoClass = "semaforo-yellow";
+      }
+
       const li = document.createElement("li");
       li.className = "task-row-item";
       li.innerHTML = `
-        <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
+        <div style="display: flex; align-items: center;">
+          <span class="semaforo-dot ${semaforoClass}" title="Semáforo: ${pct}% de avance"></span>
+          <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
+        </div>
         <span class="task-responsable-badge">${task.tarea_responsable || '-'}</span>
       `;
       taskListEl.appendChild(li);
     });
   }
 
-  // Zone 3: Alertas List
+  // Zone 3: Avance Semanal List
   const alertListEl = document.getElementById("dash-alert-list");
   alertListEl.innerHTML = "";
 
-  const allActiveAlertTasks = db.filter(item => {
+  const allActiveTasks = db.filter(item => {
     if (!isProjectActive(item.proyecto_estado)) return false;
     if (!isTaskActive(item.tarea_estado)) return false;
     if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
-    return (item.con_alerta || "").toLowerCase() === "si";
+    return true;
   });
 
-  allActiveAlertTasks.forEach(task => {
+  allActiveTasks.forEach(task => {
     const li = document.createElement("li");
     li.className = "alert-row-item";
+    const pctVal = task.tarea_pct !== "" && task.tarea_pct !== undefined ? `${task.tarea_pct}%` : "0%";
     li.innerHTML = `
       <span class="alert-unit-name">${task.unidad_nombre}</span>
-      <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
+      <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+        <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
+        <span class="task-responsable-badge" style="background-color: var(--color-title); color: #fff;">${pctVal}</span>
+      </div>
     `;
     alertListEl.appendChild(li);
   });
@@ -360,6 +402,7 @@ function saveNuevoProyectoForm() {
     tarea_estado: "por iniciar",
     tarea_contraparte: "",
     tarea_pct: 0,
+    tarea_fecha_creacion: todayStr,
     fecha_legacy: todayStr,
     con_alerta: "no",
     fecha_inicio_proy: todayStr,
@@ -480,6 +523,7 @@ function saveNuevaTareaForm() {
     tarea_estado: "en desarrollo",
     tarea_contraparte: document.getElementById("nt-tarea-contraparte").value.trim(),
     tarea_pct: 0,
+    tarea_fecha_creacion: todayStr,
     fecha_legacy: todayStr,
     con_alerta: document.getElementById("nt-con-alerta").value,
     fecha_inicio_proy: fInicioProy,
@@ -905,6 +949,9 @@ function renderFichaTarea() {
       <!-- Card 2: Campos de la Tarea en Texto Plano -->
       <div class="executive-card" style="width: 100%; margin-bottom: 20px; background-color: var(--color-white);">
         <div class="card-grid-table">
+          <span class="card-grid-label">Nombre de la tarea:</span>
+          <span class="plain-text-val">${task.tarea_nombre || '-'}</span>
+
           <span class="card-grid-label">Estado de la tarea:</span>
           <span class="plain-text-val">${task.tarea_estado || '-'}</span>
 
@@ -935,7 +982,7 @@ function renderFichaTarea() {
       </div>
     `;
   } else {
-    // EDIT MODE: Form Controls Enabled
+    // EDIT MODE: Form Controls Enabled (including tarea_nombre edit)
     containerEl.innerHTML = `
       <!-- Card 1: Descripción Editable -->
       <div class="executive-card" style="width: 100%; margin-bottom: 20px; background-color: var(--color-white);">
@@ -949,6 +996,11 @@ function renderFichaTarea() {
       <div class="executive-card" style="width: 100%; margin-bottom: 20px; background-color: var(--color-white);">
         <form id="tarea-form" onsubmit="event.preventDefault(); saveTareaForm();">
           <div class="form-grid">
+            <div class="form-group full-width">
+              <label class="form-label">Nombre de la tarea:</label>
+              <input type="text" id="t-nombre" class="form-input" value="${task.tarea_nombre || ''}">
+            </div>
+
             <div class="form-group">
               <label class="form-label">Estado de la tarea:</label>
               <select id="t-estado" class="form-select">
@@ -1017,6 +1069,9 @@ function handleSaveButtonClick() {
 function saveTareaForm() {
   const task = db.find(item => item.tarea_id === selectedTaskId);
   if (!task) return;
+
+  const newName = document.getElementById("t-nombre") ? document.getElementById("t-nombre").value.trim() : "";
+  if (newName) task.tarea_nombre = newName;
 
   task.tarea_estado = document.getElementById("t-estado").value;
   task.tarea_responsable = document.getElementById("t-responsable").value;

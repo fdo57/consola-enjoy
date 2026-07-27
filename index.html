@@ -14,6 +14,7 @@
   <aside id="sidebar">
     <ul class="nav-menu">
       <li><button class="nav-btn active" data-view="dashboard">Dashboard</button></li>
+      <li><button class="nav-btn" data-view="fecha-informe">Fecha de Informe</button></li>
       <li><button class="nav-btn" data-view="proyectos">Proyectos</button></li>
       <li><button class="nav-btn" data-view="admin">Admin</button></li>
     </ul>
@@ -53,10 +54,26 @@
           <ul id="dash-task-list" class="item-list"></ul>
         </div>
 
-        <!-- Zone 3: Alertas -->
+        <!-- Zone 3: Avance Semanal -->
         <div class="dashboard-zone">
-          <h2 class="dashboard-zone-title">Alertas</h2>
+          <h2 class="dashboard-zone-title">Avance Semanal</h2>
           <ul id="dash-alert-list" class="item-list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. FECHA DE INFORME VIEW -->
+    <section id="view-fecha-informe" class="view-section">
+      <div class="top-header-bar">
+        <h1>Fecha de Informe</h1>
+      </div>
+      <div class="executive-card" style="width: 100%; background-color: var(--color-white);">
+        <div class="form-grid" style="max-width: 500px;">
+          <div class="form-group full-width">
+            <label class="form-label">Fecha de Cierre del Informe Semanal:</label>
+            <input type="date" id="input-fecha-informe" class="form-input" onchange="updateFechaInforme(this.value)">
+          </div>
+          <p class="admin-desc" style="margin-top: 10px;">Esta fecha define el punto de corte para el seguimiento del Avance Semanal y reportes ejecutivos.</p>
         </div>
       </div>
     </section>
