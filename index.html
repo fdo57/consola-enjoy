@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de Proyectos Casinos de Chile SpA</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="lib/xlsx.full.min.js"></script>
+  <script src="data.js"></script>
+</head>
+<body>
+
+  <!-- Navigation Sidebar -->
+  <aside id="sidebar">
+    <ul class="nav-menu">
+      <li><button class="nav-btn active" data-view="dashboard">Dashboard</button></li>
+      <li><button class="nav-btn" data-view="proyectos">Proyectos</button></li>
+      <li><button class="nav-btn" data-view="admin">Admin</button></li>
+    </ul>
+  </aside>
+
+  <!-- Main View Area -->
+  <main id="main-content">
+
+    <!-- 1. DASHBOARD VIEW -->
+    <section id="view-dashboard" class="view-section active">
+      <div class="top-header-bar">
+        <h1>Proyectos En Desarrollo</h1>
+        <div>
+          <label for="dash-unit-filter" style="font-weight: bold; margin-right: 8px;">Unidad:</label>
+          <select id="dash-unit-filter" class="filter-select">
+            <option value="TODAS">Todas las Unidades</option>
+            <option value="Enjoy Rinconada">Enjoy Rinconada</option>
+            <option value="Enjoy Pucón">Enjoy Pucón</option>
+            <option value="Enjoy Viña">Enjoy Viña</option>
+            <option value="Enjoy Coquimbo">Enjoy Coquimbo</option>
+            <option value="Enjoy Chiloé">Enjoy Chiloé</option>
+            <option value="Enjoy Transversales">Enjoy Transversales</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <!-- Zone 1: Proyectos por Unidad de Negocio -->
+        <div class="dashboard-zone">
+          <h2 class="dashboard-zone-title">Proyectos por Unidad de Negocio</h2>
+          <ul id="dash-unit-list" class="item-list"></ul>
+        </div>
+
+        <!-- Zone 2: Tareas en Curso -->
+        <div class="dashboard-zone">
+          <h2 class="dashboard-zone-title">Tareas en Curso</h2>
+          <ul id="dash-task-list" class="item-list"></ul>
+        </div>
+
+        <!-- Zone 3: Alertas -->
+        <div class="dashboard-zone">
+          <h2 class="dashboard-zone-title">Alertas</h2>
+          <ul id="dash-alert-list" class="item-list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. PROYECTOS VIEW -->
+    <section id="view-proyectos" class="view-section">
+      <div class="top-header-bar">
+        <h1>Proyectos</h1>
+        <div style="display: flex; gap: 10px; margin-left: auto;">
+          <button id="btn-nuevo-proyecto" class="btn-primary-action" onclick="createNewProject()">Nuevo proyecto</button>
+          <button id="btn-nueva-tarea" class="btn-primary-action" onclick="createNewTask()">Nueva tarea</button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table class="corp-table">
+          <thead>
+            <tr>
+              <th>UN Negocios</th>
+              <th>Proyecto</th>
+              <th>Nombre tarea</th>
+              <th class="col-desc">Descripción tarea</th>
+              <th>Responsable</th>
+              <th>Estado</th>
+              <th>Avance %</th>
+              <th>Fecha Base</th>
+              <th>Fecha inicio (proy)</th>
+              <th>Fecha fin (proy)</th>
+              <th>En Alerta</th>
+              <th>Terminar</th>
+              <th>Borrar</th>
+            </tr>
+          </thead>
+          <tbody id="proyectos-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 3. ADMIN VIEW -->
+    <section id="view-admin" class="view-section">
+      <div class="top-header-bar">
+        <h1>Administración</h1>
+      </div>
+      <div class="admin-list">
+        <!-- Plantilla -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h2 class="admin-title">Archivo de Carga Masiva</h2>
+            <button id="btn-download-template" class="icon-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Descargar
+            </button>
+          </div>
+          <p class="admin-desc">descargue la plantilla para carga de datos</p>
+        </div>
+
+        <!-- Carga Masiva -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h2 class="admin-title">Carga Masiva</h2>
+            <button id="btn-upload-file" class="icon-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Cargar
+            </button>
+            <input type="file" id="upload-file-input" accept=".xlsx" style="display: none;">
+          </div>
+          <p class="admin-desc">seleccione archivo con base de datos</p>
+        </div>
+
+        <!-- Descarga BD -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h2 class="admin-title">Descarga de Base de Datos</h2>
+            <button id="btn-download-db" class="icon-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Descargar Base de Datos
+            </button>
+          </div>
+          <p class="admin-desc">descarga la base de datos en un archivo .xlsx ordenada en columnas con los mismos encabezados de Carga Masiva</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. FICHA UNIDAD DE NEGOCIO -->
+    <section id="view-ficha-unidad" class="view-section">
+      <div class="top-header-bar">
+        <h1>Ficha Unidad de Negocio</h1>
+        <select id="select-ficha-unidad" class="filter-select"></select>
+      </div>
+
+      <!-- Resumen Tarjeta -->
+      <div class="executive-card" id="ficha-unidad-card"></div>
+
+      <!-- Tabla de Proyectos Activos -->
+      <h2>Proyectos en Curso</h2>
+      <div class="table-container">
+        <table class="corp-table">
+          <thead>
+            <tr>
+              <th>Proyecto</th>
+              <th>Nombre tarea</th>
+              <th>Descripción tarea</th>
+              <th>Responsable</th>
+              <th>Estado</th>
+              <th>Avance %</th>
+              <th>Fecha Base</th>
+              <th>Fecha inicio (proy)</th>
+              <th>Fecha fin (proy)</th>
+              <th>En Alerta</th>
+              <th>Terminar</th>
+              <th>Borrar</th>
+            </tr>
+          </thead>
+          <tbody id="ficha-unidad-table-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Proyectos terminados o eliminados (Desplegable y contraído por defecto) -->
+      <details class="collapsible-details">
+        <summary class="collapsible-summary-bar">
+          <span class="collapsible-title">Proyectos terminados o eliminados</span>
+          <button class="btn-back btn-back-dashboard" onclick="event.preventDefault(); event.stopPropagation(); switchView('dashboard');">Volver</button>
+        </summary>
+        <div class="table-container" style="margin-top: 12px;">
+          <table class="corp-table">
+            <thead>
+              <tr>
+                <th>Proyecto</th>
+                <th>Nombre tarea</th>
+                <th>Descripción tarea</th>
+                <th>Responsable</th>
+                <th>Estado</th>
+                <th>Avance %</th>
+                <th>Fecha Base</th>
+                <th>Fecha inicio (proy)</th>
+                <th>Fecha fin (proy)</th>
+                <th>En Alerta</th>
+                <th>Terminar</th>
+                <th>Borrar</th>
+              </tr>
+            </thead>
+            <tbody id="ficha-unidad-inactive-table-body"></tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <!-- 5. FICHA PROYECTO -->
+    <section id="view-ficha-proyecto" class="view-section">
+      <div class="top-header-bar">
+        <h1>Ficha Proyecto</h1>
+        <select id="select-ficha-proyecto" class="filter-select"></select>
+      </div>
+
+      <!-- Tarjeta Resumen Proyecto -->
+      <div class="executive-card" id="ficha-proyecto-card"></div>
+
+      <!-- Tabla Tareas del Proyecto -->
+      <h2>Tareas del Proyecto</h2>
+      <div class="table-container">
+        <table class="corp-table">
+          <thead>
+            <tr>
+              <th>Nombre tarea</th>
+              <th>Descripción tarea</th>
+              <th>Responsable</th>
+              <th>Estado</th>
+              <th>Avance %</th>
+              <th>Contraparte</th>
+              <th>Fecha Base</th>
+              <th>Fecha inicio (proy)</th>
+              <th>Fecha fin (proy)</th>
+              <th>En Alerta</th>
+              <th>Terminar</th>
+              <th>Borrar</th>
+            </tr>
+          </thead>
+          <tbody id="ficha-proyecto-table-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Tareas terminadas o eliminadas (Desplegable y contraído por defecto) -->
+      <details class="collapsible-details">
+        <summary class="collapsible-summary-bar">
+          <span class="collapsible-title">Tareas terminadas o eliminadas</span>
+          <button class="btn-back btn-back-dashboard" onclick="event.preventDefault(); event.stopPropagation(); switchView('dashboard');">Volver</button>
+        </summary>
+        <div class="table-container" style="margin-top: 12px;">
+          <table class="corp-table">
+            <thead>
+              <tr>
+                <th>Nombre tarea</th>
+                <th>Descripción tarea</th>
+                <th>Responsable</th>
+                <th>Estado</th>
+                <th>Avance %</th>
+                <th>Contraparte</th>
+                <th>Fecha Base</th>
+                <th>Fecha inicio (proy)</th>
+                <th>Fecha fin (proy)</th>
+                <th>En Alerta</th>
+                <th>Terminar</th>
+                <th>Borrar</th>
+              </tr>
+            </thead>
+            <tbody id="ficha-proyecto-inactive-table-body"></tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <!-- 6. FICHA TAREA -->
+    <section id="view-ficha-tarea" class="view-section">
+      <div class="top-header-bar">
+        <h1 id="ficha-tarea-header-title">Ficha Tarea</h1>
+        <select id="select-ficha-tarea" class="filter-select"></select>
+      </div>
+
+      <!-- 2 Cards Container -->
+      <div id="ficha-tarea-container"></div>
+
+      <div style="margin-top: 16px;">
+        <button id="btn-back-to-project" class="btn-back">Volver</button>
+      </div>
+    </section>
+
+    <!-- 7. FORMULARIO CREACIÓN NUEVO PROYECTO -->
+    <section id="view-crear-proyecto" class="view-section">
+      <div class="top-header-bar">
+        <h1>Formulario de creación de Nuevo Proyecto</h1>
+      </div>
+      <div class="executive-card" style="width: 100%; background-color: var(--color-white);">
+        <form id="form-crear-proyecto" onsubmit="event.preventDefault(); saveNuevoProyectoForm();">
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label class="form-label">Unidad de Negocio:</label>
+              <select id="np-unidad-nombre" class="form-select"></select>
+            </div>
+            <div class="form-group full-width">
+              <label class="form-label">Nombre del Proyecto:</label>
+              <input type="text" id="np-proyecto-nombre" class="form-input" required placeholder="Ej: REMODELACIÓN SALÓN GENERAL">
+            </div>
+            <div class="form-group full-width">
+              <label class="form-label">Descripción del Proyecto:</label>
+              <textarea id="np-proyecto-descripcion" class="form-textarea" placeholder="Descripción general del proyecto..."></textarea>
+            </div>
+          </div>
+          <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button type="submit" class="btn-primary-action" style="width: 120px;">Guardar</button>
+            <button type="button" class="btn-back" style="width: 120px;" onclick="switchView('proyectos')">Descartar</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- 8. FORMULARIO CREACIÓN NUEVA TAREA -->
+    <section id="view-crear-tarea" class="view-section">
+      <div class="top-header-bar">
+        <h1>Formulario de creación de Nueva Tarea</h1>
+      </div>
+      <div class="executive-card" style="width: 100%; background-color: var(--color-white);">
+        <form id="form-crear-tarea" onsubmit="event.preventDefault(); saveNuevaTareaForm();">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Unidad de Negocio:</label>
+              <select id="nt-unidad-nombre" class="form-select" onchange="onNuevaTareaUnitChange(this.value)"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Proyecto:</label>
+              <select id="nt-proyecto-nombre" class="form-select" onchange="onNuevaTareaProjectChange(this.value)"></select>
+            </div>
+            <div class="form-group full-width">
+              <label class="form-label">Nombre de la Tarea:</label>
+              <input type="text" id="nt-tarea-nombre" class="form-input" required placeholder="Ej: Solicitud de Permisos DOM">
+            </div>
+            <div class="form-group full-width">
+              <label class="form-label">Descripción de la Tarea:</label>
+              <textarea id="nt-tarea-descripcion" class="form-textarea" placeholder="Detalle explicativo de la tarea..."></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Responsable:</label>
+              <input type="text" id="nt-tarea-responsable" class="form-input" placeholder="Iniciales (ej: APE)">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contraparte:</label>
+              <input type="text" id="nt-tarea-contraparte" class="form-input" placeholder="Nombre contraparte en unidad">
+            </div>
+            <div class="form-group">
+              <label class="form-label">En Alerta:</label>
+              <select id="nt-con-alerta" class="form-select">
+                <option value="no" selected>no</option>
+                <option value="si">si</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fecha inicio (proy):</label>
+              <input type="date" id="nt-fecha-inicio-proy" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fecha inicio (real):</label>
+              <input type="date" id="nt-fecha-inicio-real" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fecha fin (proy):</label>
+              <input type="date" id="nt-fecha-fin-proy" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fecha fin (real):</label>
+              <input type="date" id="nt-fecha-fin-real" class="form-input">
+            </div>
+          </div>
+          <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button type="submit" class="btn-primary-action" style="width: 120px;">Guardar</button>
+            <button type="button" class="btn-back" style="width: 120px;" onclick="switchView('proyectos')">Descartar</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

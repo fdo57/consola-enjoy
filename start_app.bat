@@ -1,0 +1,3 @@
+@echo off
+echo Starting Consola de Gestion de Proyectos - Casinos de Chile SpA...
+start "" "%~dp0index.html"
