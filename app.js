@@ -312,30 +312,88 @@ function getSemaforoClass(task) {
     });
   }
 
-  // Zone 3: Avance Semanal List
+function isSameWeek(dateStr1, dateStr2) {
+  if (!dateStr1 || !dateStr2) return false;
+  const str1 = String(dateStr1).trim().substring(0, 10);
+  const str2 = String(dateStr2).trim().substring(0, 10);
+  if (!str1 || !str2) return false;
+
+  const d1 = new Date(str1 + "T00:00:00");
+  const d2 = new Date(str2 + "T00:00:00");
+  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false;
+
+  const getMonday = (d) => {
+    const dt = new Date(d);
+    const day = dt.getDay();
+    const diff = dt.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(dt.setDate(diff));
+    monday.setHours(0, 0, 0, 0);
+    return monday.getTime();
+  };
+
+  return getMonday(d1) === getMonday(d2);
+}
+
+  // Zone 3: Avance Semanal (Divided into 2 stacked parts: Tareas Creadas & Tareas Terminadas)
   const alertListEl = document.getElementById("dash-alert-list");
-  alertListEl.innerHTML = "";
-
-  const allActiveTasks = db.filter(item => {
-    if (!isProjectActive(item.proyecto_estado)) return false;
-    if (!isTaskActive(item.tarea_estado)) return false;
-    if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
-    return true;
-  });
-
-  allActiveTasks.forEach(task => {
-    const li = document.createElement("li");
-    li.className = "alert-row-item";
-    const pctVal = task.tarea_pct !== "" && task.tarea_pct !== undefined ? `${task.tarea_pct}%` : "0%";
-    li.innerHTML = `
-      <span class="alert-unit-name">${task.unidad_nombre}</span>
-      <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-        <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
-        <span class="task-responsable-badge" style="background-color: var(--color-title); color: #fff;">${pctVal}</span>
+  alertListEl.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
+      <div class="avance-section">
+        <h3 class="avance-sub-header" style="font-size: 0.95rem; font-weight: 700; color: var(--color-title); margin-bottom: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">Tareas Creadas</h3>
+        <ul id="avance-created-ul" class="item-list" style="margin: 0; padding: 0;"></ul>
       </div>
-    `;
-    alertListEl.appendChild(li);
+
+      <div class="avance-section">
+        <h3 class="avance-sub-header" style="font-size: 0.95rem; font-weight: 700; color: var(--color-title); margin-bottom: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">Tareas Terminadas</h3>
+        <ul id="avance-finished-ul" class="item-list" style="margin: 0; padding: 0;"></ul>
+      </div>
+    </div>
+  `;
+
+  const createdUl = document.getElementById("avance-created-ul");
+  const finishedUl = document.getElementById("avance-finished-ul");
+
+  // Part 1: Tareas Creadas in same week as fechaInforme
+  const createdTasks = db.filter(item => {
+    if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
+    return isSameWeek(item.tarea_fecha_creacion, fechaInforme);
   });
+
+  if (createdTasks.length === 0) {
+    createdUl.innerHTML = `<li class="alert-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas creadas esta semana</li>`;
+  } else {
+    createdTasks.forEach(task => {
+      const li = document.createElement("li");
+      li.className = "alert-row-item";
+      li.innerHTML = `
+        <span class="alert-unit-name">${task.unidad_nombre}</span>
+        <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
+      `;
+      createdUl.appendChild(li);
+    });
+  }
+
+  // Part 2: Tareas Terminadas in same week as fechaInforme
+  const finishedTasks = db.filter(item => {
+    if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
+    const isFinished = (item.tarea_estado || "").toLowerCase().trim() === "terminada";
+    const dateToTest = item.fecha_fin_real || item.fecha_fin_proy || item.fecha_legacy;
+    return isFinished && isSameWeek(dateToTest, fechaInforme);
+  });
+
+  if (finishedTasks.length === 0) {
+    finishedUl.innerHTML = `<li class="alert-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas terminadas esta semana</li>`;
+  } else {
+    finishedTasks.forEach(task => {
+      const li = document.createElement("li");
+      li.className = "alert-row-item";
+      li.innerHTML = `
+        <span class="alert-unit-name">${task.unidad_nombre}</span>
+        <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
+      `;
+      finishedUl.appendChild(li);
+    });
+  }
 }
 
 // ---------------------------------------------------------
