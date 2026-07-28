@@ -425,6 +425,58 @@ function isSameWeek(dateStr1, dateStr2) {
   }
 }
 
+// Inline Table Cell Renderers for Estado & Avance %
+function renderTaskStatusCell(taskId, currentStatus) {
+  const status = (currentStatus || "").toLowerCase().trim();
+  return `
+    <select class="status-select" onchange="updateTaskStatusInline('${taskId}', this.value)" style="padding: 3px 6px; border: 1px solid var(--color-border); border-radius: 4px; font-weight: 500; background: #fff;">
+      <option value="por iniciar" ${status === "por iniciar" ? "selected" : ""}>por iniciar</option>
+      <option value="en desarrollo" ${status === "en desarrollo" ? "selected" : ""}>en desarrollo</option>
+      <option value="detenida" ${status === "detenida" ? "selected" : ""}>detenida</option>
+    </select>
+  `;
+}
+
+function updateTaskStatusInline(taskId, newStatus) {
+  const task = db.find(t => t.tarea_id === taskId);
+  if (task) {
+    const oldState = (task.tarea_estado || "").toLowerCase().trim();
+    task.tarea_estado = newStatus;
+
+    if (newStatus === "en desarrollo" && oldState !== "en desarrollo") {
+      if (!task.fecha_inicio_real) {
+        task.fecha_inicio_real = getTodayStr();
+      }
+    }
+    if ((newStatus === "terminada" || newStatus === "eliminada") && (oldState !== "terminada" && oldState !== "eliminada")) {
+      task.fecha_fin_real = getTodayStr();
+    }
+
+    saveDB();
+    renderCurrentView();
+  }
+}
+
+function renderTaskPctCell(taskId, currentPct) {
+  const displayVal = currentPct !== undefined && currentPct !== null && currentPct !== "" ? currentPct : "";
+  return `
+    <div style="display: flex; align-items: center; justify-content: center; gap: 2px;">
+      <input type="number" min="0" max="100" class="pct-input" value="${displayVal}" onchange="updateTaskPctInline('${taskId}', this.value)" style="width: 55px; padding: 3px 4px; border: 1px solid var(--color-border); border-radius: 4px; text-align: center; font-weight: 600; background: #fff;">
+      <span style="font-size: 0.85rem; font-weight: 600; color: var(--color-text);">%</span>
+    </div>
+  `;
+}
+
+function updateTaskPctInline(taskId, newPct) {
+  const task = db.find(t => t.tarea_id === taskId);
+  if (task) {
+    const val = parseInt(newPct, 10);
+    task.tarea_pct = isNaN(val) ? "" : Math.min(100, Math.max(0, val));
+    saveDB();
+    renderCurrentView();
+  }
+}
+
 // ---------------------------------------------------------
 // View 2: Proyectos Table
 // ---------------------------------------------------------
@@ -442,8 +494,8 @@ function renderProyectosTable() {
       <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre}</span></td>
       <td class="col-desc"><div class="desc-text-clamp">${item.tarea_descripcion || ""}</div></td>
       <td>${item.tarea_responsable || ""}</td>
-      <td>${item.tarea_estado || ""}</td>
-      <td>${item.tarea_pct !== "" ? item.tarea_pct + "%" : ""}</td>
+      <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
+      <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_legacy', item.fecha_legacy)}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_fin_proy', item.fecha_fin_proy)}</td>
@@ -842,8 +894,8 @@ function renderFichaUnidad() {
       <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre}</span></td>
       <td class="col-desc"><div class="desc-text-clamp">${item.tarea_descripcion || ""}</div></td>
       <td>${item.tarea_responsable || ""}</td>
-      <td>${item.tarea_estado || ""}</td>
-      <td>${item.tarea_pct !== "" ? item.tarea_pct + "%" : ""}</td>
+      <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
+      <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_legacy', item.fecha_legacy)}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_fin_proy', item.fecha_fin_proy)}</td>
@@ -959,8 +1011,8 @@ function renderFichaProyecto() {
       <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre}</span></td>
       <td class="col-desc"><div class="desc-text-clamp">${item.tarea_descripcion || ""}</div></td>
       <td>${item.tarea_responsable || ""}</td>
-      <td>${item.tarea_estado || ""}</td>
-      <td>${item.tarea_pct !== "" ? item.tarea_pct + "%" : ""}</td>
+      <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
+      <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
       <td>${item.tarea_contraparte || ""}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_legacy', item.fecha_legacy)}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
