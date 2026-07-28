@@ -103,11 +103,7 @@ function initDB() {
     } catch (e) {}
   }
 
-  try {
-    const savedFechaInforme = localStorage.getItem("ENJOY_FECHA_INFORME");
-    if (savedFechaInforme) fechaInforme = savedFechaInforme;
-  } catch (e) {}
-
+  fechaInforme = getTodayStr();
   renderFechaInformeDisplay();
 }
 
@@ -119,6 +115,15 @@ function saveDB() {
   }
 }
 
+function getTodayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function resetFechaInformeToToday() {
+  fechaInforme = getTodayStr();
+  renderFechaInformeDisplay();
+}
+
 function renderFechaInformeDisplay() {
   const inputEl = document.getElementById("sidebar-fecha-informe-input");
   if (inputEl) inputEl.value = fechaInforme;
@@ -127,9 +132,6 @@ function renderFechaInformeDisplay() {
 function updateFechaInforme(val) {
   if (val) {
     fechaInforme = val;
-    try {
-      localStorage.setItem("ENJOY_FECHA_INFORME", fechaInforme);
-    } catch (e) {}
     renderFechaInformeDisplay();
     renderCurrentView();
   }
@@ -139,6 +141,8 @@ function updateFechaInforme(val) {
 // Navigation & Router
 // ---------------------------------------------------------
 function switchView(viewName) {
+  resetFechaInformeToToday();
+
   currentView = viewName;
   document.querySelectorAll(".view-section").forEach(sec => sec.classList.remove("active"));
   document.querySelectorAll(".nav-btn").forEach(btn => {
