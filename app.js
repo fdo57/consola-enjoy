@@ -716,16 +716,8 @@ function downloadDBXLSX() {
     rows.push(EXCEL_HEADERS.map(h => item[h] !== undefined ? item[h] : ""));
   });
   const ws = XLSX.utils.aoa_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Base_de_Datos");
   XLSX.writeFile(wb, "base_de_datos_proyectos.xlsx");
-}
-
-function resetInitialDB() {
-  db = window.INITIAL_DATA || [];
-  saveDB();
-  alert("Base de datos restablecida correctamente desde carga_masiva.xlsx.");
-  switchView("proyectos");
 }
 
 function handleFileUpload(e) {
