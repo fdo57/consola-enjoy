@@ -118,7 +118,7 @@ El cuerpo del Dashboard estará separado en 3 zonas del mismo ancho, cada zona c
 Un listado de las unidades de negocio con proyectos activos. No debe incluir proyectos con estado "terminado" o "eliminado"
 A la izquierda de cada elemento debe haber un botón un número que representa la cantidad de proyectos en curso para la unidad. El botón debe ser de color gris con el texto color blanco.
 Bajo cada elemento debe ir un listado con los proyectos en curso. Al hacerle click a cada elemento de la lista genera el listado de tareas en la siguiente zona "Tareas en Curso"
-Para proyectos que tengan tareas con campo en\_alerta con valor "si" agrega un ícono con un signo de exclamación en rojo al lado del nombre.
+Para proyectos que tengan tareas con campo en\_alerta con valor "si" agrega un semáforo en rojo.
 
 
 
@@ -145,7 +145,7 @@ La segunda parte está bajo "Tareas Creadas", se llama "Tareas terminadas" muest
 
 ## 2\. Fecha de Informe
 
-Fecha de generación de información en Dashboard. Por definición viene en el día en curso, con un calendario desplegable en el mismo panel lateral para consultar otras fechas. Afecta zona "Avance Semanal".
+Fecha de generación de información en Dashboard. Por definición viene en el día en curso, con un calendario desplegable en el mismo panel lateral para consultar otras fechas. Afecta zona "Avance Semanal". Al hacer click en cualquier botón del panel lateral, "Fecha de informe" debe cambiar al día en curso.
 
 
 
