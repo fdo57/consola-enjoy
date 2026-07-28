@@ -13,20 +13,22 @@ Casinos de Chile es una empresa que administra Casinos y Hoteles de la cadena En
 ## Unidades
 
 Los complejos turísticos o Unidades son:
-- Rinconada
-- Pucón
-- Viña
-- Coquimbo
-- Chiloé
-- Transversales
+
+* Rinconada
+* Pucón
+* Viña
+* Coquimbo
+* Chiloé
+* Transversales
 
 Las respectivas abreviaciones son:
-- RI
-- PU
-- VI
-- CQ
-- CH
-- TR
+
+* RI
+* PU
+* VI
+* CQ
+* CH
+* TR
 
 ## Campos
 
@@ -73,9 +75,10 @@ fecha\_fin\_real: Corresponde a la fecha de fin real de una tarea. Si al momento
 ## Usuarios
 
 Los usuarios y sus características serán 3:
-- CEO de Casinos de Chile SpA.:  Necesitará lograr una comprensión general pero precisa del avance en las tareas de los distintos proyectos de forma ágil. Dispone de poco tiempo para revisar y la simpleza será clave. Consultará sólo un dashboard.
-- Subgerenta de Proyectos: No tiene experiencia con medios digitales, necesitará una app limpia y fácil de usar. Esto se traduce en que cada sección que este profesional consulte debe tener el mínimo de información. Además de visualizar las mismas secciones que el CEO, deberá poder crear y editar los proyectos en la misma consola.
-- Jefe de Proyectos: Será el encargado de administrar la aplicación, haciendo el troubleshooting, cargando información y haciendo mejoras que vayan siendo necesarias.
+
+* CEO de Casinos de Chile SpA.:  Necesitará lograr una comprensión general pero precisa del avance en las tareas de los distintos proyectos de forma ágil. Dispone de poco tiempo para revisar y la simpleza será clave. Consultará sólo un dashboard.
+* Subgerenta de Proyectos: No tiene experiencia con medios digitales, necesitará una app limpia y fácil de usar. Esto se traduce en que cada sección que este profesional consulte debe tener el mínimo de información. Además de visualizar las mismas secciones que el CEO, deberá poder crear y editar los proyectos en la misma consola.
+* Jefe de Proyectos: Será el encargado de administrar la aplicación, haciendo el troubleshooting, cargando información y haciendo mejoras que vayan siendo necesarias.
 
 La descripción de los usuarios busca detallar la experiencia que tienen para acotar la complejidad de las distintas secciones de la app.
 
@@ -107,9 +110,10 @@ El panel lateral no debe tener ningún título
 En la parte superior tendrá un título que será "Proyectos En Desarrollo" y al lado tendrá un menú desplegable para filtrar por unidad de negocio.
 
 El cuerpo del Dashboard estará separado en 3 zonas del mismo ancho, cada zona con su título que serán los siguientes:
-- "Unidad de Negocio"
-- "Tareas en Curso
-- "Alertas"
+
+* "Unidad de Negocio"
+* "Tareas en Curso
+* "Alertas"
 
 
 
@@ -131,7 +135,9 @@ color amarillo: tareas con tarea\_estatus "detenida" con "con\_alerta" en "no"
 color rojo: tareas con tarea\_estatus "en desarrollo", "detenida" o "por iniciar" que tengan "con\_aerta" en "si".
 
 
+
 Al abrir la app mostrar las tareas del primer proyecto de la primera unidad de la lista de "Proyectos por Unidad"
+
 
 
 ### Zona "Avance Semanal"
@@ -167,8 +173,8 @@ Columna 2: Proyecto (proyecto\_nombre)
 Columna 3: Nombre tarea (tarea\_nombre)
 Columna 4: Descripción tarea (tarea\_descripcion), los textos en esta columna no deben tener más de 4 líneas.
 Columna 5: Responsable (tarea\_responsable)
-Columna 6: Estado (tarea\_estado)
-Columna 7: Avance % (tarea\_pct)
+Columna 6: Estado (tarea\_estado), debe ser editable
+Columna 7: Avance % (tarea\_pct), debe ser editable
 Columna 8: Fecha base (fecha\_legacy), debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
 Columna 9: Fecha inicio (proy) (fecha\_inicio\_proy),  debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
 Columna 10: Fecha fin (proy) (fecha\_fin\_proy),  debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
@@ -193,21 +199,25 @@ El color de todos los textos debe ser #595959
 
 Junto al título de la sección debe haber un botón "Nuevo proyecto" y otro "Nueva tarea" que lleven a sus respectivos formularios.
 
+
+
 Formulario de creación de "Nueva tarea"
 
 Una tarjeta con los siguientes campos para llenar:
-- unidad\_nombre: muestra un menú desplegable con las unidades
-- proyecto\_nombre: muestra un menú desplegable con los proyectos en curso para "unidad\_nombre", con una opción "nuevo proyecto" que lleva al formulario de creacion de nuevo proyecto.
-- tarea\_nombre
-- tarea\_descripcion
-- tarea\_responsable
-- tarea\_contraparte
+
+* unidad\_nombre: muestra un menú desplegable con las unidades
+* proyecto\_nombre: muestra un menú desplegable con los proyectos en curso para "unidad\_nombre", con una opción "nuevo proyecto" que lleva al formulario de creacion de nuevo proyecto.
+* tarea\_nombre
+* tarea\_descripcion
+* tarea\_responsable
+* tarea\_contraparte
 
 \- con\_alerta
-- fecha\_inicio\_proy
-- fecha\_inicio\_real
-- fecha\_fin\_proy
-- fecha\_fin\_real
+
+* fecha\_inicio\_proy
+* fecha\_inicio\_real
+* fecha\_fin\_proy
+* fecha\_fin\_real
 
 
 
@@ -231,7 +241,8 @@ Al final, botón "Guardar" y "Descartar", uno al lado del otro.
 
 Formulario de creación de "Nuevo proyecto"
 Una tarjeta con los siguientes campos:
-- unidad\_nombre: muestra un menú desplegable con las unidades
+
+* unidad\_nombre: muestra un menú desplegable con las unidades
 
 \- proyecto\_nombre
 
@@ -243,6 +254,7 @@ Campos que se llenan automáticamente:
 
 proyecto\_estado se crea automáticamente como "en desarrollo"
 Al final, botón "Guardar" y "Descartar", uno al lado del otro.
+
 
 
 
@@ -260,23 +272,23 @@ junto al título debe tener un botón con un ícono que represente "download" qu
 El archivo .xlsx debe tener los siguientes encabezados:
 
 &#x09;- proyecto\_id
-	- unidad\_nombre
-	- proyecto\_nombre
-	- proyecto\_estado
-	- tarea\_id
-	- tarea\_nombre
-	- tarea\_descripcion
-	- tarea\_responsable 
-	- tarea\_estado
-	- tarea\_contraparte
+- unidad\_nombre
+- proyecto\_nombre
+- proyecto\_estado
+- tarea\_id
+- tarea\_nombre
+- tarea\_descripcion
+- tarea\_responsable
+- tarea\_estado
+- tarea\_contraparte
 
 &#x09;- tarea\_pct
-	- fecha\_legacy
-	- con\_alerta
-	- fecha\_inicio\_proy
-	- fecha\_inicio\_real
-	- fecha\_fin\_proy
-	- fecha\_fin\_real
+- fecha\_legacy
+- con\_alerta
+- fecha\_inicio\_proy
+- fecha\_inicio\_real
+- fecha\_fin\_proy
+- fecha\_fin\_real
 
 
 
@@ -296,12 +308,14 @@ descarga la base de datos en un archivo .xlsx ordenada en columnas con los mismo
 
 En la parte superior de la ficha debe haber un menú desplegable para seleccionar otras "Unidades de Negocio".
 La ficha debe tener una tarjeta con fondo blanco con la siguiente información en texto grande:
-- Unidad: (unidad\_nombre)
-- Proyectos en curso: (suma de proyectos que estén en estado "por iniciar", "en desarrollo", "en construcción" o "detenido")
-- Tareas en curso: (suma de tareas que estén en estado "por iniciar", "en desarrollo", o "detenida", suma sólo las tareas de la unidad)
-- Tareas en alerta: (listado de tareas con\_alerta en "si")
+
+* Unidad: (unidad\_nombre)
+* Proyectos en curso: (suma de proyectos que estén en estado "por iniciar", "en desarrollo", "en construcción" o "detenido")
+* Tareas en curso: (suma de tareas que estén en estado "por iniciar", "en desarrollo", o "detenida", suma sólo las tareas de la unidad)
+* Tareas en alerta: (listado de tareas con\_alerta en "si")
 
 Los títulos dentro de la tarjeta deben disponerse de modo que se vea una columna con los textos alineados a la izquierda y el contenido en otra columna con los textos alineados a la izquierda.
+
 
 
 Luego bajo la tarjeta debe  haber una tabla que contiene todos los proyectos ordenados de la siguiente manera, con los respectivos campos entre paréntesis:
@@ -333,11 +347,12 @@ Bajo la tabla debe aparecer un título que sea "Proyectos terminados o eliminado
 En la parte superior de la ficha debe haber un menú desplegable para seleccionar otros "Proyectos" de la Unidad correspondiente al proyecto de la ficha.
 
 La ficha debe tener una tarjeta con fondo blanco con la siguiente información en texto grande:
-- "Unidad de Negocio": (unidad\_nombre), debe ser un vínculo que lleve a la ficha de la unidad.
-- "Proyecto": (proyecto\_nombre), debe mostrar sólo proyectos asociados a la unidad. debe ser editable
-- "Estado del Proyecto": (proyecto\_estado), debe tener un menú desplegable con las opciones, que permita modificar el estado.
-- "Tareas en curso": (cantidad de tareas, no mostrar tareas que estén en estado "terminada" o "eliminada". Cuenta sólo las tareas del proyecto)
-- "Tareas en alerta": (listado de tareas con\_alerta en "si", cuenta sólo las tareas del proyecto)
+
+* "Unidad de Negocio": (unidad\_nombre), debe ser un vínculo que lleve a la ficha de la unidad.
+* "Proyecto": (proyecto\_nombre), debe mostrar sólo proyectos asociados a la unidad. debe ser editable
+* "Estado del Proyecto": (proyecto\_estado), debe tener un menú desplegable con las opciones, que permita modificar el estado.
+* "Tareas en curso": (cantidad de tareas, no mostrar tareas que estén en estado "terminada" o "eliminada". Cuenta sólo las tareas del proyecto)
+* "Tareas en alerta": (listado de tareas con\_alerta en "si", cuenta sólo las tareas del proyecto)
 
 
 
@@ -382,13 +397,14 @@ La primera debe ser una tarjeta sin título con "Descripción" (tarea\_descripci
 La segunda debe ser una tarjeta sin título con fondo blanco con la siguiente información:
 
 \- "Descripción" (tarea\_descripcion) en negrita
-- "Estado de la tarea": (tarea\_estado)
-- "Responsable" (tarea\_responsable)
-- "Contraparte" (tarea\_contraparte)
-- "Fecha según Minuta" (fecha\_legacy)
-- "Fecha inicio" (fecha\_inicio\_proy). Si no hay fecha\_inicio\_proy, se debe mostrar tarea\_fecha\_creacion. Cuando tarea\_estado cambia a "en desarrollo", fecha\_inicio\_real toma el valor de la fecha del día del cambio.
-- "Fecha término": (Fecha\_fin\_proy). Cuando tarea\_estado cambia a "terminada" o "eliminada, fecha\_fin\_real toma el valor de la fecha del día del cambio.
-- "Porcentaje de avance" (tarea\_pct)
+
+* "Estado de la tarea": (tarea\_estado)
+* "Responsable" (tarea\_responsable)
+* "Contraparte" (tarea\_contraparte)
+* "Fecha según Minuta" (fecha\_legacy)
+* "Fecha inicio" (fecha\_inicio\_proy). Si no hay fecha\_inicio\_proy, se debe mostrar tarea\_fecha\_creacion. Cuando tarea\_estado cambia a "en desarrollo", fecha\_inicio\_real toma el valor de la fecha del día del cambio.
+* "Fecha término": (Fecha\_fin\_proy). Cuando tarea\_estado cambia a "terminada" o "eliminada, fecha\_fin\_real toma el valor de la fecha del día del cambio.
+* "Porcentaje de avance" (tarea\_pct)
 
 \- "Alerta" (con\_alerta)
 
@@ -400,9 +416,10 @@ El contenido de cada campo debe mostrarse como texto plano, no como campo editab
 
 Botones:
 Deben haber 3 botones, uno sobre el otro alineados a la izquierda:
-- Botón de "Editar" de 100 px de ancho (con ícono), habilita la edición en todos los campos. "Fecha según Minuta", "Fecha inicio", "Fecha término" deben mostrar un calendario desplegable para permitir modificar. "Estado de la tarea" debe mostrar un menú desplegable con los estados disponibles.
-- Botón de "Guardado" de 100 px de ancho (con ícono)
-- Botón de "Eliminar" de 100 px de ancho (con ícono), debe cambiar el estado a "eliminada", y cargar la siguiente ficha siguiendo el orden de las Ids. Si es la última tarea del proyecto, debe volver a la 1ra tarea del proyecto.
+
+* Botón de "Editar" de 100 px de ancho (con ícono), habilita la edición en todos los campos. "Fecha según Minuta", "Fecha inicio", "Fecha término" deben mostrar un calendario desplegable para permitir modificar. "Estado de la tarea" debe mostrar un menú desplegable con los estados disponibles.
+* Botón de "Guardado" de 100 px de ancho (con ícono)
+* Botón de "Eliminar" de 100 px de ancho (con ícono), debe cambiar el estado a "eliminada", y cargar la siguiente ficha siguiendo el orden de las Ids. Si es la última tarea del proyecto, debe volver a la 1ra tarea del proyecto.
 
 
 
