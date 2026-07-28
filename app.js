@@ -383,11 +383,15 @@ function isSameWeek(dateStr1, dateStr2) {
     createdUl.innerHTML = `<li class="alert-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas creadas esta semana</li>`;
   } else {
     createdTasks.forEach(task => {
+      const semaforoClass = getSemaforoClass(task);
       const li = document.createElement("li");
       li.className = "alert-row-item";
       li.innerHTML = `
         <span class="alert-unit-name">${task.unidad_nombre}</span>
-        <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
+          <span class="semaforo-dot ${semaforoClass}" title="Estado: ${task.tarea_estado}, Alerta: ${task.con_alerta}"></span>
+        </div>
       `;
       createdUl.appendChild(li);
     });
@@ -406,11 +410,15 @@ function isSameWeek(dateStr1, dateStr2) {
     finishedUl.innerHTML = `<li class="alert-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas terminadas esta semana</li>`;
   } else {
     finishedTasks.forEach(task => {
+      const semaforoClass = getSemaforoClass(task);
       const li = document.createElement("li");
       li.className = "alert-row-item";
       li.innerHTML = `
         <span class="alert-unit-name">${task.unidad_nombre}</span>
-        <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
+          <span class="semaforo-dot ${semaforoClass}" title="Estado: ${task.tarea_estado}, Alerta: ${task.con_alerta}"></span>
+        </div>
       `;
       finishedUl.appendChild(li);
     });

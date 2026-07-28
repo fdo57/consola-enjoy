@@ -140,6 +140,13 @@ Es un resumen de tareas modificadas en la semana de la fecha "Fecha de Informe".
 
 La primera parte se llama "Tareas Creadas" y muestra una lista todas las tareas con tarea\_fecha\_creacion en la misma semana que la "Fecha de informe"
 La segunda parte está bajo "Tareas Creadas", se llama "Tareas terminadas" muestra una lista con todas las tareas con fecha\_fin\_real en la misma semana que la "Fecha de informe"
+A la derecha del nombre de la tarea, agregar una columna con ícono de semáforo con los mismos parámetros que en "Tareas en Curso":
+color verde: tareas con tarea\_estatus "en desarrollo" con "con\_alerta" en "no"
+color amarillo: tareas con tarea\_estatus "detenida" con "con\_alerta" en "no"
+
+color rojo: tareas con tarea\_estatus "en desarrollo", "detenida" o "por iniciar" que tengan "con\_aerta" en "si".
+
+
 
 
 
@@ -411,12 +418,4 @@ Bajo la ficha debe aparecer un botón que diga "Volver" que lleve al dashboard.
 No incorporar más información, títulos o textos que los descritos.
 No utilizar ni mostrar los nombres de los campos de la base de datos, siempre usar textos descriptivos basados en estas instrucciones.
 No utilizar íconos ni emojis de ningún tipo excepto donde se indique.
-
-
-
-# Para siguiente versión:
-
-En modalidad de edición de tareas no se puede cambiar el nombre. Corregir.
-
-En modalidad de edición de tareas no se puede cambiar con\_alerta. Corregir.
 
