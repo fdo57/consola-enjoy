@@ -690,6 +690,7 @@ function completeTask(taskId) {
   const task = db.find(t => t.tarea_id === taskId);
   if (task) {
     task.tarea_estado = "terminada";
+    task.fecha_fin_real = getTodayStr();
     saveDB();
     renderCurrentView();
   }
@@ -699,6 +700,7 @@ function deleteTask(taskId) {
   const task = db.find(t => t.tarea_id === taskId);
   if (task) {
     task.tarea_estado = "eliminada";
+    task.fecha_fin_real = getTodayStr();
     saveDB();
     renderCurrentView();
   }
@@ -1092,7 +1094,7 @@ function renderFichaTarea() {
           <span class="plain-text-val">${task.fecha_legacy || '-'}</span>
 
           <span class="card-grid-label">Fecha inicio:</span>
-          <span class="plain-text-val">${task.fecha_inicio_proy || '-'}</span>
+          <span class="plain-text-val">${task.fecha_inicio_proy || task.tarea_fecha_creacion || '-'}</span>
 
           <span class="card-grid-label">Fecha término:</span>
           <span class="plain-text-val">${task.fecha_fin_proy || '-'}</span>
@@ -1167,7 +1169,7 @@ function renderFichaTarea() {
 
             <div class="form-group">
               <label class="form-label">Fecha inicio:</label>
-              <input type="date" id="t-fecha-inicio" class="form-input" value="${task.fecha_inicio_proy || ''}">
+              <input type="date" id="t-fecha-inicio" class="form-input" value="${task.fecha_inicio_proy || task.tarea_fecha_creacion || ''}">
             </div>
 
             <div class="form-group">
@@ -1208,10 +1210,13 @@ function saveTareaForm() {
   const task = db.find(item => item.tarea_id === selectedTaskId);
   if (!task) return;
 
+  const oldState = (task.tarea_estado || "").toLowerCase().trim();
+  const newState = document.getElementById("t-estado").value;
+
   const newName = document.getElementById("t-nombre") ? document.getElementById("t-nombre").value.trim() : "";
   if (newName) task.tarea_nombre = newName;
 
-  task.tarea_estado = document.getElementById("t-estado").value;
+  task.tarea_estado = newState;
   if (document.getElementById("t-con-alerta")) {
     task.con_alerta = document.getElementById("t-con-alerta").value;
   }
@@ -1222,6 +1227,16 @@ function saveTareaForm() {
   task.fecha_inicio_proy = document.getElementById("t-fecha-inicio").value;
   task.fecha_fin_proy = document.getElementById("t-fecha-fin").value;
   task.tarea_pct = document.getElementById("t-pct").value;
+
+  // Auto-set fecha_inicio_real when state changes to "en desarrollo"
+  if (newState === "en desarrollo" && oldState !== "en desarrollo") {
+    task.fecha_inicio_real = getTodayStr();
+  }
+
+  // Auto-set fecha_fin_real when state changes to "terminada" or "eliminada"
+  if ((newState === "terminada" || newState === "eliminada") && (oldState !== "terminada" && oldState !== "eliminada")) {
+    task.fecha_fin_real = getTodayStr();
+  }
 
   isEditingTarea = false;
   saveDB();
@@ -1235,6 +1250,7 @@ function deleteTaskFromFicha(taskId) {
 
   const currentTask = db[taskIndex];
   currentTask.tarea_estado = "eliminada";
+  currentTask.fecha_fin_real = getTodayStr();
   isEditingTarea = false;
   saveDB();
 

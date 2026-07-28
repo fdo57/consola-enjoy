@@ -386,8 +386,8 @@ La segunda debe ser una tarjeta sin título con fondo blanco con la siguiente in
 - "Responsable" (tarea\_responsable)
 - "Contraparte" (tarea\_contraparte)
 - "Fecha según Minuta" (fecha\_legacy)
-- "Fecha inicio" (fecha\_inicio\_proy)
-- "Fecha término": (Fecha\_fin\_proy)
+- "Fecha inicio" (fecha\_inicio\_proy). Si no hay fecha\_inicio\_proy, se debe mostrar tarea\_fecha\_creacion. Cuando tarea\_estado cambia a "en desarrollo", fecha\_inicio\_real toma el valor de la fecha del día del cambio.
+- "Fecha término": (Fecha\_fin\_proy). Cuando tarea\_estado cambia a "terminada" o "eliminada, fecha\_fin\_real toma el valor de la fecha del día del cambio.
 - "Porcentaje de avance" (tarea\_pct)
 
 \- "Alerta" (con\_alerta)
