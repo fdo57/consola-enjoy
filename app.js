@@ -1099,6 +1099,9 @@ function renderFichaTarea() {
 
           <span class="card-grid-label">Porcentaje de avance:</span>
           <span class="plain-text-val">${task.tarea_pct !== '' ? task.tarea_pct + '%' : '-'}</span>
+
+          <span class="card-grid-label">Alerta:</span>
+          <span class="plain-text-val">${(task.con_alerta || 'no').toLowerCase() === 'si' ? 'si' : 'no'}</span>
         </div>
 
         <div class="task-buttons-stack">
@@ -1109,7 +1112,7 @@ function renderFichaTarea() {
       </div>
     `;
   } else {
-    // EDIT MODE: Form Controls Enabled (including tarea_nombre edit)
+    // EDIT MODE: Form Controls Enabled (including tarea_nombre edit & con_alerta edit)
     containerEl.innerHTML = `
       <!-- Card 1: Descripción Editable -->
       <div class="executive-card" style="width: 100%; margin-bottom: 20px; background-color: var(--color-white);">
@@ -1136,6 +1139,14 @@ function renderFichaTarea() {
                 <option value="detenida" ${task.tarea_estado === "detenida" ? "selected" : ""}>detenida</option>
                 <option value="terminada" ${task.tarea_estado === "terminada" ? "selected" : ""}>terminada</option>
                 <option value="eliminada" ${task.tarea_estado === "eliminada" ? "selected" : ""}>eliminada</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Alerta:</label>
+              <select id="t-con-alerta" class="form-select">
+                <option value="no" ${(task.con_alerta || 'no').toLowerCase() === 'no' ? 'selected' : ''}>no</option>
+                <option value="si" ${(task.con_alerta || 'no').toLowerCase() === 'si' ? 'selected' : ''}>si</option>
               </select>
             </div>
 
@@ -1201,6 +1212,9 @@ function saveTareaForm() {
   if (newName) task.tarea_nombre = newName;
 
   task.tarea_estado = document.getElementById("t-estado").value;
+  if (document.getElementById("t-con-alerta")) {
+    task.con_alerta = document.getElementById("t-con-alerta").value;
+  }
   task.tarea_responsable = document.getElementById("t-responsable").value;
   task.tarea_contraparte = document.getElementById("t-contraparte").value;
   task.tarea_descripcion = document.getElementById("t-descripcion").value;

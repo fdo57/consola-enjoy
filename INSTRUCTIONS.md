@@ -383,6 +383,8 @@ La segunda debe ser una tarjeta sin título con fondo blanco con la siguiente in
 - "Fecha término": (Fecha\_fin\_proy)
 - "Porcentaje de avance" (tarea\_pct)
 
+\- "Alerta" (con\_alerta)
+
 
 
 El contenido de cada campo debe mostrarse como texto plano, no como campo editable, hazta que se haga click en el botón "Editar"
@@ -414,11 +416,7 @@ No utilizar íconos ni emojis de ningún tipo excepto donde se indique.
 
 # Para siguiente versión:
 
-En sección "Proyectos por Unidad de Negocio", al lado de cada proyecto se debe agregar un ícono de exclamación para los proyectos que tengan tareas en alerta.
-
-En sección "Tareas en Curso" se agregará indicador tipo semáforo indicando estado de la tarea (por diseñar)
-
-En sección "Alertas" se hará modificación para convertirla en sección con avance semanal. Va a requerir definición de fechas de creación y de cambio de estado.
-
 En modalidad de edición de tareas no se puede cambiar el nombre. Corregir.
+
+En modalidad de edición de tareas no se puede cambiar con\_alerta. Corregir.
 
