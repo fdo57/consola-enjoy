@@ -60,13 +60,15 @@ fecha\_legacy: Corresponde a fechas legacy de las minutas en word utilizadas has
 
 con\_alerta: La tarea debe ser considerada prioritaria y requiere atención especial
 
+tarea\_fecha\_creacion: Se establece al momento de crear una tarea.
+
 fecha\_inicio\_proy: Corresponde a la fecha de inicio proyectada de una tarea.
 
 fecha\_inicio\_real: Corresponde a la fecha de inicio real de una tarea.
 
 fecha\_fin\_proy: Corresponde a la fecha de fin proyectada de una tarea.
 
-fecha\_fin\_real: Corresponde a la fecha de fin real de una tarea.
+fecha\_fin\_real: Corresponde a la fecha de fin real de una tarea. Si al momento de cambiar de estado de "en desarrollo" a "terminada" o a "eliminada" no tiene valor, se debe establecer la fecha del momento del cambio.
 
 ## Usuarios
 
@@ -87,11 +89,12 @@ Los colores a utilizar para títulos, fondos de tarjetas y otros serán:
 
 # Secciones
 
-La app tendrá 3 secciones con sus respectivos botones en el panel lateral
+La app tendrá 4 secciones con sus respectivos botones en el panel lateral
 
 1. Dashboard
-2. Proyectos
-3. Admin
+2. Fecha de informe
+3. Proyectos
+4. Admin
 
 
 
@@ -115,16 +118,38 @@ El cuerpo del Dashboard estará separado en 3 zonas del mismo ancho, cada zona c
 Un listado de las unidades de negocio con proyectos activos. No debe incluir proyectos con estado "terminado" o "eliminado"
 A la izquierda de cada elemento debe haber un botón un número que representa la cantidad de proyectos en curso para la unidad. El botón debe ser de color gris con el texto color blanco.
 Bajo cada elemento debe ir un listado con los proyectos en curso. Al hacerle click a cada elemento de la lista genera el listado de tareas en la siguiente zona "Tareas en Curso"
+Para proyectos que tengan tareas con campo en\_alerta con valor "si" agrega un ícono con un signo de exclamación en rojo al lado del nombre.
+
+
 
 ### Zona "Tareas en Curso"
 
-Un listado dinámico que se genera al hacer click a un proyecto de la zona "Proyectos por Unidad" mostrando una columna con el nombre de las tareas en curso del proyecto seleccionado con estado "por iniciar", "en desarrollo" o "detenida". No mostrar tareas en estado "terminada" o "eliminada". Cada ítem de la lista corresponde al nombre de la tarea del proyecto seleccionado en la zona "Proyectos por Unidad de Negocio". Cada ítem de la lista debe ser un vínculo a la ficha de la tarea. Junto a la columna de nombre de la tarea debe haber una columna con el responsable. Al abrir la app mostrar las tareas del primer proyecto de la primera unidad de la lista de "Proyectos por Unidad" 
+Un listado dinámico que se genera al hacer click a un proyecto de la zona "Proyectos por Unidad" mostrando una columna con el nombre de las tareas en curso del proyecto seleccionado con estado "por iniciar", "en desarrollo" o "detenida". No mostrar tareas en estado "terminada" o "eliminada". Cada ítem de la lista corresponde al nombre de la tarea del proyecto seleccionado en la zona "Proyectos por Unidad de Negocio". Cada ítem de la lista debe ser un vínculo a la ficha de la tarea. Junto a la columna de nombre de la tarea debe haber una columna con el responsable. Junto a la columna del responsable agregar una columna con un ícono de semáforo con las siguientes instrucciones:
+color verde: tareas con tarea\_estatus "en desarrollo" con "con\_alerta" en "no"
+color amarillo: tareas con tarea\_estatus "detenida" con "con\_alerta" en "no"
 
-### Zona "Alertas"
+color rojo: tareas con tarea\_estatus "en desarrollo", "detenida" o "por iniciar" que tengan "con\_aerta" en "si".
 
-Un listado de las tareas en curso con el campo con\_alerta en "si" en la base de datos con estado "por iniciar", "en desarrollo" o "detenida". No mostrar tareas en estado "terminada" o "eliminada". Dentro de la zona, en una columna va el unidad\_nombre correspondiente y una columna con el nombre de la tarea. Cada ítem de la lista debe ser un vínculo a la ficha de la tarea.
 
-## 2\. Proyectos
+Al abrir la app mostrar las tareas del primer proyecto de la primera unidad de la lista de "Proyectos por Unidad"
+
+
+### Zona "Avance Semanal"
+
+Es un resumen de tareas modificadas en la semana de la fecha "Fecha de Informe". La zona queda dividida en 2 partes, una sobre la otra.
+
+La primera parte se llama "Tareas Creadas" y muestra una lista todas las tareas con tarea\_fecha\_creacion en la misma semana que la "Fecha de informe"
+La segunda parte está bajo "Tareas Creadas", se llama "Tareas terminadas" muestra una lista con todas las tareas con fecha\_fin\_real en la misma semana que la "Fecha de informe"
+
+
+
+## 2\. Fecha de Informe
+
+Fecha de generación de información en Dashboard. Por definición viene en el día en curso, con un calendario desplegable en el mismo panel lateral para consultar otras fechas. Afecta zona "Avance Semanal".
+
+
+
+## 3\. Proyectos
 
 Una tabla que contiene todos los proyectos que tengan estado\_proyecto "por iniciar", "en desarrollo", "en construcción", "detenido" y las tareas que tengan estado\_tarea  "por iniciar", "en desarrollo", "detenida" ordenados de la siguiente manera, con los respectivos campos entre paréntesis:
 
@@ -215,7 +240,7 @@ Al final, botón "Guardar" y "Descartar", uno al lado del otro.
 
 
 
-## 3\. Admin
+## 4\. Admin
 
 En esta sección se hará la administración de la app. Contará con las siguientes sub-secciones, las que se ordenarán a modo de lista con los respectivos títulos:
 

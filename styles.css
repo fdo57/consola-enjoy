@@ -235,9 +235,12 @@ p, span, label, li, td, th {
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  padding: 3px 8px;
+  padding: 6px 10px;
+  line-height: 1.4;
   border-radius: 4px;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   transition: all 0.15s ease;
 }
 

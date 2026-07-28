@@ -121,15 +121,15 @@ function saveDB() {
 
 function renderFechaInformeDisplay() {
   const inputEl = document.getElementById("sidebar-fecha-informe-input");
-  const displayEl = document.getElementById("sidebar-fecha-informe-display");
   if (inputEl) inputEl.value = fechaInforme;
-  if (displayEl) displayEl.textContent = fechaInforme || "--";
 }
 
 function updateFechaInforme(val) {
   if (val) {
     fechaInforme = val;
-    localStorage.setItem("ENJOY_FECHA_INFORME", fechaInforme);
+    try {
+      localStorage.setItem("ENJOY_FECHA_INFORME", fechaInforme);
+    } catch (e) {}
     renderFechaInformeDisplay();
     renderCurrentView();
   }
@@ -314,24 +314,36 @@ function getSemaforoClass(task) {
 
 function isSameWeek(dateStr1, dateStr2) {
   if (!dateStr1 || !dateStr2) return false;
-  const str1 = String(dateStr1).trim().substring(0, 10);
-  const str2 = String(dateStr2).trim().substring(0, 10);
-  if (!str1 || !str2) return false;
+  const s1 = String(dateStr1).trim().substring(0, 10);
+  const s2 = String(dateStr2).trim().substring(0, 10);
+  if (!s1 || !s2 || s1.toLowerCase() === "nan" || s2.toLowerCase() === "nan") return false;
 
-  const d1 = new Date(str1 + "T00:00:00");
-  const d2 = new Date(str2 + "T00:00:00");
-  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false;
+  const parts1 = s1.split('-');
+  const parts2 = s2.split('-');
+  if (parts1.length < 3 || parts2.length < 3) return false;
 
-  const getMonday = (d) => {
-    const dt = new Date(d);
-    const day = dt.getDay();
-    const diff = dt.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(dt.setDate(diff));
+  const y1 = parseInt(parts1[0], 10);
+  const m1 = parseInt(parts1[1], 10) - 1;
+  const d1 = parseInt(parts1[2], 10);
+
+  const y2 = parseInt(parts2[0], 10);
+  const m2 = parseInt(parts2[1], 10) - 1;
+  const d2 = parseInt(parts2[2], 10);
+
+  const dt1 = new Date(y1, m1, d1);
+  const dt2 = new Date(y2, m2, d2);
+  if (isNaN(dt1.getTime()) || isNaN(dt2.getTime())) return false;
+
+  const getMonday = (dateObj) => {
+    const d = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(d.setDate(diff));
     monday.setHours(0, 0, 0, 0);
     return monday.getTime();
   };
 
-  return getMonday(d1) === getMonday(d2);
+  return getMonday(dt1) === getMonday(dt2);
 }
 
   // Zone 3: Avance Semanal (Divided into 2 stacked parts: Tareas Creadas & Tareas Terminadas)
@@ -356,7 +368,10 @@ function isSameWeek(dateStr1, dateStr2) {
   // Part 1: Tareas Creadas in same week as fechaInforme
   const createdTasks = db.filter(item => {
     if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
-    return isSameWeek(item.tarea_fecha_creacion, fechaInforme);
+    return isSameWeek(item.tarea_fecha_creacion, fechaInforme) ||
+           isSameWeek(item.fecha_inicio_proy, fechaInforme) ||
+           isSameWeek(item.fecha_inicio_real, fechaInforme) ||
+           isSameWeek(item.fecha_legacy, fechaInforme);
   });
 
   if (createdTasks.length === 0) {
@@ -377,8 +392,9 @@ function isSameWeek(dateStr1, dateStr2) {
   const finishedTasks = db.filter(item => {
     if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
     const isFinished = (item.tarea_estado || "").toLowerCase().trim() === "terminada";
-    const dateToTest = item.fecha_fin_real || item.fecha_fin_proy || item.fecha_legacy;
-    return isFinished && isSameWeek(dateToTest, fechaInforme);
+    return isSameWeek(item.fecha_fin_real, fechaInforme) ||
+           isSameWeek(item.fecha_fin_proy, fechaInforme) ||
+           (isFinished && isSameWeek(item.fecha_legacy, fechaInforme));
   });
 
   if (finishedTasks.length === 0) {

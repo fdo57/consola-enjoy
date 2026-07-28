@@ -20,8 +20,7 @@
 
     <div class="sidebar-info-block">
       <label class="sidebar-info-label">Fecha de Informe</label>
-      <input type="date" id="sidebar-fecha-informe-input" class="sidebar-date-input" onchange="updateFechaInforme(this.value)">
-      <div id="sidebar-fecha-informe-display" class="sidebar-date-display">--</div>
+      <input type="date" id="sidebar-fecha-informe-input" class="sidebar-date-input" onchange="updateFechaInforme(this.value)" oninput="updateFechaInforme(this.value)">
     </div>
   </aside>
 
