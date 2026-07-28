@@ -75,8 +75,9 @@ for row in rows[1:]:
     if "proyecto_descripcion" not in item:
         item["proyecto_descripcion"] = ""
 
+    # Always ensure tarea_fecha_creacion is populated from fecha_legacy or fecha_inicio_proy if empty
     if not item.get("tarea_fecha_creacion"):
-        item["tarea_fecha_creacion"] = item.get("fecha_inicio_proy") or item.get("fecha_legacy") or "2026-07-27"
+        item["tarea_fecha_creacion"] = item.get("fecha_legacy") or item.get("fecha_inicio_proy") or item.get("fecha_inicio_real") or "2026-07-27"
 
     if item.get("tarea_estado", "").lower() == "en proceso":
         item["tarea_estado"] = "en desarrollo"

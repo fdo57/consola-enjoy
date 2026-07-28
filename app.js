@@ -84,7 +84,7 @@ let fechaInforme = new Date().toISOString().split('T')[0];
 function initDB() {
   let loaded = false;
   try {
-    const localData = localStorage.getItem("ENJOY_PROJECTS_DB_V2");
+    const localData = localStorage.getItem("ENJOY_PROJECTS_DB_V3");
     if (localData) {
       const parsed = JSON.parse(localData);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -99,7 +99,7 @@ function initDB() {
   if (!loaded || !db || db.length === 0) {
     db = (window.INITIAL_DATA && window.INITIAL_DATA.length > 0) ? window.INITIAL_DATA : [];
     try {
-      localStorage.setItem("ENJOY_PROJECTS_DB_V2", JSON.stringify(db));
+      localStorage.setItem("ENJOY_PROJECTS_DB_V3", JSON.stringify(db));
     } catch (e) {}
   }
 
@@ -113,7 +113,7 @@ function initDB() {
 
 function saveDB() {
   try {
-    localStorage.setItem("ENJOY_PROJECTS_DB_V2", JSON.stringify(db));
+    localStorage.setItem("ENJOY_PROJECTS_DB_V3", JSON.stringify(db));
   } catch (e) {
     console.warn("localStorage write failed:", e);
   }
@@ -312,38 +312,35 @@ function getSemaforoClass(task) {
     });
   }
 
+function getMondayTimestamp(dateStr) {
+  if (!dateStr) return null;
+  const s = String(dateStr).trim().substring(0, 10);
+  if (!s || s.length < 10 || s.toLowerCase() === "nan") return null;
+
+  const parts = s.split('-');
+  if (parts.length < 3) return null;
+
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+
+  const utcDate = new Date(Date.UTC(year, month, day, 12, 0, 0));
+  if (isNaN(utcDate.getTime())) return null;
+
+  const dayOfWeek = utcDate.getUTCDay();
+  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+  const mondayDate = new Date(Date.UTC(year, month, day + diffToMonday, 0, 0, 0));
+  return mondayDate.toISOString().substring(0, 10);
+}
+
 function isSameWeek(dateStr1, dateStr2) {
-  if (!dateStr1 || !dateStr2) return false;
-  const s1 = String(dateStr1).trim().substring(0, 10);
-  const s2 = String(dateStr2).trim().substring(0, 10);
-  if (!s1 || !s2 || s1.toLowerCase() === "nan" || s2.toLowerCase() === "nan") return false;
-
-  const parts1 = s1.split('-');
-  const parts2 = s2.split('-');
-  if (parts1.length < 3 || parts2.length < 3) return false;
-
-  const y1 = parseInt(parts1[0], 10);
-  const m1 = parseInt(parts1[1], 10) - 1;
-  const d1 = parseInt(parts1[2], 10);
-
-  const y2 = parseInt(parts2[0], 10);
-  const m2 = parseInt(parts2[1], 10) - 1;
-  const d2 = parseInt(parts2[2], 10);
-
-  const dt1 = new Date(y1, m1, d1);
-  const dt2 = new Date(y2, m2, d2);
-  if (isNaN(dt1.getTime()) || isNaN(dt2.getTime())) return false;
-
-  const getMonday = (dateObj) => {
-    const d = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(d.setDate(diff));
-    monday.setHours(0, 0, 0, 0);
-    return monday.getTime();
-  };
-
-  return getMonday(dt1) === getMonday(dt2);
+  const m1 = getMondayTimestamp(dateStr1);
+  const m2 = getMondayTimestamp(dateStr2);
+  if (!m1 || !m2) return false;
+  return m1 === m2;
 }
 
   // Zone 3: Avance Semanal (Divided into 2 stacked parts: Tareas Creadas & Tareas Terminadas)
