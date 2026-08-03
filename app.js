@@ -58,14 +58,45 @@ const ICON_EDIT = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" s
 const ICON_CALENDAR = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
 const ICON_ALERT_RED = `<span class="semaforo-dot semaforo-red" style="margin-left: 6px; vertical-align: middle;" title="Proyecto con tareas en alerta"></span>`;
 
+function formatDateDDMMYYYY(dateStr) {
+  if (!dateStr || String(dateStr).trim() === "" || String(dateStr).trim() === "-") return "-";
+  const str = String(dateStr).trim();
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) return str;
+  const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+  }
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+  return str;
+}
+
+function parseToYYYYMMDD(dateStr) {
+  if (!dateStr || String(dateStr).trim() === "" || String(dateStr).trim() === "-") return "";
+  const str = String(dateStr).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+  const ddmmyyyy = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (ddmmyyyy) return `${ddmmyyyy[3]}-${ddmmyyyy[2]}-${ddmmyyyy[1]}`;
+  return "";
+}
+
 function renderDateCell(taskId, fieldName, dateVal) {
-  const displayVal = dateVal && dateVal.trim() !== "" ? dateVal : "-";
+  const formattedVal = formatDateDDMMYYYY(dateVal);
+  const displayVal = formattedVal !== "" ? formattedVal : "-";
+  const isoVal = parseToYYYYMMDD(dateVal);
   return `
     <div class="date-cell-container">
       <span class="date-text-val">${displayVal}</span>
       <div class="date-picker-btn-wrapper">
         <button type="button" class="date-picker-btn" title="Modificar fecha">${ICON_CALENDAR}</button>
-        <input type="date" class="date-picker-hidden-input" value="${dateVal || ''}" onchange="updateTaskDate('${taskId}', '${fieldName}', this.value)">
+        <input type="date" class="date-picker-hidden-input" value="${isoVal}" onchange="updateTaskDate('${taskId}', '${fieldName}', this.value)">
       </div>
     </div>
   `;
@@ -80,39 +111,125 @@ let selectedTaskId = "";
 let isEditingTarea = false;
 let fechaInforme = new Date().toISOString().split('T')[0];
 
-// Initialize State
-function initDB() {
-  let loaded = false;
+// Streamlit Custom Component Communication Bridge
+function sendToStreamlit(action, data) {
+  const payload = {
+    action: action,
+    data: data,
+    _ts: Date.now()
+  };
+
   try {
-    const localData = localStorage.getItem("ENJOY_PROJECTS_DB_V3");
-    if (localData) {
-      const parsed = JSON.parse(localData);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        db = parsed;
-        loaded = true;
-      }
+    if (window.Streamlit && typeof window.Streamlit.setComponentValue === "function") {
+      window.Streamlit.setComponentValue(payload);
+    } else {
+      window.parent.postMessage({
+        isStreamlitMessage: true,
+        type: "streamlit:setComponentValue",
+        value: payload
+      }, "*");
     }
   } catch (e) {
-    console.warn("localStorage access restricted or failed:", e);
+    console.warn("sendToStreamlit postMessage failed:", e);
+  }
+}
+
+function notifyStreamlitReady() {
+  try {
+    window.parent.postMessage({
+      isStreamlitMessage: true,
+      type: "streamlit:componentReady",
+      apiVersion: 1
+    }, "*");
+
+    const contentHeight = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight, 1000);
+    window.parent.postMessage({
+      isStreamlitMessage: true,
+      type: "streamlit:setFrameHeight",
+      height: contentHeight
+    }, "*");
+  } catch (e) {}
+}
+
+function renderStatusBanner() {
+  const banner = document.getElementById("db-status-banner");
+  if (!banner) return;
+
+  const statusObj = window.DB_STATUS;
+  if (!statusObj) {
+    banner.style.display = "none";
+    return;
   }
 
-  if (!loaded || !db || db.length === 0) {
-    db = (window.INITIAL_DATA && window.INITIAL_DATA.length > 0) ? window.INITIAL_DATA : [];
+  if (statusObj.status === "warning") {
+    banner.style.display = "block";
+    banner.style.backgroundColor = "#fff3cd";
+    banner.style.color = "#856404";
+    banner.style.border = "1px solid #ffeeba";
+    banner.innerHTML = `<strong>⚠️ Persistencia Central No Configurada:</strong> ${statusObj.message}`;
+  } else if (statusObj.status === "error") {
+    banner.style.display = "block";
+    banner.style.backgroundColor = "#f8d7da";
+    banner.style.color = "#721c24";
+    banner.style.border = "1px solid #f5c6cb";
+    banner.innerHTML = `<strong>❌ Error de Base Central:</strong> ${statusObj.message}`;
+  } else if (statusObj.source === "sqlite_local_dev") {
+    banner.style.display = "block";
+    banner.style.backgroundColor = "#e2e3e5";
+    banner.style.color = "#383d41";
+    banner.style.border = "1px solid #d6d8db";
+    banner.innerHTML = `<strong>ℹ️ Modo Desarrollo Local:</strong> Usando base SQLite local (consola_enjoy.db). Para producción multiusuario en Streamlit Cloud configure credenciales de Google Sheets en <code>st.secrets</code>.`;
+  } else {
+    banner.style.display = "none";
+  }
+}
+
+// Initialize State
+function initDB() {
+  let loadedFromCentral = false;
+
+  // Rule 3: Data received from central source MUST overwrite any previous localStorage
+  if (window.INITIAL_DATA && Array.isArray(window.INITIAL_DATA) && window.INITIAL_DATA.length > 0) {
+    db = window.INITIAL_DATA;
+    loadedFromCentral = true;
+  }
+
+  if (loadedFromCentral) {
     try {
       localStorage.setItem("ENJOY_PROJECTS_DB_V3", JSON.stringify(db));
+    } catch (e) {
+      console.warn("localStorage cache update failed:", e);
+    }
+  } else {
+    // Fallback to localStorage cache if window.INITIAL_DATA was not yet set
+    try {
+      const localData = localStorage.getItem("ENJOY_PROJECTS_DB_V3");
+      if (localData) {
+        const parsed = JSON.parse(localData);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          db = parsed;
+        }
+      }
     } catch (e) {}
   }
+
+  renderStatusBanner();
+  notifyStreamlitReady();
 
   fechaInforme = getTodayStr();
   renderFechaInformeDisplay();
 }
 
 function saveDB() {
+  // Update localStorage as temporary cache
   try {
     localStorage.setItem("ENJOY_PROJECTS_DB_V3", JSON.stringify(db));
   } catch (e) {
     console.warn("localStorage write failed:", e);
   }
+
+  // Rule 8: Immediately save to central Google Sheets DB via Streamlit bridge
+  sendToStreamlit("save_db", db);
 }
 
 function getTodayStr() {
@@ -190,8 +307,32 @@ function openFichaTarea(taskId) {
 let dashSelectedProjectId = "";
 
 function selectDashProject(projId) {
-  dashSelectedProjectId = projId;
+  if (dashSelectedProjectId === projId) {
+    dashSelectedProjectId = "";
+  } else {
+    dashSelectedProjectId = projId;
+  }
   renderDashboard();
+}
+
+function parseDateForSort(dateStr) {
+  const ymd = parseToYYYYMMDD(dateStr);
+  if (ymd) {
+    const time = new Date(ymd).getTime();
+    if (!isNaN(time)) return time;
+  }
+  return 0;
+}
+
+function sortTasksByCreationDesc(taskList) {
+  return taskList.slice().sort((a, b) => {
+    const dateA = parseDateForSort(a.tarea_fecha_creacion || a.fecha_inicio_proy || a.fecha_legacy);
+    const dateB = parseDateForSort(b.tarea_fecha_creacion || b.fecha_inicio_proy || b.fecha_legacy);
+    if (dateB !== dateA) {
+      return dateB - dateA;
+    }
+    return (b.tarea_id || "").localeCompare(a.tarea_id || "");
+  });
 }
 
 // ---------------------------------------------------------
@@ -238,11 +379,6 @@ function renderDashboard() {
       Object.keys(unitsMap[uName]).forEach(pid => activeProjIds.push(pid));
     }
   });
-
-  // Default selected project to first project of first unit if not set or invalid
-  if (!dashSelectedProjectId || !activeProjIds.includes(dashSelectedProjectId)) {
-    dashSelectedProjectId = activeProjIds.length > 0 ? activeProjIds[0] : "";
-  }
 
   // Zone 1: Proyectos por Unidad de Negocio List
   const unitListEl = document.getElementById("dash-unit-list");
@@ -298,13 +434,25 @@ function getSemaforoClass(task) {
   return "semaforo-green";
 }
 
-  // Zone 2: Tareas en Curso List (Dynamic tasks of selected project with Semáforo indicator)
+  // Zone 2: Tareas en Curso List (Tasks ordered by creation date, newest to oldest)
   const taskListEl = document.getElementById("dash-task-list");
   taskListEl.innerHTML = "";
 
+  let tasksToRender = [];
   if (dashSelectedProjectId) {
-    const projTasks = db.filter(item => item.proyecto_id === dashSelectedProjectId && isProjectActive(item.proyecto_estado) && isTaskActive(item.tarea_estado));
-    projTasks.forEach(task => {
+    tasksToRender = db.filter(item => item.proyecto_id === dashSelectedProjectId && isProjectActive(item.proyecto_estado) && isTaskActive(item.tarea_estado));
+  } else {
+    tasksToRender = db.filter(item => {
+      if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
+      return isProjectActive(item.proyecto_estado) && isTaskActive(item.tarea_estado);
+    });
+  }
+
+  const sortedTasks = sortTasksByCreationDesc(tasksToRender);
+  if (sortedTasks.length === 0) {
+    taskListEl.innerHTML = `<li class="task-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas en curso</li>`;
+  } else {
+    sortedTasks.forEach(task => {
       const semaforoClass = getSemaforoClass(task);
 
       const li = document.createElement("li");
@@ -514,6 +662,32 @@ function renderProyectosTable() {
     `;
     tbody.appendChild(tr);
   });
+
+  // Render Inactive / Terminated tasks table in Proyectos View
+  const inactiveTbody = document.getElementById("proyectos-inactive-table-body");
+  if (inactiveTbody) {
+    inactiveTbody.innerHTML = "";
+    const inactiveRows = db.filter(item => !isProjectActive(item.proyecto_estado) || !isTaskActive(item.tarea_estado));
+    inactiveRows.forEach(item => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><span class="table-link" onclick="openFichaUnidad('${item.unidad_nombre}')">${item.unidad_nombre}</span></td>
+        <td><span class="table-link" onclick="openFichaProyecto('${item.proyecto_id}')">${item.proyecto_nombre}</span></td>
+        <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre}</span></td>
+        <td class="col-desc"><div class="desc-text-clamp">${item.tarea_descripcion || ""}</div></td>
+        <td>${item.tarea_responsable || ""}</td>
+        <td>${item.tarea_estado || ""}</td>
+        <td>${item.tarea_pct !== "" ? item.tarea_pct + "%" : ""}</td>
+        <td>${formatDateDDMMYYYY(item.fecha_legacy)}</td>
+        <td>${formatDateDDMMYYYY(item.fecha_inicio_proy)}</td>
+        <td>${formatDateDDMMYYYY(item.fecha_fin_proy)}</td>
+        <td>${item.con_alerta || "no"}</td>
+        <td>-</td>
+        <td>-</td>
+      `;
+      inactiveTbody.appendChild(tr);
+    });
+  }
 }
 
 function createNewProject() {
@@ -603,15 +777,31 @@ function renderFormCrearTarea() {
   const selectUnit = document.getElementById("nt-unidad-nombre");
   selectUnit.innerHTML = "";
   const allUnits = ["Enjoy Rinconada", "Enjoy Pucón", "Enjoy Viña", "Enjoy Coquimbo", "Enjoy Chiloé", "Enjoy Transversales"];
+  
+  let defaultUnit = selectedUnit;
+  if (selectedProjectId) {
+    const pRecord = db.find(t => t.proyecto_id === selectedProjectId);
+    if (pRecord && pRecord.unidad_nombre) {
+      defaultUnit = pRecord.unidad_nombre;
+    }
+  }
+
   allUnits.forEach(u => {
     const opt = document.createElement("option");
     opt.value = u;
     opt.textContent = u;
-    if (u === selectedUnit) opt.selected = true;
+    if (u === defaultUnit) opt.selected = true;
     selectUnit.appendChild(opt);
   });
 
   onNuevaTareaUnitChange(selectUnit.value || allUnits[0]);
+
+  if (selectedProjectId) {
+    const selectProj = document.getElementById("nt-proyecto-nombre");
+    if (selectProj && selectProj.querySelector(`option[value="${selectedProjectId}"]`)) {
+      selectProj.value = selectedProjectId;
+    }
+  }
 
   const todayStr = new Date().toISOString().split('T')[0];
   document.getElementById("nt-tarea-nombre").value = "";
@@ -925,9 +1115,9 @@ function renderFichaUnidad() {
       <td>${item.tarea_responsable || ""}</td>
       <td>${item.tarea_estado || ""}</td>
       <td>${item.tarea_pct !== "" ? item.tarea_pct + "%" : ""}</td>
-      <td>${item.fecha_legacy || "-"}</td>
-      <td>${item.fecha_inicio_proy || "-"}</td>
-      <td>${item.fecha_fin_proy || "-"}</td>
+      <td>${formatDateDDMMYYYY(item.fecha_legacy)}</td>
+      <td>${formatDateDDMMYYYY(item.fecha_inicio_proy)}</td>
+      <td>${formatDateDDMMYYYY(item.fecha_fin_proy)}</td>
       <td>${item.con_alerta}</td>
       <td>-</td>
       <td>-</td>
@@ -1043,9 +1233,9 @@ function renderFichaProyecto() {
       <td>${item.tarea_estado || ""}</td>
       <td>${item.tarea_pct !== "" ? item.tarea_pct + "%" : ""}</td>
       <td>${item.tarea_contraparte || ""}</td>
-      <td>${item.fecha_legacy || "-"}</td>
-      <td>${item.fecha_inicio_proy || "-"}</td>
-      <td>${item.fecha_fin_proy || "-"}</td>
+      <td>${formatDateDDMMYYYY(item.fecha_legacy)}</td>
+      <td>${formatDateDDMMYYYY(item.fecha_inicio_proy)}</td>
+      <td>${formatDateDDMMYYYY(item.fecha_fin_proy)}</td>
       <td>${item.con_alerta}</td>
       <td>-</td>
       <td>-</td>
@@ -1144,13 +1334,13 @@ function renderFichaTarea() {
           <span class="plain-text-val">${task.tarea_contraparte || '-'}</span>
 
           <span class="card-grid-label">Fecha según Minuta:</span>
-          <span class="plain-text-val">${task.fecha_legacy || '-'}</span>
+          <span class="plain-text-val">${formatDateDDMMYYYY(task.fecha_legacy)}</span>
 
           <span class="card-grid-label">Fecha inicio:</span>
-          <span class="plain-text-val">${task.fecha_inicio_proy || task.tarea_fecha_creacion || '-'}</span>
+          <span class="plain-text-val">${formatDateDDMMYYYY(task.fecha_inicio_proy || task.tarea_fecha_creacion)}</span>
 
           <span class="card-grid-label">Fecha término:</span>
-          <span class="plain-text-val">${task.fecha_fin_proy || '-'}</span>
+          <span class="plain-text-val">${formatDateDDMMYYYY(task.fecha_fin_proy)}</span>
 
           <span class="card-grid-label">Porcentaje de avance:</span>
           <span class="plain-text-val">${task.tarea_pct !== '' ? task.tarea_pct + '%' : '-'}</span>
@@ -1217,17 +1407,17 @@ function renderFichaTarea() {
 
             <div class="form-group">
               <label class="form-label">Fecha según Minuta:</label>
-              <input type="date" id="t-fecha-legacy" class="form-input" value="${task.fecha_legacy || ''}">
+              <input type="date" id="t-fecha-legacy" class="form-input" value="${parseToYYYYMMDD(task.fecha_legacy)}">
             </div>
 
             <div class="form-group">
               <label class="form-label">Fecha inicio:</label>
-              <input type="date" id="t-fecha-inicio" class="form-input" value="${task.fecha_inicio_proy || task.tarea_fecha_creacion || ''}">
+              <input type="date" id="t-fecha-inicio" class="form-input" value="${parseToYYYYMMDD(task.fecha_inicio_proy || task.tarea_fecha_creacion)}">
             </div>
 
             <div class="form-group">
               <label class="form-label">Fecha término:</label>
-              <input type="date" id="t-fecha-fin" class="form-input" value="${task.fecha_fin_proy || ''}">
+              <input type="date" id="t-fecha-fin" class="form-input" value="${parseToYYYYMMDD(task.fecha_fin_proy)}">
             </div>
 
             <div class="form-group">
@@ -1379,4 +1569,24 @@ document.addEventListener("DOMContentLoaded", function() {
   initDB();
   setupEventListeners();
   renderCurrentView();
+});
+
+// Listen for incoming Streamlit render & state updates
+window.addEventListener("message", function(event) {
+  if (event.data && event.data.type === "streamlit:render") {
+    const args = event.data.args;
+    if (args) {
+      if (args.db_status) {
+        window.DB_STATUS = args.db_status;
+        renderStatusBanner();
+      }
+      if (args.initial_data && Array.isArray(args.initial_data)) {
+        db = args.initial_data;
+        try {
+          localStorage.setItem("ENJOY_PROJECTS_DB_V3", JSON.stringify(db));
+        } catch (e) {}
+        renderCurrentView();
+      }
+    }
+  }
 });

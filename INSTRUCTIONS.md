@@ -6,6 +6,34 @@ Preparar una app tipo HTML para usar con cualquier buscador para monitorear el a
 
 # Definiciones generales
 
+## Persistencia de datos y uso multiusuario
+
+La app será publicada en Streamlit y usada por múltiples usuarios desde distintos equipos y navegadores. Por lo tanto, debe contar con una **base de datos central única y compartida**.
+
+Reglas obligatorias:
+
+* `localStorage` no debe ser la fuente principal de datos. Sólo puede usarse como caché temporal, si se implementa sincronización con la base central.
+* Al iniciar o refrescar la app, siempre debe cargar la información desde la base central.
+* Al crear, editar, terminar o eliminar una tarea o proyecto, el cambio debe guardarse inmediatamente en la base central.
+* Los cambios realizados por un usuario deben quedar disponibles para los demás usuarios al abrir o refrescar la app, sin importar el equipo o navegador usado.
+* `data.js` puede usarse únicamente como semilla inicial si la base central está vacía. No debe ser considerado la base viva de trabajo.
+* `carga_masiva.xlsx` debe usarse sólo como plantilla o mecanismo de importación manual. No debe ser la fuente viva de datos de la app.
+* La descarga de base de datos debe exportar la información vigente desde la base central.
+
+Fuente central recomendada para esta etapa: Google Sheets conectado desde Streamlit mediante credenciales configuradas en `st.secrets`. Alternativamente puede usarse una base externa persistente como Supabase. No usar sólo archivos locales del servidor Streamlit si no se garantiza persistencia entre reinicios.
+
+Criterio de aceptación:
+
+* Crear una tarea desde un navegador/equipo.
+* Abrir o refrescar la app desde otro navegador/equipo limpio.
+* La tarea creada debe aparecer sin importar que el segundo navegador no tenga datos previos en `localStorage`.
+
+## Formatos y unidades
+
+Reglas de fomatos y unidades
+* Todas las fechas deben ser en formato DD/MM/AAAA
+
+
 ## Empresa
 
 Casinos de Chile es una empresa que administra Casinos y Hoteles de la cadena Enjoy que cuenta con 5 complejos turísticos, llamados internamente "Unidades de Negocios" o "Unidades.
@@ -129,15 +157,13 @@ Para proyectos que tengan tareas con campo en\_alerta con valor "si" agrega un s
 ### Zona "Tareas en Curso"
 
 Un listado dinámico que se genera al hacer click a un proyecto de la zona "Proyectos por Unidad" mostrando una columna con el nombre de las tareas en curso del proyecto seleccionado con estado "por iniciar", "en desarrollo" o "detenida". No mostrar tareas en estado "terminada" o "eliminada". Cada ítem de la lista corresponde al nombre de la tarea del proyecto seleccionado en la zona "Proyectos por Unidad de Negocio". Cada ítem de la lista debe ser un vínculo a la ficha de la tarea. Junto a la columna de nombre de la tarea debe haber una columna con el responsable. Junto a la columna del responsable agregar una columna con un ícono de semáforo con las siguientes instrucciones:
-color verde: tareas con tarea\_estatus "en desarrollo" con "con\_alerta" en "no"
-color amarillo: tareas con tarea\_estatus "detenida" con "con\_alerta" en "no"
+color verde: tareas con tarea\_estado "en desarrollo" con "con\_alerta" en "no"
+color amarillo: tareas con tarea\_estado "detenida" con "con\_alerta" en "no"
 
-color rojo: tareas con tarea\_estatus "en desarrollo", "detenida" o "por iniciar" que tengan "con\_aerta" en "si".
+color rojo: tareas con tarea\_estado "en desarrollo", "detenida" o "por iniciar" que tengan "con\_alerta" en "si".
 
 
-
-Al abrir la app mostrar las tareas del primer proyecto de la primera unidad de la lista de "Proyectos por Unidad"
-
+Al abrir la app las tareas de esta zona se deben ordenar en base a la fecha de creación de cada tarea, desde la más reciente a la más antigua.
 
 
 ### Zona "Avance Semanal"
@@ -147,10 +173,10 @@ Es un resumen de tareas modificadas en la semana de la fecha "Fecha de Informe".
 La primera parte se llama "Tareas Creadas" y muestra una lista todas las tareas con tarea\_fecha\_creacion en la misma semana que la "Fecha de informe"
 La segunda parte está bajo "Tareas Creadas", se llama "Tareas terminadas" muestra una lista con todas las tareas con fecha\_fin\_real en la misma semana que la "Fecha de informe"
 A la derecha del nombre de la tarea, agregar una columna con ícono de semáforo con los mismos parámetros que en "Tareas en Curso":
-color verde: tareas con tarea\_estatus "en desarrollo" con "con\_alerta" en "no"
-color amarillo: tareas con tarea\_estatus "detenida" con "con\_alerta" en "no"
+color verde: tareas con tarea\_estado "en desarrollo" con "con\_alerta" en "no"
+color amarillo: tareas con tarea\_estado "detenida" con "con\_alerta" en "no"
 
-color rojo: tareas con tarea\_estatus "en desarrollo", "detenida" o "por iniciar" que tengan "con\_aerta" en "si".
+color rojo: tareas con tarea\_estado "en desarrollo", "detenida" o "por iniciar" que tengan "con\_alerta" en "si".
 
 
 
@@ -198,6 +224,9 @@ No incluir tareas con tarea\_estado "terminada" o "eliminada"
 El color de todos los textos debe ser #595959
 
 Junto al título de la sección debe haber un botón "Nuevo proyecto" y otro "Nueva tarea" que lleven a sus respectivos formularios.
+
+Bajo la tabla debe aparecer un título que sea "Tareas terminadas o eliminadas" que despliegue una lista igual a la anterior pero para tareas con estado "terminada" o "eliminada". Debe ser una sección desplegable bajo el título, o en el mismo título. Debe aparecer contraída.
+A la derecha del este título pero pegado al margen derecho del listado debe haber un botón que diga "Volver" que lleve al dashboard.
 
 
 
@@ -269,20 +298,21 @@ junto al título debe tener un botón con un ícono que represente "download" qu
 
 
 
-El archivo .xlsx debe tener los siguientes encabezados:
+El archivo .xlsx debe tener los siguientes encabezados, alineados con todos los campos usados por la app:
 
-&#x09;- proyecto\_id
+- proyecto\_id
 - unidad\_nombre
 - proyecto\_nombre
 - proyecto\_estado
+- proyecto\_descripcion
 - tarea\_id
 - tarea\_nombre
 - tarea\_descripcion
 - tarea\_responsable
 - tarea\_estado
 - tarea\_contraparte
-
-&#x09;- tarea\_pct
+- tarea\_pct
+- tarea\_fecha\_creacion
 - fecha\_legacy
 - con\_alerta
 - fecha\_inicio\_proy
@@ -344,7 +374,7 @@ Bajo la tabla debe aparecer un título que sea "Proyectos terminados o eliminado
 
 ## Ficha "Proyecto"
 
-En la parte superior de la ficha debe haber un menú desplegable para seleccionar otros "Proyectos" de la Unidad correspondiente al proyecto de la ficha.
+Junto al título de la sección debe haber un menú desplegable para seleccionar otros "Proyectos" de la Unidad correspondiente al proyecto de la ficha y un botón "Nueva tarea" que lleve a su respectivo formulario.
 
 La ficha debe tener una tarjeta con fondo blanco con la siguiente información en texto grande:
 
@@ -410,7 +440,7 @@ La segunda debe ser una tarjeta sin título con fondo blanco con la siguiente in
 
 
 
-El contenido de cada campo debe mostrarse como texto plano, no como campo editable, hazta que se haga click en el botón "Editar"
+El contenido de cada campo debe mostrarse como texto plano, no como campo editable, hasta que se haga click en el botón "Editar"
 
 
 

@@ -6,7 +6,6 @@
   <title>Gestión de Proyectos Casinos de Chile SpA</title>
   <link rel="stylesheet" href="styles.css">
   <script src="lib/xlsx.full.min.js"></script>
-  <script src="data.js"></script>
 </head>
 <body>
 
@@ -26,6 +25,7 @@
 
   <!-- Main View Area -->
   <main id="main-content">
+    <div id="db-status-banner" style="display: none; padding: 12px 16px; margin: 12px 20px 0 20px; border-radius: 6px; font-weight: 500; font-size: 14px;"></div>
 
     <!-- 1. DASHBOARD VIEW -->
     <section id="view-dashboard" class="view-section active">
@@ -97,6 +97,36 @@
           <tbody id="proyectos-table-body"></tbody>
         </table>
       </div>
+
+      <!-- Tareas terminadas o eliminadas (Desplegable y contraído por defecto) -->
+      <details class="collapsible-details">
+        <summary class="collapsible-summary-bar">
+          <span class="collapsible-title">Tareas terminadas o eliminadas</span>
+          <button class="btn-back btn-back-dashboard" onclick="event.preventDefault(); event.stopPropagation(); switchView('dashboard');">Volver</button>
+        </summary>
+        <div class="table-container" style="margin-top: 12px;">
+          <table class="corp-table">
+            <thead>
+              <tr>
+                <th>UN Negocios</th>
+                <th>Proyecto</th>
+                <th>Nombre tarea</th>
+                <th class="col-desc">Descripción tarea</th>
+                <th>Responsable</th>
+                <th>Estado</th>
+                <th>Avance %</th>
+                <th>Fecha Base</th>
+                <th>Fecha inicio (proy)</th>
+                <th>Fecha fin (proy)</th>
+                <th>En Alerta</th>
+                <th>Terminar</th>
+                <th>Borrar</th>
+              </tr>
+            </thead>
+            <tbody id="proyectos-inactive-table-body"></tbody>
+          </table>
+        </div>
+      </details>
     </section>
 
     <!-- 3. ADMIN VIEW -->
@@ -212,7 +242,10 @@
     <section id="view-ficha-proyecto" class="view-section">
       <div class="top-header-bar">
         <h1>Ficha Proyecto</h1>
-        <select id="select-ficha-proyecto" class="filter-select"></select>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <select id="select-ficha-proyecto" class="filter-select"></select>
+          <button id="btn-ficha-proyecto-nueva-tarea" class="btn-primary-action" onclick="createNewTask()">Nueva tarea</button>
+        </div>
       </div>
 
       <!-- Tarjeta Resumen Proyecto -->

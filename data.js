@@ -13,13 +13,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-06-25",
     "fecha_legacy": "2026-06-25",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-06-25",
-    "fecha_fin_real": "2026-06-25",
-    "tarea_fecha_creacion": "2026-06-25"
+    "fecha_fin_real": "2026-06-25"
   },
   {
     "proyecto_id": "2026_RI017",
@@ -34,13 +34,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "detenida",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-27",
     "fecha_legacy": "",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-27"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_RI017",
@@ -55,13 +55,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-23",
     "fecha_legacy": "2026-07-23",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-07-23",
-    "fecha_fin_real": "2026-07-23",
-    "tarea_fecha_creacion": "2026-07-23"
+    "fecha_fin_real": "2026-07-23"
   },
   {
     "proyecto_id": "2026_RI017",
@@ -76,13 +76,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-27",
     "fecha_legacy": "",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-27"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_RI017",
@@ -97,13 +97,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-27",
     "fecha_legacy": "",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-27"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_RI017",
@@ -118,13 +118,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-27",
     "fecha_legacy": "",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-27"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_RI019",
@@ -139,13 +139,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-06-09",
     "fecha_legacy": "2026-06-09",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-06-09",
-    "fecha_fin_real": "2026-06-09",
-    "tarea_fecha_creacion": "2026-06-09"
+    "fecha_fin_real": "2026-06-09"
   },
   {
     "proyecto_id": "2026_RI019",
@@ -160,13 +160,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-06-19",
     "fecha_legacy": "2026-06-19",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-06-19",
-    "fecha_fin_real": "2026-06-19",
-    "tarea_fecha_creacion": "2026-06-19"
+    "fecha_fin_real": "2026-06-19"
   },
   {
     "proyecto_id": "2026_RI019",
@@ -181,13 +181,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-06-24",
     "fecha_legacy": "2026-06-24",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-06-24",
-    "fecha_fin_real": "2026-06-24",
-    "tarea_fecha_creacion": "2026-06-24"
+    "fecha_fin_real": "2026-06-24"
   },
   {
     "proyecto_id": "2026_RI019",
@@ -202,13 +202,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-06-25",
     "fecha_legacy": "2026-06-25",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-06-25",
-    "fecha_fin_real": "2026-06-25",
-    "tarea_fecha_creacion": "2026-06-25"
+    "fecha_fin_real": "2026-06-25"
   },
   {
     "proyecto_id": "2026_RI019",
@@ -223,13 +223,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-02",
     "fecha_legacy": "2026-07-02",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-07-02",
-    "fecha_fin_real": "2026-07-02",
-    "tarea_fecha_creacion": "2026-07-02"
+    "fecha_fin_real": "2026-07-02"
   },
   {
     "proyecto_id": "2026_RI019",
@@ -244,13 +244,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-02",
     "fecha_legacy": "2026-07-02",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-07-02",
-    "fecha_fin_real": "2026-07-02",
-    "tarea_fecha_creacion": "2026-07-02"
+    "fecha_fin_real": "2026-07-02"
   },
   {
     "proyecto_id": "2026_RI019",
@@ -265,13 +265,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-08",
     "fecha_legacy": "2026-07-08",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-07-08",
-    "fecha_fin_real": "2026-07-08",
-    "tarea_fecha_creacion": "2026-07-08"
+    "fecha_fin_real": "2026-07-08"
   },
   {
     "proyecto_id": "2026_RI019",
@@ -286,13 +286,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-10",
     "fecha_legacy": "2026-07-10",
     "con_alerta": "no",
     "fecha_inicio_proy": "2026-07-10",
     "fecha_inicio_real": "2026-07-10",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-10"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_RI019",
@@ -307,13 +307,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-13",
     "fecha_legacy": "2026-07-13",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-07-13",
-    "fecha_fin_real": "2026-07-13",
-    "tarea_fecha_creacion": "2026-07-13"
+    "fecha_fin_real": "2026-07-13"
   },
   {
     "proyecto_id": "2026_RI019",
@@ -328,13 +328,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-15",
     "fecha_legacy": "2026-07-15",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-07-15",
-    "fecha_fin_real": "2026-07-15",
-    "tarea_fecha_creacion": "2026-07-15"
+    "fecha_fin_real": "2026-07-15"
   },
   {
     "proyecto_id": "2026_RI019",
@@ -349,13 +349,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-22",
     "fecha_legacy": "2026-07-22",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-07-22",
-    "fecha_fin_real": "2026-07-22",
-    "tarea_fecha_creacion": "2026-07-22"
+    "fecha_fin_real": "2026-07-22"
   },
   {
     "proyecto_id": "2026_RI019",
@@ -370,13 +370,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-23",
     "fecha_legacy": "2026-07-23",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-07-23",
-    "fecha_fin_real": "2026-07-23",
-    "tarea_fecha_creacion": "2026-07-23"
+    "fecha_fin_real": "2026-07-23"
   },
   {
     "proyecto_id": "2026_RI020",
@@ -391,13 +391,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-06-17",
     "fecha_legacy": "2026-06-17",
     "con_alerta": "no",
     "fecha_inicio_proy": "2026-06-17",
     "fecha_inicio_real": "2026-06-17",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-06-17"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_RI020",
@@ -412,13 +412,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-06-24",
     "fecha_legacy": "2026-06-24",
     "con_alerta": "no",
     "fecha_inicio_proy": "2026-06-24",
     "fecha_inicio_real": "2026-06-24",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-06-24"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_RI020",
@@ -433,13 +433,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Alejandra Pérez",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-10",
     "fecha_legacy": "2026-07-10",
     "con_alerta": "no",
     "fecha_inicio_proy": "2026-07-10",
     "fecha_inicio_real": "2026-07-10",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-10"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_RI020",
@@ -454,13 +454,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Alejandra Pérez",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-14",
     "fecha_legacy": "2026-07-14",
     "con_alerta": "no",
     "fecha_inicio_proy": "2026-07-14",
     "fecha_inicio_real": "2026-07-14",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-14"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_RI020",
@@ -475,13 +475,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Alejandra Pérez",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-22",
     "fecha_legacy": "2026-07-22",
     "con_alerta": "no",
     "fecha_inicio_proy": "2026-07-22",
     "fecha_inicio_real": "2026-07-22",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-22"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_RI020",
@@ -496,13 +496,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Alejandra Pérez",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-27",
     "fecha_legacy": "",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-27"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_RI020",
@@ -517,13 +517,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Alejandra Pérez",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-27",
     "fecha_legacy": "",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-27"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_RI020",
@@ -538,13 +538,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Alejandra Pérez",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-22",
     "fecha_legacy": "2026-07-22",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-07-22",
-    "fecha_fin_real": "2026-07-22",
-    "tarea_fecha_creacion": "2026-07-22"
+    "fecha_fin_real": "2026-07-22"
   },
   {
     "proyecto_id": "2023_VI010",
@@ -559,13 +559,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Rodrigo Borquez",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-27",
     "fecha_legacy": "",
     "con_alerta": "si",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-27"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2023_VI010",
@@ -580,13 +580,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Rodrigo Borquez",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-27",
     "fecha_legacy": "",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-27"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2023_VI010",
@@ -601,13 +601,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Rodrigo Borquez",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-14",
     "fecha_legacy": "2026-07-14",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-07-14",
-    "fecha_fin_real": "2026-07-14",
-    "tarea_fecha_creacion": "2026-07-14"
+    "fecha_fin_real": "2026-07-14"
   },
   {
     "proyecto_id": "2023_VI010",
@@ -622,13 +622,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Rodrigo Borquez",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-27",
     "fecha_legacy": "",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-27"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2023_VI010",
@@ -643,13 +643,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Rodrigo Borquez",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-27",
     "fecha_legacy": "",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-27"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2023_VI010",
@@ -664,13 +664,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Rodrigo Borquez",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-27",
     "fecha_legacy": "",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-27"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2023_VI010",
@@ -685,13 +685,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Rodrigo Borquez",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-27",
     "fecha_legacy": "",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-27"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2023_VI010",
@@ -706,13 +706,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Rodrigo Borquez",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-20",
     "fecha_legacy": "2026-07-20",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-07-20",
-    "fecha_fin_real": "2026-07-20",
-    "tarea_fecha_creacion": "2026-07-20"
+    "fecha_fin_real": "2026-07-20"
   },
   {
     "proyecto_id": "2023_VI010",
@@ -727,13 +727,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Rodrigo Borquez",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-22",
     "fecha_legacy": "2026-07-22",
     "con_alerta": "si",
     "fecha_inicio_proy": "2026-07-22",
     "fecha_inicio_real": "2026-07-22",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-22"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2023_VI010",
@@ -748,13 +748,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Rodrigo Borquez",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-22",
     "fecha_legacy": "2026-07-22",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-07-22",
-    "fecha_fin_real": "2026-07-22",
-    "tarea_fecha_creacion": "2026-07-22"
+    "fecha_fin_real": "2026-07-22"
   },
   {
     "proyecto_id": "2023_VI010",
@@ -769,13 +769,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Rodrigo Borquez",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-23",
     "fecha_legacy": "2026-07-23",
     "con_alerta": "si",
     "fecha_inicio_proy": "2026-07-23",
     "fecha_inicio_real": "2026-07-23",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-23"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2023_VI010",
@@ -790,13 +790,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Rodrigo Borquez",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-24",
     "fecha_legacy": "2026-07-24",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-07-24",
-    "fecha_fin_real": "2026-07-24",
-    "tarea_fecha_creacion": "2026-07-24"
+    "fecha_fin_real": "2026-07-24"
   },
   {
     "proyecto_id": "2025_PU018",
@@ -811,13 +811,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Gabriel Contreras",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-27",
     "fecha_legacy": "",
     "con_alerta": "si",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-27"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2025_PU018",
@@ -832,13 +832,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Gabriel Contreras",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-01-27",
     "fecha_legacy": "2026-01-27",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-01-27",
-    "fecha_fin_real": "2026-01-27",
-    "tarea_fecha_creacion": "2026-01-27"
+    "fecha_fin_real": "2026-01-27"
   },
   {
     "proyecto_id": "2025_PU018",
@@ -853,13 +853,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Gabriel Contreras",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-04-10",
     "fecha_legacy": "2026-04-10",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-04-10",
-    "fecha_fin_real": "2026-04-10",
-    "tarea_fecha_creacion": "2026-04-10"
+    "fecha_fin_real": "2026-04-10"
   },
   {
     "proyecto_id": "2025_PU018",
@@ -874,13 +874,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Gabriel Contreras",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-27",
     "fecha_legacy": "",
     "con_alerta": "si",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-27"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2025_PU018",
@@ -895,13 +895,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Gabriel Contreras",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-06",
     "fecha_legacy": "2026-07-06",
     "con_alerta": "si",
     "fecha_inicio_proy": "2026-07-06",
     "fecha_inicio_real": "2026-07-06",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-06"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2025_PU018",
@@ -916,13 +916,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Gabriel Contreras",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-10",
     "fecha_legacy": "2026-07-10",
     "con_alerta": "si",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-07-10",
-    "fecha_fin_real": "2026-07-10",
-    "tarea_fecha_creacion": "2026-07-10"
+    "fecha_fin_real": "2026-07-10"
   },
   {
     "proyecto_id": "2025_PU018",
@@ -937,13 +937,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Gabriel Contreras",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-24",
     "fecha_legacy": "2026-07-24",
     "con_alerta": "si",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-07-24",
-    "fecha_fin_real": "2026-07-24",
-    "tarea_fecha_creacion": "2026-07-24"
+    "fecha_fin_real": "2026-07-24"
   },
   {
     "proyecto_id": "2025_PU019",
@@ -958,13 +958,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Gabriel Contreras",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-10",
     "fecha_legacy": "2026-07-10",
     "con_alerta": "si",
     "fecha_inicio_proy": "2026-07-10",
     "fecha_inicio_real": "2026-07-10",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-10"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2025_PU019",
@@ -979,13 +979,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Gabriel Contreras",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-20",
     "fecha_legacy": "2026-07-20",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-07-20",
-    "fecha_fin_real": "2026-07-20",
-    "tarea_fecha_creacion": "2026-07-20"
+    "fecha_fin_real": "2026-07-20"
   },
   {
     "proyecto_id": "2025_PU019",
@@ -1000,13 +1000,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "Gabriel Contreras",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2026-07-22",
     "fecha_legacy": "2026-07-22",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2026-07-22",
-    "fecha_fin_real": "2026-07-22",
-    "tarea_fecha_creacion": "2026-07-22"
+    "fecha_fin_real": "2026-07-22"
   },
   {
     "proyecto_id": "2026_CQ020",
@@ -1021,13 +1021,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "GG Unidad",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2025-10-03",
     "fecha_legacy": "2025-10-03",
     "con_alerta": "si",
     "fecha_inicio_proy": "2025-10-03",
     "fecha_inicio_real": "2025-10-03",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2025-10-03"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_CQ020",
@@ -1042,13 +1042,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "GG Unidad",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2025-10-20",
     "fecha_legacy": "2025-10-20",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2025-10-20",
-    "fecha_fin_real": "2025-10-20",
-    "tarea_fecha_creacion": "2025-10-20"
+    "fecha_fin_real": "2025-10-20"
   },
   {
     "proyecto_id": "2026_CQ020",
@@ -1063,13 +1063,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "GG Unidad",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2025-11-21",
     "fecha_legacy": "2025-11-21",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2025-11-21",
-    "fecha_fin_real": "2025-11-21",
-    "tarea_fecha_creacion": "2025-11-21"
+    "fecha_fin_real": "2025-11-21"
   },
   {
     "proyecto_id": "2026_CQ020",
@@ -1084,13 +1084,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "terminada",
     "tarea_contraparte": "GG Unidad",
     "tarea_pct": 100,
+    "tarea_fecha_creacion": "2025-12-17",
     "fecha_legacy": "2025-12-17",
     "con_alerta": "no",
     "fecha_inicio_proy": "",
     "fecha_inicio_real": "",
     "fecha_fin_proy": "2025-12-17",
-    "fecha_fin_real": "2025-12-17",
-    "tarea_fecha_creacion": "2025-12-17"
+    "fecha_fin_real": "2025-12-17"
   },
   {
     "proyecto_id": "2026_CQ020",
@@ -1105,13 +1105,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "GG Unidad",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-01-08",
     "fecha_legacy": "2026-01-08",
     "con_alerta": "si",
     "fecha_inicio_proy": "2026-01-08",
     "fecha_inicio_real": "2026-01-08",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-01-08"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_CQ020",
@@ -1126,13 +1126,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "GG Unidad",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-02-10",
     "fecha_legacy": "2026-02-10",
     "con_alerta": "si",
     "fecha_inicio_proy": "2026-02-10",
     "fecha_inicio_real": "2026-02-10",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-02-10"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_CQ020",
@@ -1147,13 +1147,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "GG Unidad",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-01",
     "fecha_legacy": "2026-07-01",
     "con_alerta": "si",
     "fecha_inicio_proy": "2026-07-01",
     "fecha_inicio_real": "2026-07-01",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-01"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_CQ020",
@@ -1168,13 +1168,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "GG Unidad",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-06",
     "fecha_legacy": "2026-07-06",
     "con_alerta": "no",
     "fecha_inicio_proy": "2026-07-06",
     "fecha_inicio_real": "2026-07-06",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-06"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_CQ020",
@@ -1189,13 +1189,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "GG Unidad",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-17",
     "fecha_legacy": "2026-07-17",
     "con_alerta": "si",
     "fecha_inicio_proy": "2026-07-17",
     "fecha_inicio_real": "2026-07-17",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-17"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_TR001",
@@ -1210,13 +1210,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Vicente Alamo",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-14",
     "fecha_legacy": "2026-07-14",
     "con_alerta": "no",
     "fecha_inicio_proy": "2026-07-14",
     "fecha_inicio_real": "2026-07-14",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-14"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_TR001",
@@ -1231,13 +1231,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Nicolás Cerda",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-20",
     "fecha_legacy": "2026-07-20",
     "con_alerta": "no",
     "fecha_inicio_proy": "2026-07-20",
     "fecha_inicio_real": "2026-07-20",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-20"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_TR001",
@@ -1252,13 +1252,13 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Nicolás Cerda",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-21",
     "fecha_legacy": "2026-07-21",
     "con_alerta": "no",
     "fecha_inicio_proy": "2026-07-21",
     "fecha_inicio_real": "2026-07-21",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-21"
+    "fecha_fin_real": ""
   },
   {
     "proyecto_id": "2026_TR001",
@@ -1273,12 +1273,12 @@ window.INITIAL_DATA = [
     "tarea_estado": "en desarrollo",
     "tarea_contraparte": "Gabriel Contreras",
     "tarea_pct": "",
+    "tarea_fecha_creacion": "2026-07-23",
     "fecha_legacy": "2026-07-23",
     "con_alerta": "no",
     "fecha_inicio_proy": "2026-07-23",
     "fecha_inicio_real": "2026-07-23",
     "fecha_fin_proy": "",
-    "fecha_fin_real": "",
-    "tarea_fecha_creacion": "2026-07-23"
+    "fecha_fin_real": ""
   }
 ];
