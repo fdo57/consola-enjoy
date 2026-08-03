@@ -153,33 +153,7 @@ function notifyStreamlitReady() {
 
 function renderStatusBanner() {
   const banner = document.getElementById("db-status-banner");
-  if (!banner) return;
-
-  const statusObj = window.DB_STATUS;
-  if (!statusObj) {
-    banner.style.display = "none";
-    return;
-  }
-
-  if (statusObj.status === "warning") {
-    banner.style.display = "block";
-    banner.style.backgroundColor = "#fff3cd";
-    banner.style.color = "#856404";
-    banner.style.border = "1px solid #ffeeba";
-    banner.innerHTML = `<strong>⚠️ Persistencia Central No Configurada:</strong> ${statusObj.message}`;
-  } else if (statusObj.status === "error") {
-    banner.style.display = "block";
-    banner.style.backgroundColor = "#f8d7da";
-    banner.style.color = "#721c24";
-    banner.style.border = "1px solid #f5c6cb";
-    banner.innerHTML = `<strong>❌ Error de Base Central:</strong> ${statusObj.message}`;
-  } else if (statusObj.source === "sqlite_local_dev") {
-    banner.style.display = "block";
-    banner.style.backgroundColor = "#e2e3e5";
-    banner.style.color = "#383d41";
-    banner.style.border = "1px solid #d6d8db";
-    banner.innerHTML = `<strong>ℹ️ Modo Desarrollo Local:</strong> Usando base SQLite local (consola_enjoy.db). Para producción multiusuario en Streamlit Cloud configure credenciales de Google Sheets en <code>st.secrets</code>.`;
-  } else {
+  if (banner) {
     banner.style.display = "none";
   }
 }
