@@ -775,3 +775,28 @@ summary.collapsible-summary-bar::-webkit-details-marker {
 .icon-btn:hover {
   background-color: #A03E0F;
 }
+
+/* Toast Notification Banner for Save Confirmation */
+.save-toast-banner {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: opacity 0.3s ease-in-out;
+}
+
+.save-toast-success {
+  background-color: #2e7d32;
+  color: #ffffff;
+}
+
+.save-toast-error {
+  background-color: #c62828;
+  color: #ffffff;
+}
+

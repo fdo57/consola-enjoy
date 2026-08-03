@@ -111,6 +111,8 @@ let selectedTaskId = "";
 let isEditingTarea = false;
 let fechaInforme = new Date().toISOString().split('T')[0];
 
+let isStreamlitConnected = false;
+
 // Streamlit Custom Component Communication Bridge
 function sendToStreamlit(action, data) {
   const payload = {
@@ -151,60 +153,96 @@ function notifyStreamlitReady() {
   } catch (e) {}
 }
 
+function showSaveToast(isSuccess) {
+  const toast = document.getElementById("save-toast");
+  if (!toast) return;
+  toast.className = "save-toast-banner " + (isSuccess ? "save-toast-success" : "save-toast-error");
+  toast.textContent = isSuccess ? "Guardado" : "Error: no se pudo guardar";
+  toast.style.display = "block";
+  toast.style.opacity = "1";
+
+  if (window._saveToastTimer) clearTimeout(window._saveToastTimer);
+  window._saveToastTimer = setTimeout(() => {
+    toast.style.opacity = "0";
+    setTimeout(() => {
+      toast.style.display = "none";
+    }, 300);
+  }, 2500);
+}
+
 function renderStatusBanner() {
   const banner = document.getElementById("db-status-banner");
-  if (banner) {
+  if (!banner) return;
+
+  if (!isStreamlitConnected) {
+    banner.style.display = "block";
+    banner.style.backgroundColor = "#fff3cd";
+    banner.style.color = "#856404";
+    banner.style.border = "1px solid #ffeeba";
+    banner.textContent = "⚠️ Advertencia: La app se abrió sin conexión a Streamlit. Los cambios no se guardarán en la base central.";
+    return;
+  }
+
+  const status = window.DB_STATUS ? window.DB_STATUS.status : "ok";
+  if (status === "warning") {
+    banner.style.display = "block";
+    banner.style.backgroundColor = "#fff3cd";
+    banner.style.color = "#856404";
+    banner.style.border = "1px solid #ffeeba";
+    banner.textContent = "⚠️ Advertencia: Sin conexión efectiva a la base central. Los cambios no se guardarán.";
+  } else if (status === "error") {
+    banner.style.display = "block";
+    banner.style.backgroundColor = "#f8d7da";
+    banner.style.color = "#721c24";
+    banner.style.border = "1px solid #f5c6cb";
+    banner.textContent = "❌ Error: Sin conexión a la base central. Los cambios no se guardarán.";
+  } else {
     banner.style.display = "none";
   }
 }
 
 // Initialize State
 function initDB() {
-  let loadedFromCentral = false;
-
-  // Rule 3: Data received from central source MUST overwrite any previous localStorage
-  if (window.INITIAL_DATA && Array.isArray(window.INITIAL_DATA) && window.INITIAL_DATA.length > 0) {
-    db = window.INITIAL_DATA;
-    loadedFromCentral = true;
-  }
-
-  if (loadedFromCentral) {
-    try {
-      localStorage.setItem("ENJOY_PROJECTS_DB_V3", JSON.stringify(db));
-    } catch (e) {
-      console.warn("localStorage cache update failed:", e);
-    }
-  } else {
-    // Fallback to localStorage cache if window.INITIAL_DATA was not yet set
-    try {
-      const localData = localStorage.getItem("ENJOY_PROJECTS_DB_V3");
-      if (localData) {
-        const parsed = JSON.parse(localData);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          db = parsed;
-        }
+  // Load from localStorage ONLY as temporary cache until central DB responds
+  try {
+    const localData = localStorage.getItem("ENJOY_PROJECTS_DB_V3");
+    if (localData) {
+      const parsed = JSON.parse(localData);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        db = parsed;
       }
-    } catch (e) {}
-  }
+    }
+  } catch (e) {}
 
-  renderStatusBanner();
   notifyStreamlitReady();
+
+  // If Streamlit connection isn't confirmed within 1.2s, display disconnection banner
+  setTimeout(() => {
+    renderStatusBanner();
+  }, 1200);
 
   fechaInforme = getTodayStr();
   renderFechaInformeDisplay();
 }
 
 function saveDB() {
-  // Update localStorage as temporary cache
+  // Update localStorage ONLY as temporary local cache
   try {
     localStorage.setItem("ENJOY_PROJECTS_DB_V3", JSON.stringify(db));
   } catch (e) {
     console.warn("localStorage write failed:", e);
   }
 
-  // Rule 8: Immediately save to central Google Sheets DB via Streamlit bridge
-  sendToStreamlit("save_db", db);
+  // Verify connection to Streamlit and central database
+  if (isStreamlitConnected && (!window.DB_STATUS || window.DB_STATUS.status === "ok")) {
+    sendToStreamlit("save_db", db);
+  } else {
+    // If opened without Streamlit or without central DB, do not give false confirmation
+    showSaveToast(false);
+    renderStatusBanner();
+  }
 }
+
 
 function getTodayStr() {
   const d = new Date();
@@ -743,9 +781,9 @@ function saveNuevoProyectoForm() {
   db.unshift(newRecord);
   saveDB();
   selectedProjectId = newProjId;
-  alert(`Proyecto "${pName}" creado con éxito.`);
   switchView("ficha-proyecto");
 }
+
 
 // Formulario Creación Nueva Tarea
 function renderFormCrearTarea() {
@@ -881,9 +919,9 @@ function saveNuevaTareaForm() {
   saveDB();
   selectedTaskId = newTaskId;
   isEditingTarea = true;
-  alert(`Tarea "${tName}" creada con éxito.`);
   switchView("ficha-tarea");
 }
+
 
 function updateTaskDate(taskId, fieldName, val) {
   const task = db.find(t => t.tarea_id === taskId);
@@ -1458,9 +1496,9 @@ function saveTareaForm() {
 
   isEditingTarea = false;
   saveDB();
-  alert("Tarea guardada correctamente.");
   renderCurrentView();
 }
+
 
 function deleteTaskFromFicha(taskId) {
   const taskIndex = db.findIndex(item => item.tarea_id === taskId);
@@ -1549,19 +1587,29 @@ document.addEventListener("DOMContentLoaded", function() {
 // Listen for incoming Streamlit render & state updates
 window.addEventListener("message", function(event) {
   if (event.data && event.data.type === "streamlit:render") {
+    isStreamlitConnected = true;
     const args = event.data.args;
     if (args) {
       if (args.db_status) {
         window.DB_STATUS = args.db_status;
-        renderStatusBanner();
       }
       if (args.initial_data && Array.isArray(args.initial_data)) {
+        // Prevalencia obligatoria de la BD central recibida desde Streamlit
         db = args.initial_data;
         try {
           localStorage.setItem("ENJOY_PROJECTS_DB_V3", JSON.stringify(db));
         } catch (e) {}
-        renderCurrentView();
       }
+      if (args.save_status && typeof args.save_status === "object") {
+        if (args.save_status.status === "ok") {
+          showSaveToast(true);
+        } else if (args.save_status.status === "error") {
+          showSaveToast(false);
+        }
+      }
+      renderStatusBanner();
+      renderCurrentView();
     }
   }
 });
+

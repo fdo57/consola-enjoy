@@ -1,3 +1,18 @@
+# Streamlit and local secrets
+.streamlit/secrets.toml
+secrets.toml
+
+# Local database & binaries
+*.db
+consola_enjoy.db
+
+# Sensitive local credentials & backups
+Credenciales y otros/
+Respaldos/
+*.gsheet
 ~$*.xlsx
+
+# Python cache & system files
 *.pyc
 __pycache__/
+desktop.ini

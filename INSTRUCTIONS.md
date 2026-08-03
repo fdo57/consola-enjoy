@@ -6,27 +6,79 @@ Preparar una app tipo HTML para usar con cualquier buscador para monitorear el a
 
 # Definiciones generales
 
-## Persistencia de datos y uso multiusuario
+## Persistencia de datos, uso multiusuario y despliegue
 
-La app será publicada en Streamlit y usada por múltiples usuarios desde distintos equipos y navegadores. Por lo tanto, debe contar con una **base de datos central única y compartida**.
+La app será publicada y usada principalmente desde **Streamlit Cloud**, conectada al repositorio GitHub:
+
+`https://github.com/fdo57/consola-enjoy`
+
+El flujo correcto de desarrollo y publicación es:
+
+**Antigravity / entorno local → commit → push a GitHub → redeploy en Streamlit Cloud**
+
+Los cambios hechos en archivos locales o en Google Drive no llegan automáticamente a la app publicada si no son subidos al repositorio GitHub conectado a Streamlit.
+
+### Base de datos central
+
+La app debe contar con una **base de datos central única y compartida**, actualmente definida como Google Sheets:
+
+`BD Consola Enjoy - central`
+
+ID:
+
+`1dpA2Nnk9dZ_NVkhJD1HHRBN4CH6Ry8bzm2Iuf_oXV8Y`
 
 Reglas obligatorias:
 
-* `localStorage` no debe ser la fuente principal de datos. Sólo puede usarse como caché temporal, si se implementa sincronización con la base central.
-* Al iniciar o refrescar la app, siempre debe cargar la información desde la base central.
-* Al crear, editar, terminar o eliminar una tarea o proyecto, el cambio debe guardarse inmediatamente en la base central.
-* Los cambios realizados por un usuario deben quedar disponibles para los demás usuarios al abrir o refrescar la app, sin importar el equipo o navegador usado.
-* `data.js` puede usarse únicamente como semilla inicial si la base central está vacía. No debe ser considerado la base viva de trabajo.
-* `carga_masiva.xlsx` debe usarse sólo como plantilla o mecanismo de importación manual. No debe ser la fuente viva de datos de la app.
-* La descarga de base de datos debe exportar la información vigente desde la base central.
+* `localStorage` no debe ser la fuente principal de datos.
+* `localStorage` sólo puede usarse como caché temporal del navegador.
+* Al iniciar o refrescar la app, siempre debe cargar información desde la base central.
+* Al crear, editar, terminar o eliminar una tarea o proyecto, el cambio debe guardarse inmediatamente en Google Sheets.
+* Los cambios hechos por un usuario deben quedar disponibles para otros usuarios al abrir o refrescar la app.
+* `data.js` puede usarse únicamente como semilla inicial si la base central está vacía.
+* `data.js` no debe considerarse base viva de trabajo.
+* `carga_masiva.xlsx` debe usarse sólo como plantilla o mecanismo de importación manual.
+* La descarga/exportación de base de datos debe exportar la información vigente desde Google Sheets.
 
-Fuente central recomendada para esta etapa: Google Sheets conectado desde Streamlit mediante credenciales configuradas en `st.secrets`. Alternativamente puede usarse una base externa persistente como Supabase. No usar sólo archivos locales del servidor Streamlit si no se garantiza persistencia entre reinicios.
+### Credenciales y secrets
 
-Criterio de aceptación:
+La conexión a Google Sheets debe hacerse desde Streamlit mediante `st.secrets`.
 
-* Crear una tarea desde un navegador/equipo.
-* Abrir o refrescar la app desde otro navegador/equipo limpio.
-* La tarea creada debe aparecer sin importar que el segundo navegador no tenga datos previos en `localStorage`.
+Importante:
+
+* El archivo `.streamlit/secrets.toml` local sirve sólo para desarrollo local.
+* El archivo `secrets.toml` no debe subirse a GitHub.
+* En producción, los secrets deben configurarse directamente en **Streamlit Cloud → App settings → Secrets**.
+* La service account usada por Streamlit debe tener permiso de **Editor** sobre la Google Sheet central.
+
+### Arranque correcto de la app
+
+La app no debe abrirse directamente como `index.html` para uso real, porque en ese modo:
+
+* no corre Streamlit,
+* no se ejecuta `app.py`,
+* no se ejecuta `db_manager.py`,
+* no se lee `st.secrets`,
+* no se conecta a Google Sheets,
+* los cambios pueden quedar sólo en `localStorage`.
+
+Para desarrollo local, el arranque correcto debe ser:
+
+```bat
+@echo off
+cd /d "%~dp0"
+streamlit run app.py
+```
+
+### Confirmación de guardado
+
+La app debe informar explícitamente el estado de guardado con mensajes simples para el usuario final:
+
+* Si guarda correctamente: **“Guardado”**
+* Si falla: **“Error: no se pudo guardar”**
+
+Si la app se abre sin conexión a Streamlit o sin conexión efectiva a la base central, debe mostrar una advertencia visible y no dar por guardados los cambios.
+
 
 ## Formatos y unidades
 
@@ -225,7 +277,7 @@ El color de todos los textos debe ser #595959
 
 Junto al título de la sección debe haber un botón "Nuevo proyecto" y otro "Nueva tarea" que lleven a sus respectivos formularios.
 
-Bajo la tabla debe aparecer un título que sea "Tareas terminadas o eliminadas" que despliegue una lista igual a la anterior pero para tareas con estado "terminada" o "eliminada". Debe ser una sección desplegable bajo el título, o en el mismo título. Debe aparecer contraída.
+Bajo la tabla debe aparecer un título que sea "Tareas terminadas o eliminadas" que despliegue una lista igual a la anterior pero para tareas con estado "terminada" o "eliminada". Se debe poder editar las tareas. Debe ser una sección desplegable bajo el título, o en el mismo título. Debe aparecer contraída.
 A la derecha del este título pero pegado al margen derecho del listado debe haber un botón que diga "Volver" que lleve al dashboard.
 
 

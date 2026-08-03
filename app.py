@@ -34,27 +34,33 @@ dir_path = os.path.dirname(os.path.abspath(__file__))
 # ---------------------------------------------------------
 central_res = db_manager.load_central_data()
 
-# Render status warning or error banner if configuration is incomplete in production
+# Initialize Session State
+if "central_db" not in st.session_state:
+    if central_res["status"] == "ok":
+        st.session_state["central_db"] = central_res.get("data", [])
+    else:
+        st.session_state["central_db"] = []
+
+current_db_data = st.session_state["central_db"]
+
+# Optional banner for st.secrets configuration issues in production
 if central_res["status"] == "warning":
     st.warning(f"⚠️ {central_res['message']}")
 elif central_res["status"] == "error":
     st.error(f"❌ {central_res['message']}")
 
-# Session state management for central database
-if "central_db" not in st.session_state or central_res["status"] == "ok":
-    st.session_state["central_db"] = central_res.get("data", [])
-
-current_db_data = st.session_state["central_db"]
+# Fetch save_status if set during previous mutation
+save_status = st.session_state.pop("save_status", None)
 
 # ---------------------------------------------------------
 # 2. Single Component Strategy (declare_component)
 # ---------------------------------------------------------
 consola_component = components.declare_component("consola_enjoy", path=dir_path)
 
-# Pass central data & status to component iframe
 component_value = consola_component(
     initial_data=current_db_data,
     db_status=central_res,
+    save_status=save_status,
     default=None,
     key="consola_enjoy_component"
 )
@@ -66,10 +72,11 @@ if component_value and isinstance(component_value, dict):
     action = component_value.get("action")
     if action == "save_db":
         new_data = component_value.get("data")
-        if new_data and isinstance(new_data, list):
+        if isinstance(new_data, list):
             save_result = db_manager.save_central_data(new_data)
             if save_result["status"] == "ok":
                 st.session_state["central_db"] = new_data
-                st.rerun()
+                st.session_state["save_status"] = {"status": "ok"}
             else:
-                st.error(f"❌ Error al guardar en base central: {save_result.get('message')}")
+                st.session_state["save_status"] = {"status": "error"}
+            st.rerun()
