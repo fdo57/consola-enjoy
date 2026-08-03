@@ -31,7 +31,7 @@ Criterio de aceptación:
 ## Formatos y unidades
 
 Reglas de fomatos y unidades
-* Todas las fechas deben ser en formato DD/MM/AAAA
+* Todas las fechas que se muestren o en los campos a rellenar deben ser en formato DD/MM/AAAA
 
 
 ## Empresa
@@ -171,7 +171,7 @@ Al abrir la app las tareas de esta zona se deben ordenar en base a la fecha de c
 Es un resumen de tareas modificadas en la semana de la fecha "Fecha de Informe". La zona queda dividida en 2 partes, una sobre la otra.
 
 La primera parte se llama "Tareas Creadas" y muestra una lista todas las tareas con tarea\_fecha\_creacion en la misma semana que la "Fecha de informe"
-La segunda parte está bajo "Tareas Creadas", se llama "Tareas terminadas" muestra una lista con todas las tareas con fecha\_fin\_real en la misma semana que la "Fecha de informe"
+La segunda parte está bajo "Tareas Creadas", se llama "Tareas terminadas" muestra una lista con todas las tareas con fecha\_fin\_real en la misma semana que la "Fecha de informe" que tengan estado "terminada" o "eliminada"
 A la derecha del nombre de la tarea, agregar una columna con ícono de semáforo con los mismos parámetros que en "Tareas en Curso":
 color verde: tareas con tarea\_estado "en desarrollo" con "con\_alerta" en "no"
 color amarillo: tareas con tarea\_estado "detenida" con "con\_alerta" en "no"

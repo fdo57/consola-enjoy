@@ -211,7 +211,7 @@ function getTodayStr() {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return `${day}/${month}/${year}`;
 }
 
 function resetFechaInformeToToday() {
@@ -221,12 +221,14 @@ function resetFechaInformeToToday() {
 
 function renderFechaInformeDisplay() {
   const inputEl = document.getElementById("sidebar-fecha-informe-input");
-  if (inputEl) inputEl.value = fechaInforme;
+  if (inputEl) inputEl.value = formatDateDDMMYYYY(fechaInforme);
+  const pickerEl = document.getElementById("sidebar-fecha-informe-picker");
+  if (pickerEl) pickerEl.value = parseToYYYYMMDD(fechaInforme);
 }
 
 function updateFechaInforme(val) {
   if (val) {
-    fechaInforme = val;
+    fechaInforme = formatDateDDMMYYYY(val);
     renderFechaInformeDisplay();
     renderCurrentView();
   }
@@ -519,13 +521,12 @@ function isSameWeek(dateStr1, dateStr2) {
     });
   }
 
-  // Part 2: Tareas Terminadas in same week as fechaInforme
+  // Part 2: Tareas Terminadas o Eliminadas con fecha_fin_real en la misma semana que fechaInforme
   const finishedTasks = db.filter(item => {
     if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
-    const isFinished = (item.tarea_estado || "").toLowerCase().trim() === "terminada";
-    return isSameWeek(item.fecha_fin_real, fechaInforme) ||
-           isSameWeek(item.fecha_fin_proy, fechaInforme) ||
-           (isFinished && isSameWeek(item.fecha_legacy, fechaInforme));
+    const st = (item.tarea_estado || "").toLowerCase().trim();
+    if (st !== "terminada" && st !== "eliminada") return false;
+    return isSameWeek(item.fecha_fin_real, fechaInforme);
   });
 
   if (finishedTasks.length === 0) {
