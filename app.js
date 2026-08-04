@@ -970,72 +970,115 @@ function renderAdmin() {
   // Handlers attached in setupEventListeners
 }
 
+function updateAdminDBField(taskId, fieldName, value) {
+  const record = db.find(item => item.tarea_id === taskId);
+  if (!record) return;
+
+  const projFields = ["unidad_nombre", "proyecto_nombre", "proyecto_descripcion", "proyecto_estado"];
+  if (projFields.includes(fieldName) && record.proyecto_id) {
+    db.forEach(item => {
+      if (item.proyecto_id === record.proyecto_id) {
+        item[fieldName] = value;
+      }
+    });
+  } else {
+    record[fieldName] = value;
+  }
+
+  saveDB();
+  renderCurrentView();
+}
+
 function renderAdminDB() {
   const tbody = document.getElementById("admin-db-table-body");
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  const activeRows = db.filter(item => isProjectActive(item.proyecto_estado) && isTaskActive(item.tarea_estado));
+  const units = ["Enjoy Rinconada", "Enjoy Pucón", "Enjoy Viña", "Enjoy Coquimbo", "Enjoy Chiloé", "Enjoy Transversales"];
+  const pStatuses = ["por iniciar", "en desarrollo", "en construcción", "detenido", "terminado", "eliminado"];
+  const tStatuses = ["por iniciar", "en desarrollo", "detenida", "terminada", "eliminada"];
 
-  activeRows.forEach(item => {
+  db.forEach(item => {
     const tr = document.createElement("tr");
+
+    let uOptsHtml = units.map(u => `<option value="${u}" ${u === item.unidad_nombre ? "selected" : ""}>${u}</option>`).join("");
+    if (!units.includes(item.unidad_nombre) && item.unidad_nombre) {
+      uOptsHtml += `<option value="${item.unidad_nombre}" selected>${item.unidad_nombre}</option>`;
+    }
+
+    let pStatusOptsHtml = pStatuses.map(s => `<option value="${s}" ${s === item.proyecto_estado ? "selected" : ""}>${s}</option>`).join("");
+    let tStatusOptsHtml = tStatuses.map(s => `<option value="${s}" ${s === item.tarea_estado ? "selected" : ""}>${s}</option>`).join("");
+
+    const taskId = item.tarea_id;
+
     tr.innerHTML = `
-      <td><span class="table-link" onclick="openFichaUnidad('${item.unidad_nombre}')">${item.unidad_nombre}</span></td>
-      <td><span class="table-link" onclick="openFichaProyecto('${item.proyecto_id}')">${item.proyecto_nombre}</span></td>
-      <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre}</span></td>
-      <td class="col-desc"><div class="desc-text-clamp">${item.tarea_descripcion || ""}</div></td>
-      <td>${item.tarea_responsable || ""}</td>
-      <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
-      <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
-      <td>${renderDateCell(item.tarea_id, 'fecha_legacy', item.fecha_legacy)}</td>
-      <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
-      <td>${renderDateCell(item.tarea_id, 'fecha_fin_proy', item.fecha_fin_proy)}</td>
+      <td><strong>${item.proyecto_id || ""}</strong></td>
       <td>
-        <select class="alert-select" onchange="updateTaskAlert('${item.tarea_id}', this.value)">
-          <option value="no" ${item.con_alerta === "no" ? "selected" : ""}>no</option>
-          <option value="si" ${item.con_alerta === "si" ? "selected" : ""}>si</option>
+        <select class="form-select" style="padding: 3px 4px; font-size: 0.82rem;" onchange="updateAdminDBField('${taskId}', 'unidad_nombre', this.value)">
+          ${uOptsHtml}
         </select>
       </td>
       <td>
-        <button class="action-btn check-btn" onclick="completeTask('${item.tarea_id}')">${ICON_CHECK}</button>
+        <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 140px;" value="${item.proyecto_nombre || ''}" onchange="updateAdminDBField('${taskId}', 'proyecto_nombre', this.value)">
       </td>
       <td>
-        <button class="action-btn delete-btn" onclick="deleteTask('${item.tarea_id}')">${ICON_DELETE}</button>
+        <select class="form-select" style="padding: 3px 4px; font-size: 0.82rem;" onchange="updateAdminDBField('${taskId}', 'proyecto_estado', this.value)">
+          ${pStatusOptsHtml}
+        </select>
+      </td>
+      <td class="col-desc">
+        <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 160px;" value="${item.proyecto_descripcion || ''}" onchange="updateAdminDBField('${taskId}', 'proyecto_descripcion', this.value)">
+      </td>
+      <td><strong>${item.tarea_id || ""}</strong></td>
+      <td>
+        <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 140px;" value="${item.tarea_nombre || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_nombre', this.value)">
+      </td>
+      <td class="col-desc">
+        <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 160px;" value="${item.tarea_descripcion || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_descripcion', this.value)">
+      </td>
+      <td>
+        <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 90px;" value="${item.tarea_responsable || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_responsable', this.value)">
+      </td>
+      <td>
+        <select class="form-select" style="padding: 3px 4px; font-size: 0.82rem;" onchange="updateAdminDBField('${taskId}', 'tarea_estado', this.value)">
+          ${tStatusOptsHtml}
+        </select>
+      </td>
+      <td>
+        <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 90px;" value="${item.tarea_contraparte || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_contraparte', this.value)">
+      </td>
+      <td>
+        <input type="number" min="0" max="100" class="form-input" style="padding: 3px 4px; font-size: 0.82rem; width: 60px; text-align: center;" value="${item.tarea_pct !== undefined ? item.tarea_pct : ''}" onchange="updateAdminDBField('${taskId}', 'tarea_pct', this.value)">
+      </td>
+      <td>
+        <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.tarea_fecha_creacion)}" onchange="updateAdminDBField('${taskId}', 'tarea_fecha_creacion', this.value)">
+      </td>
+      <td>
+        <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_legacy)}" onchange="updateAdminDBField('${taskId}', 'fecha_legacy', this.value)">
+      </td>
+      <td>
+        <select class="alert-select" style="padding: 3px 4px; font-size: 0.82rem;" onchange="updateAdminDBField('${taskId}', 'con_alerta', this.value)">
+          <option value="no" ${(item.con_alerta || "no").toLowerCase() === "no" ? "selected" : ""}>no</option>
+          <option value="si" ${(item.con_alerta || "no").toLowerCase() === "si" ? "selected" : ""}>si</option>
+        </select>
+      </td>
+      <td>
+        <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_inicio_proy)}" onchange="updateAdminDBField('${taskId}', 'fecha_inicio_proy', this.value)">
+      </td>
+      <td>
+        <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_inicio_real)}" onchange="updateAdminDBField('${taskId}', 'fecha_inicio_real', this.value)">
+      </td>
+      <td>
+        <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_fin_proy)}" onchange="updateAdminDBField('${taskId}', 'fecha_fin_proy', this.value)">
+      </td>
+      <td>
+        <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_fin_real)}" onchange="updateAdminDBField('${taskId}', 'fecha_fin_real', this.value)">
       </td>
     `;
     tbody.appendChild(tr);
   });
-
-  const inactiveTbody = document.getElementById("admin-db-inactive-table-body");
-  if (inactiveTbody) {
-    inactiveTbody.innerHTML = "";
-    const inactiveRows = db.filter(item => !isProjectActive(item.proyecto_estado) || !isTaskActive(item.tarea_estado));
-    inactiveRows.forEach(item => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td><span class="table-link" onclick="openFichaUnidad('${item.unidad_nombre}')">${item.unidad_nombre}</span></td>
-        <td><span class="table-link" onclick="openFichaProyecto('${item.proyecto_id}')">${item.proyecto_nombre}</span></td>
-        <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre}</span></td>
-        <td class="col-desc"><div class="desc-text-clamp">${item.tarea_descripcion || ""}</div></td>
-        <td>${item.tarea_responsable || ""}</td>
-        <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
-        <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
-        <td>${renderDateCell(item.tarea_id, 'fecha_legacy', item.fecha_legacy)}</td>
-        <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
-        <td>${renderDateCell(item.tarea_id, 'fecha_fin_proy', item.fecha_fin_proy)}</td>
-        <td>
-          <select class="alert-select" onchange="updateTaskAlert('${item.tarea_id}', this.value)">
-            <option value="no" ${item.con_alerta === "no" ? "selected" : ""}>no</option>
-            <option value="si" ${item.con_alerta === "si" ? "selected" : ""}>si</option>
-          </select>
-        </td>
-        <td>-</td>
-        <td>-</td>
-      `;
-      inactiveTbody.appendChild(tr);
-    });
-  }
 }
+
 
 
 

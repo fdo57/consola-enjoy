@@ -199,64 +199,39 @@
       <div class="top-header-bar">
         <h1>Base de Datos Completa (Proyectos Admin)</h1>
         <div style="display: flex; gap: 10px; margin-left: auto;">
-          <button class="btn-primary-action" onclick="createNewProject()">Nuevo proyecto</button>
-          <button class="btn-primary-action" onclick="createNewTask()">Nueva tarea</button>
           <button class="btn-back" onclick="switchView('admin')">Volver a Admin</button>
         </div>
       </div>
-      <div class="table-container">
-        <table class="corp-table">
+      <div class="table-container" style="overflow-x: auto; max-height: calc(100vh - 160px);">
+        <table class="corp-table" style="min-width: 2200px;">
           <thead>
             <tr>
+              <th>ID Proyecto</th>
               <th>UN Negocios</th>
-              <th>Proyecto</th>
-              <th>Nombre tarea</th>
-              <th class="col-desc">Descripción tarea</th>
+              <th>Nombre Proyecto</th>
+              <th>Estado Proyecto</th>
+              <th class="col-desc">Descripción Proyecto</th>
+              <th>ID Tarea</th>
+              <th>Nombre Tarea</th>
+              <th class="col-desc">Descripción Tarea</th>
               <th>Responsable</th>
-              <th>Estado</th>
+              <th>Estado Tarea</th>
+              <th>Contraparte</th>
               <th>Avance %</th>
-              <th>Fecha Base</th>
-              <th>Fecha inicio (proy)</th>
-              <th>Fecha fin (proy)</th>
+              <th>Fecha Creación</th>
+              <th>Fecha Minuta</th>
               <th>En Alerta</th>
-              <th>Terminar</th>
-              <th>Borrar</th>
+              <th>Fecha Inicio (Proy)</th>
+              <th>Fecha Inicio (Real)</th>
+              <th>Fecha Fin (Proy)</th>
+              <th>Fecha Fin (Real)</th>
             </tr>
           </thead>
           <tbody id="admin-db-table-body"></tbody>
         </table>
       </div>
-
-      <!-- Tareas terminadas o eliminadas -->
-      <details class="collapsible-details" style="margin-top: 20px;" open>
-        <summary class="collapsible-summary-bar">
-          <span class="collapsible-title">Tareas terminadas o eliminadas</span>
-          <button class="btn-back" onclick="event.preventDefault(); event.stopPropagation(); switchView('admin');">Volver</button>
-        </summary>
-        <div class="table-container" style="margin-top: 12px;">
-          <table class="corp-table">
-            <thead>
-              <tr>
-                <th>UN Negocios</th>
-                <th>Proyecto</th>
-                <th>Nombre tarea</th>
-                <th class="col-desc">Descripción tarea</th>
-                <th>Responsable</th>
-                <th>Estado</th>
-                <th>Avance %</th>
-                <th>Fecha Base</th>
-                <th>Fecha inicio (proy)</th>
-                <th>Fecha fin (proy)</th>
-                <th>En Alerta</th>
-                <th>Terminar</th>
-                <th>Borrar</th>
-              </tr>
-            </thead>
-            <tbody id="admin-db-inactive-table-body"></tbody>
-          </table>
-        </div>
-      </details>
     </section>
+
 
 
 
