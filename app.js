@@ -1026,19 +1026,14 @@ function renderAdminDB() {
           ${pStatusOptsHtml}
         </select>
       </td>
-      <td class="col-desc">
-        <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 160px;" value="${item.proyecto_descripcion || ''}" onchange="updateAdminDBField('${taskId}', 'proyecto_descripcion', this.value)">
-      </td>
       <td><strong>${item.tarea_id || ""}</strong></td>
       <td>
         <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 140px;" value="${item.tarea_nombre || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_nombre', this.value)">
       </td>
-      <td class="col-desc">
-        <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 160px;" value="${item.tarea_descripcion || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_descripcion', this.value)">
-      </td>
       <td>
         <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 90px;" value="${item.tarea_responsable || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_responsable', this.value)">
       </td>
+
       <td>
         <select class="form-select" style="padding: 3px 4px; font-size: 0.82rem;" onchange="updateAdminDBField('${taskId}', 'tarea_estado', this.value)">
           ${tStatusOptsHtml}
