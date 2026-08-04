@@ -220,19 +220,59 @@ Al abrir la app las tareas de esta zona se deben ordenar en base a la fecha de c
 
 ### Zona "Avance Semanal"
 
-Es un resumen de tareas modificadas en la semana de la fecha "Fecha de Informe". La zona queda dividida en 2 partes, una sobre la otra.
+Es un resumen de tareas relevantes para la semana correspondiente a la **Fecha de Informe** seleccionada por el usuario.
 
-La primera parte se llama "Tareas Creadas" y muestra una lista todas las tareas con tarea\_fecha\_creacion en la misma semana que la "Fecha de informe"
-La segunda parte está bajo "Tareas Creadas", se llama "Tareas terminadas" muestra una lista con todas las tareas con fecha\_fin\_real en la misma semana que la "Fecha de informe" que tengan estado "terminada" o "eliminada"
-A la derecha del nombre de la tarea, agregar una columna con ícono de semáforo con los mismos parámetros que en "Tareas en Curso":
-color verde: tareas con tarea\_estado "en desarrollo" con "con\_alerta" en "no"
-color amarillo: tareas con tarea\_estado "detenida" con "con\_alerta" en "no"
+La semana se calcula tomando la semana calendario correspondiente a la **Fecha de Informe**.
 
-color rojo: tareas con tarea\_estado "en desarrollo", "detenida" o "por iniciar" que tengan "con\_alerta" en "si".
+La zona queda dividida en 3 subsecciones, una sobre la otra, en este orden:
 
+1. **Tareas Creadas**
+2. **Tareas Terminadas**
+3. **Actualizar Fechas**
 
+Si hay filtro de Unidad de Negocio activo en el Dashboard, el filtro debe aplicarse también a las tres subsecciones de **Avance Semanal**.
 
+#### Tareas Creadas
 
+Una tarea debe aparecer en **Tareas Creadas** sólo si cumple todos estos criterios:
+
+* `tarea_estado` es `"en desarrollo"` o `"detenida"`.
+* `tarea_fecha_creacion` tiene valor.
+* `tarea_fecha_creacion` pertenece a la misma semana de la **Fecha de Informe**.
+
+No deben usarse `fecha_legacy`, `fecha_inicio_proy` ni `fecha_inicio_real` para determinar si una tarea fue creada en la semana. La variable oficial para esta subsección es `tarea_fecha_creacion`.
+
+#### Tareas Terminadas
+
+Una tarea debe aparecer en **Tareas Terminadas** sólo si cumple todos estos criterios:
+
+* `tarea_estado` es `"terminada"` o `"eliminada"`.
+* `fecha_fin_real` tiene valor.
+* `fecha_fin_real` pertenece a la misma semana de la **Fecha de Informe**.
+
+La variable oficial para determinar cierre semanal es `fecha_fin_real`.
+
+#### Actualizar Fechas
+
+Agregar una tercera subsección dentro de **Avance Semanal** llamada **Actualizar Fechas**.
+
+Esta subsección debe mostrar tareas que tengan inconsistencias o fechas incompletas que puedan afectar la lectura del avance semanal.
+
+Deben aparecer en **Actualizar Fechas** las tareas que cumplan cualquiera de estos criterios:
+
+* Tareas con `tarea_estado` `"terminada"` o `"eliminada"` y sin valor en `fecha_fin_real` o sin valor en `fecha_fin_proy`.
+* Tareas sin valor en `fecha_inicio_proy` o sin valor en `fecha_inicio_real`.
+* Tareas con `tarea_fecha_creacion` dentro de la misma semana de la **Fecha de Informe** y sin valor en `fecha_inicio_proy` o sin valor en `fecha_inicio_real`.
+
+La subsección **Actualizar Fechas** es una alerta de calidad de datos. Su objetivo es indicar qué tareas requieren completar o corregir fechas antes de interpretar el avance semanal.
+
+#### Semáforo en Avance Semanal
+
+A la derecha del nombre de la tarea, agregar una columna con ícono de semáforo con los mismos parámetros que en **Tareas en Curso**:
+
+* Color verde: tareas con `tarea_estado` `"en desarrollo"` y `con_alerta` en `"no"`.
+* Color amarillo: tareas con `tarea_estado` `"detenida"` y `con_alerta` en `"no"`.
+* Color rojo: tareas con `tarea_estado` `"en desarrollo"`, `"detenida"` o `"por iniciar"` que tengan `con_alerta` en `"si"`.
 
 ## 2\. Fecha de Informe
 

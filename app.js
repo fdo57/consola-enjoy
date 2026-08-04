@@ -486,15 +486,31 @@ function getSemaforoClass(task) {
 
 function getMondayTimestamp(dateStr) {
   if (!dateStr) return null;
-  const s = String(dateStr).trim().substring(0, 10);
-  if (!s || s.length < 10 || s.toLowerCase() === "nan") return null;
+  const s = String(dateStr).trim();
+  if (!s || s === "-" || s.toLowerCase() === "nan") return null;
 
-  const parts = s.split('-');
-  if (parts.length < 3) return null;
+  let year, month, day;
+  const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const ddmmyyyyMatch = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
 
-  const year = parseInt(parts[0], 10);
-  const month = parseInt(parts[1], 10) - 1;
-  const day = parseInt(parts[2], 10);
+  if (isoMatch) {
+    year = parseInt(isoMatch[1], 10);
+    month = parseInt(isoMatch[2], 10) - 1;
+    day = parseInt(isoMatch[3], 10);
+  } else if (ddmmyyyyMatch) {
+    day = parseInt(ddmmyyyyMatch[1], 10);
+    month = parseInt(ddmmyyyyMatch[2], 10) - 1;
+    year = parseInt(ddmmyyyyMatch[3], 10);
+  } else {
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      year = d.getFullYear();
+      month = d.getMonth();
+      day = d.getDate();
+    } else {
+      return null;
+    }
+  }
 
   if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
 
@@ -515,7 +531,7 @@ function isSameWeek(dateStr1, dateStr2) {
   return m1 === m2;
 }
 
-  // Zone 3: Avance Semanal (Divided into 2 stacked parts: Tareas Creadas & Tareas Terminadas)
+  // Zone 3: Avance Semanal (Divided into 3 stacked sub-sections: Tareas Creadas, Tareas Terminadas, Actualizar Fechas)
   const alertListEl = document.getElementById("dash-alert-list");
   alertListEl.innerHTML = `
     <div style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
@@ -528,19 +544,25 @@ function isSameWeek(dateStr1, dateStr2) {
         <h3 class="avance-sub-header" style="font-size: 0.95rem; font-weight: 700; color: var(--color-title); margin-bottom: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">Tareas Terminadas</h3>
         <ul id="avance-finished-ul" class="item-list" style="margin: 0; padding: 0;"></ul>
       </div>
+
+      <div class="avance-section">
+        <h3 class="avance-sub-header" style="font-size: 0.95rem; font-weight: 700; color: var(--color-title); margin-bottom: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">Actualizar Fechas</h3>
+        <ul id="avance-update-ul" class="item-list" style="margin: 0; padding: 0;"></ul>
+      </div>
     </div>
   `;
 
   const createdUl = document.getElementById("avance-created-ul");
   const finishedUl = document.getElementById("avance-finished-ul");
+  const updateUl = document.getElementById("avance-update-ul");
 
-  // Part 1: Tareas Creadas in same week as fechaInforme
+  // Part 1: Tareas Creadas
   const createdTasks = db.filter(item => {
     if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
-    return isSameWeek(item.tarea_fecha_creacion, fechaInforme) ||
-           isSameWeek(item.fecha_inicio_proy, fechaInforme) ||
-           isSameWeek(item.fecha_inicio_real, fechaInforme) ||
-           isSameWeek(item.fecha_legacy, fechaInforme);
+    const st = (item.tarea_estado || "").toLowerCase().trim();
+    if (st !== "en desarrollo" && st !== "detenida") return false;
+    if (!item.tarea_fecha_creacion || String(item.tarea_fecha_creacion).trim() === "" || String(item.tarea_fecha_creacion).trim() === "-") return false;
+    return isSameWeek(item.tarea_fecha_creacion, fechaInforme);
   });
 
   if (createdTasks.length === 0) {
@@ -561,11 +583,12 @@ function isSameWeek(dateStr1, dateStr2) {
     });
   }
 
-  // Part 2: Tareas Terminadas o Eliminadas con fecha_fin_real en la misma semana que fechaInforme
+  // Part 2: Tareas Terminadas
   const finishedTasks = db.filter(item => {
     if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
     const st = (item.tarea_estado || "").toLowerCase().trim();
     if (st !== "terminada" && st !== "eliminada") return false;
+    if (!item.fecha_fin_real || String(item.fecha_fin_real).trim() === "" || String(item.fecha_fin_real).trim() === "-") return false;
     return isSameWeek(item.fecha_fin_real, fechaInforme);
   });
 
@@ -586,6 +609,48 @@ function isSameWeek(dateStr1, dateStr2) {
       finishedUl.appendChild(li);
     });
   }
+
+  // Part 3: Actualizar Fechas
+  const updateDateTasks = db.filter(item => {
+    if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
+    const st = (item.tarea_estado || "").toLowerCase().trim();
+
+    const hasNoFinReal = !item.fecha_fin_real || String(item.fecha_fin_real).trim() === "" || String(item.fecha_fin_real).trim() === "-";
+    const hasNoFinProy = !item.fecha_fin_proy || String(item.fecha_fin_proy).trim() === "" || String(item.fecha_fin_proy).trim() === "-";
+    const hasNoInicioProy = !item.fecha_inicio_proy || String(item.fecha_inicio_proy).trim() === "" || String(item.fecha_inicio_proy).trim() === "-";
+    const hasNoInicioReal = !item.fecha_inicio_real || String(item.fecha_inicio_real).trim() === "" || String(item.fecha_inicio_real).trim() === "-";
+
+    if ((st === "terminada" || st === "eliminada") && (hasNoFinReal || hasNoFinProy)) {
+      return true;
+    }
+    if (hasNoInicioProy || hasNoInicioReal) {
+      return true;
+    }
+    if (item.tarea_fecha_creacion && isSameWeek(item.tarea_fecha_creacion, fechaInforme) && (hasNoInicioProy || hasNoInicioReal)) {
+      return true;
+    }
+
+    return false;
+  });
+
+  if (updateDateTasks.length === 0) {
+    updateUl.innerHTML = `<li class="alert-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas pendientes de fecha</li>`;
+  } else {
+    updateDateTasks.forEach(task => {
+      const semaforoClass = getSemaforoClass(task);
+      const li = document.createElement("li");
+      li.className = "alert-row-item";
+      li.innerHTML = `
+        <span class="alert-unit-name">${task.unidad_nombre}</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
+          <span class="semaforo-dot ${semaforoClass}" title="Estado: ${task.tarea_estado}, Alerta: ${task.con_alerta}"></span>
+        </div>
+      `;
+      updateUl.appendChild(li);
+    });
+  }
+
 }
 
 // Inline Table Cell Renderers for Estado & Avance %
