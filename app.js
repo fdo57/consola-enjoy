@@ -300,7 +300,9 @@ function renderCurrentView() {
   else if (currentView === "ficha-tarea") renderFichaTarea();
   else if (currentView === "crear-proyecto") renderFormCrearProyecto();
   else if (currentView === "crear-tarea") renderFormCrearTarea();
+  else if (currentView === "admin-db") renderAdminDB();
 }
+
 
 function openFichaUnidad(unitName) {
   selectedUnit = unitName || "Enjoy Rinconada";
@@ -965,112 +967,76 @@ function deleteTask(taskId) {
 // View 3: Admin
 // ---------------------------------------------------------
 function renderAdmin() {
-  const tbody = document.getElementById("admin-proyectos-table-body");
+  // Handlers attached in setupEventListeners
+}
+
+function renderAdminDB() {
+  const tbody = document.getElementById("admin-db-table-body");
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  const projectsMap = {};
-  db.forEach(item => {
-    if (item.proyecto_id && !projectsMap[item.proyecto_id]) {
-      projectsMap[item.proyecto_id] = {
-        proyecto_id: item.proyecto_id,
-        unidad_nombre: item.unidad_nombre || "",
-        proyecto_nombre: item.proyecto_nombre || "",
-        proyecto_descripcion: item.proyecto_descripcion || "",
-        proyecto_estado: item.proyecto_estado || "por iniciar"
-      };
-    }
-  });
+  const activeRows = db.filter(item => isProjectActive(item.proyecto_estado) && isTaskActive(item.tarea_estado));
 
-  const projList = Object.values(projectsMap);
-  const units = ["Enjoy Rinconada", "Enjoy Pucón", "Enjoy Viña", "Enjoy Coquimbo", "Enjoy Chiloé", "Enjoy Transversales"];
-  const statuses = ["por iniciar", "en desarrollo", "en construcción", "detenido", "terminado", "eliminado"];
-
-  projList.forEach(proj => {
+  activeRows.forEach(item => {
     const tr = document.createElement("tr");
-
-    let unitOptionsHtml = units.map(u => `<option value="${u}" ${u === proj.unidad_nombre ? "selected" : ""}>${u}</option>`).join("");
-    if (!units.includes(proj.unidad_nombre) && proj.unidad_nombre) {
-      unitOptionsHtml += `<option value="${proj.unidad_nombre}" selected>${proj.unidad_nombre}</option>`;
-    }
-
-    let statusOptionsHtml = statuses.map(s => `<option value="${s}" ${s === proj.proyecto_estado ? "selected" : ""}>${s}</option>`).join("");
-
     tr.innerHTML = `
+      <td><span class="table-link" onclick="openFichaUnidad('${item.unidad_nombre}')">${item.unidad_nombre}</span></td>
+      <td><span class="table-link" onclick="openFichaProyecto('${item.proyecto_id}')">${item.proyecto_nombre}</span></td>
+      <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre}</span></td>
+      <td class="col-desc"><div class="desc-text-clamp">${item.tarea_descripcion || ""}</div></td>
+      <td>${item.tarea_responsable || ""}</td>
+      <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
+      <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
+      <td>${renderDateCell(item.tarea_id, 'fecha_legacy', item.fecha_legacy)}</td>
+      <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
+      <td>${renderDateCell(item.tarea_id, 'fecha_fin_proy', item.fecha_fin_proy)}</td>
       <td>
-        <select class="form-select" style="padding: 4px; font-size: 0.85rem;" onchange="updateAdminProjectUnit('${proj.proyecto_id}', this.value)">
-          ${unitOptionsHtml}
+        <select class="alert-select" onchange="updateTaskAlert('${item.tarea_id}', this.value)">
+          <option value="no" ${item.con_alerta === "no" ? "selected" : ""}>no</option>
+          <option value="si" ${item.con_alerta === "si" ? "selected" : ""}>si</option>
         </select>
       </td>
-      <td><strong>${proj.proyecto_id}</strong></td>
       <td>
-        <input type="text" class="form-input" style="padding: 4px 6px; font-size: 0.85rem;" value="${proj.proyecto_nombre}" onchange="updateAdminProjectName('${proj.proyecto_id}', this.value)">
-      </td>
-      <td class="col-desc">
-        <input type="text" class="form-input" style="padding: 4px 6px; font-size: 0.85rem;" value="${proj.proyecto_descripcion}" onchange="updateAdminProjectDesc('${proj.proyecto_id}', this.value)">
+        <button class="action-btn check-btn" onclick="completeTask('${item.tarea_id}')">${ICON_CHECK}</button>
       </td>
       <td>
-        <select class="form-select" style="padding: 4px; font-size: 0.85rem;" onchange="updateAdminProjectStatus('${proj.proyecto_id}', this.value)">
-          ${statusOptionsHtml}
-        </select>
-      </td>
-      <td>
-        <button class="action-btn delete-btn" onclick="deleteAdminProject('${proj.proyecto_id}')" title="Eliminar proyecto">${ICON_DELETE}</button>
+        <button class="action-btn delete-btn" onclick="deleteTask('${item.tarea_id}')">${ICON_DELETE}</button>
       </td>
     `;
     tbody.appendChild(tr);
   });
+
+  const inactiveTbody = document.getElementById("admin-db-inactive-table-body");
+  if (inactiveTbody) {
+    inactiveTbody.innerHTML = "";
+    const inactiveRows = db.filter(item => !isProjectActive(item.proyecto_estado) || !isTaskActive(item.tarea_estado));
+    inactiveRows.forEach(item => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><span class="table-link" onclick="openFichaUnidad('${item.unidad_nombre}')">${item.unidad_nombre}</span></td>
+        <td><span class="table-link" onclick="openFichaProyecto('${item.proyecto_id}')">${item.proyecto_nombre}</span></td>
+        <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre}</span></td>
+        <td class="col-desc"><div class="desc-text-clamp">${item.tarea_descripcion || ""}</div></td>
+        <td>${item.tarea_responsable || ""}</td>
+        <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
+        <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
+        <td>${renderDateCell(item.tarea_id, 'fecha_legacy', item.fecha_legacy)}</td>
+        <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
+        <td>${renderDateCell(item.tarea_id, 'fecha_fin_proy', item.fecha_fin_proy)}</td>
+        <td>
+          <select class="alert-select" onchange="updateTaskAlert('${item.tarea_id}', this.value)">
+            <option value="no" ${item.con_alerta === "no" ? "selected" : ""}>no</option>
+            <option value="si" ${item.con_alerta === "si" ? "selected" : ""}>si</option>
+          </select>
+        </td>
+        <td>-</td>
+        <td>-</td>
+      `;
+      inactiveTbody.appendChild(tr);
+    });
+  }
 }
 
-function updateAdminProjectUnit(projId, newUnit) {
-  db.forEach(item => {
-    if (item.proyecto_id === projId) {
-      item.unidad_nombre = newUnit;
-    }
-  });
-  saveDB();
-  renderCurrentView();
-}
-
-function updateAdminProjectName(projId, newName) {
-  db.forEach(item => {
-    if (item.proyecto_id === projId) {
-      item.proyecto_nombre = newName;
-    }
-  });
-  saveDB();
-  renderCurrentView();
-}
-
-function updateAdminProjectDesc(projId, newDesc) {
-  db.forEach(item => {
-    if (item.proyecto_id === projId) {
-      item.proyecto_descripcion = newDesc;
-    }
-  });
-  saveDB();
-  renderCurrentView();
-}
-
-function updateAdminProjectStatus(projId, newStatus) {
-  db.forEach(item => {
-    if (item.proyecto_id === projId) {
-      item.proyecto_estado = newStatus;
-    }
-  });
-  saveDB();
-  renderCurrentView();
-}
-
-function deleteAdminProject(projId) {
-  db.forEach(item => {
-    if (item.proyecto_id === projId) {
-      item.proyecto_estado = "eliminado";
-    }
-  });
-  saveDB();
-  renderCurrentView();
-}
 
 
 function downloadTemplateXLSX() {
