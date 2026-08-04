@@ -732,8 +732,9 @@ summary.collapsible-summary-bar::-webkit-details-marker {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  max-width: 600px;
+  max-width: 1100px;
 }
+
 
 .admin-card {
   background-color: var(--color-white);

@@ -965,8 +965,113 @@ function deleteTask(taskId) {
 // View 3: Admin
 // ---------------------------------------------------------
 function renderAdmin() {
-  // Handlers attached in setupEventListeners
+  const tbody = document.getElementById("admin-proyectos-table-body");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const projectsMap = {};
+  db.forEach(item => {
+    if (item.proyecto_id && !projectsMap[item.proyecto_id]) {
+      projectsMap[item.proyecto_id] = {
+        proyecto_id: item.proyecto_id,
+        unidad_nombre: item.unidad_nombre || "",
+        proyecto_nombre: item.proyecto_nombre || "",
+        proyecto_descripcion: item.proyecto_descripcion || "",
+        proyecto_estado: item.proyecto_estado || "por iniciar"
+      };
+    }
+  });
+
+  const projList = Object.values(projectsMap);
+  const units = ["Enjoy Rinconada", "Enjoy Pucón", "Enjoy Viña", "Enjoy Coquimbo", "Enjoy Chiloé", "Enjoy Transversales"];
+  const statuses = ["por iniciar", "en desarrollo", "en construcción", "detenido", "terminado", "eliminado"];
+
+  projList.forEach(proj => {
+    const tr = document.createElement("tr");
+
+    let unitOptionsHtml = units.map(u => `<option value="${u}" ${u === proj.unidad_nombre ? "selected" : ""}>${u}</option>`).join("");
+    if (!units.includes(proj.unidad_nombre) && proj.unidad_nombre) {
+      unitOptionsHtml += `<option value="${proj.unidad_nombre}" selected>${proj.unidad_nombre}</option>`;
+    }
+
+    let statusOptionsHtml = statuses.map(s => `<option value="${s}" ${s === proj.proyecto_estado ? "selected" : ""}>${s}</option>`).join("");
+
+    tr.innerHTML = `
+      <td>
+        <select class="form-select" style="padding: 4px; font-size: 0.85rem;" onchange="updateAdminProjectUnit('${proj.proyecto_id}', this.value)">
+          ${unitOptionsHtml}
+        </select>
+      </td>
+      <td><strong>${proj.proyecto_id}</strong></td>
+      <td>
+        <input type="text" class="form-input" style="padding: 4px 6px; font-size: 0.85rem;" value="${proj.proyecto_nombre}" onchange="updateAdminProjectName('${proj.proyecto_id}', this.value)">
+      </td>
+      <td class="col-desc">
+        <input type="text" class="form-input" style="padding: 4px 6px; font-size: 0.85rem;" value="${proj.proyecto_descripcion}" onchange="updateAdminProjectDesc('${proj.proyecto_id}', this.value)">
+      </td>
+      <td>
+        <select class="form-select" style="padding: 4px; font-size: 0.85rem;" onchange="updateAdminProjectStatus('${proj.proyecto_id}', this.value)">
+          ${statusOptionsHtml}
+        </select>
+      </td>
+      <td>
+        <button class="action-btn delete-btn" onclick="deleteAdminProject('${proj.proyecto_id}')" title="Eliminar proyecto">${ICON_DELETE}</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
 }
+
+function updateAdminProjectUnit(projId, newUnit) {
+  db.forEach(item => {
+    if (item.proyecto_id === projId) {
+      item.unidad_nombre = newUnit;
+    }
+  });
+  saveDB();
+  renderCurrentView();
+}
+
+function updateAdminProjectName(projId, newName) {
+  db.forEach(item => {
+    if (item.proyecto_id === projId) {
+      item.proyecto_nombre = newName;
+    }
+  });
+  saveDB();
+  renderCurrentView();
+}
+
+function updateAdminProjectDesc(projId, newDesc) {
+  db.forEach(item => {
+    if (item.proyecto_id === projId) {
+      item.proyecto_descripcion = newDesc;
+    }
+  });
+  saveDB();
+  renderCurrentView();
+}
+
+function updateAdminProjectStatus(projId, newStatus) {
+  db.forEach(item => {
+    if (item.proyecto_id === projId) {
+      item.proyecto_estado = newStatus;
+    }
+  });
+  saveDB();
+  renderCurrentView();
+}
+
+function deleteAdminProject(projId) {
+  db.forEach(item => {
+    if (item.proyecto_id === projId) {
+      item.proyecto_estado = "eliminado";
+    }
+  });
+  saveDB();
+  renderCurrentView();
+}
+
 
 function downloadTemplateXLSX() {
   const ws = XLSX.utils.aoa_to_sheet([EXCEL_HEADERS]);

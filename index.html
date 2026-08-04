@@ -179,8 +179,35 @@
           </div>
           <p class="admin-desc">descarga la base de datos en un archivo .xlsx ordenada en columnas con los mismos encabezados de Carga Masiva</p>
         </div>
+
+        <!-- Proyectos Admin -->
+        <div class="admin-card">
+          <div class="admin-card-header" style="margin-bottom: 12px;">
+            <div>
+              <h2 class="admin-title">Proyectos Admin</h2>
+              <p class="admin-desc">administre, edite y gestione los proyectos y sus datos generales</p>
+            </div>
+            <button class="btn-primary-action" onclick="createNewProject()" style="padding: 6px 14px; font-size: 0.9rem;">+ Nuevo proyecto</button>
+          </div>
+          <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+            <table class="corp-table">
+              <thead>
+                <tr>
+                  <th>UN Negocio</th>
+                  <th>ID Proyecto</th>
+                  <th>Nombre Proyecto</th>
+                  <th class="col-desc">Descripción</th>
+                  <th>Estado</th>
+                  <th>Eliminar</th>
+                </tr>
+              </thead>
+              <tbody id="admin-proyectos-table-body"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </section>
+
 
     <!-- 4. FICHA UNIDAD DE NEGOCIO -->
     <section id="view-ficha-unidad" class="view-section">
