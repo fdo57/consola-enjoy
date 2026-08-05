@@ -484,10 +484,20 @@ function getSemaforoClass(task) {
     });
   }
 
+function isEmptyDate(val) {
+  if (val === null || val === undefined) return true;
+  const s = String(val).trim().toLowerCase();
+  return s === "" || s === "-" || s === "nan" || s === "null" || s === "undefined";
+}
+
+function normalizeEstado(st) {
+  if (!st) return "";
+  return String(st).toLowerCase().trim();
+}
+
 function getMondayTimestamp(dateStr) {
-  if (!dateStr) return null;
+  if (isEmptyDate(dateStr)) return null;
   const s = String(dateStr).trim();
-  if (!s || s === "-" || s.toLowerCase() === "nan") return null;
 
   let year, month, day;
   const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -525,6 +535,7 @@ function getMondayTimestamp(dateStr) {
 }
 
 function isSameWeek(dateStr1, dateStr2) {
+  if (isEmptyDate(dateStr1) || isEmptyDate(dateStr2)) return false;
   const m1 = getMondayTimestamp(dateStr1);
   const m2 = getMondayTimestamp(dateStr2);
   if (!m1 || !m2) return false;
@@ -559,10 +570,13 @@ function isSameWeek(dateStr1, dateStr2) {
   // Part 1: Tareas Creadas
   const createdTasks = db.filter(item => {
     if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
-    const st = (item.tarea_estado || "").toLowerCase().trim();
+    const st = normalizeEstado(item.tarea_estado);
     if (st !== "en desarrollo" && st !== "detenida") return false;
-    if (!item.tarea_fecha_creacion || String(item.tarea_fecha_creacion).trim() === "" || String(item.tarea_fecha_creacion).trim() === "-") return false;
-    return isSameWeek(item.tarea_fecha_creacion, fechaInforme);
+    if (isEmptyDate(item.tarea_fecha_creacion)) return false;
+    if (!isSameWeek(item.tarea_fecha_creacion, fechaInforme)) return false;
+    if (!isEmptyDate(item.fecha_fin_proy)) return false;
+    if (!isEmptyDate(item.fecha_fin_real)) return false;
+    return true;
   });
 
   if (createdTasks.length === 0) {
@@ -586,9 +600,9 @@ function isSameWeek(dateStr1, dateStr2) {
   // Part 2: Tareas Terminadas
   const finishedTasks = db.filter(item => {
     if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
-    const st = (item.tarea_estado || "").toLowerCase().trim();
+    const st = normalizeEstado(item.tarea_estado);
     if (st !== "terminada" && st !== "eliminada") return false;
-    if (!item.fecha_fin_real || String(item.fecha_fin_real).trim() === "" || String(item.fecha_fin_real).trim() === "-") return false;
+    if (isEmptyDate(item.fecha_fin_real)) return false;
     return isSameWeek(item.fecha_fin_real, fechaInforme);
   });
 
@@ -613,20 +627,23 @@ function isSameWeek(dateStr1, dateStr2) {
   // Part 3: Actualizar Fechas
   const updateDateTasks = db.filter(item => {
     if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
-    const st = (item.tarea_estado || "").toLowerCase().trim();
+    const st = normalizeEstado(item.tarea_estado);
 
-    const hasNoFinReal = !item.fecha_fin_real || String(item.fecha_fin_real).trim() === "" || String(item.fecha_fin_real).trim() === "-";
-    const hasNoFinProy = !item.fecha_fin_proy || String(item.fecha_fin_proy).trim() === "" || String(item.fecha_fin_proy).trim() === "-";
-    const hasNoInicioProy = !item.fecha_inicio_proy || String(item.fecha_inicio_proy).trim() === "" || String(item.fecha_inicio_proy).trim() === "-";
-    const hasNoInicioReal = !item.fecha_inicio_real || String(item.fecha_inicio_real).trim() === "" || String(item.fecha_inicio_real).trim() === "-";
+    const hasNoFinReal = isEmptyDate(item.fecha_fin_real);
+    const hasNoFinProy = isEmptyDate(item.fecha_fin_proy);
+    const hasNoInicioProy = isEmptyDate(item.fecha_inicio_proy);
+    const hasNoInicioReal = isEmptyDate(item.fecha_inicio_real);
 
+    // Criterio 1: terminada o eliminada y falta fecha_fin_real o falta fecha_fin_proy
     if ((st === "terminada" || st === "eliminada") && (hasNoFinReal || hasNoFinProy)) {
       return true;
     }
+    // Criterio 2: falta fecha_inicio_proy o falta fecha_inicio_real
     if (hasNoInicioProy || hasNoInicioReal) {
       return true;
     }
-    if (item.tarea_fecha_creacion && isSameWeek(item.tarea_fecha_creacion, fechaInforme) && (hasNoInicioProy || hasNoInicioReal)) {
+    // Criterio 3: tarea_fecha_creacion en misma semana de Fecha de Informe y falta fecha_inicio_proy o fecha_inicio_real
+    if (!isEmptyDate(item.tarea_fecha_creacion) && isSameWeek(item.tarea_fecha_creacion, fechaInforme) && (hasNoInicioProy || hasNoInicioReal)) {
       return true;
     }
 
@@ -652,6 +669,7 @@ function isSameWeek(dateStr1, dateStr2) {
   }
 
 }
+
 
 // Inline Table Cell Renderers for Estado & Avance %
 function renderTaskStatusCell(taskId, currentStatus) {
@@ -1032,7 +1050,7 @@ function deleteTask(taskId) {
 // View 3: Admin
 // ---------------------------------------------------------
 function renderAdmin() {
-  // Handlers attached in setupEventListeners
+  renderAdminDBTable("admin-main-table-body");
 }
 
 function updateAdminDBField(taskId, fieldName, value) {
@@ -1055,7 +1073,11 @@ function updateAdminDBField(taskId, fieldName, value) {
 }
 
 function renderAdminDB() {
-  const tbody = document.getElementById("admin-db-table-body");
+  renderAdminDBTable("admin-db-table-body");
+}
+
+function renderAdminDBTable(tbodyId) {
+  const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
   tbody.innerHTML = "";
 
@@ -1077,6 +1099,9 @@ function renderAdminDB() {
     const taskId = item.tarea_id;
 
     tr.innerHTML = `
+      <td style="position: sticky; left: 0; background-color: #fff; z-index: 5; text-align: center; box-shadow: 2px 0 5px rgba(0,0,0,0.08);">
+        <button class="btn-delete" style="padding: 5px 12px; font-size: 0.82rem; font-weight: 700; background-color: #d9534f; color: #fff; border: none; border-radius: 4px; cursor: pointer;" onclick="deleteTaskPermanently('${taskId}')" title="Eliminar definitivamente esta tarea de la BD">Borrar</button>
+      </td>
       <td><strong>${item.proyecto_id || ""}</strong></td>
       <td>
         <select class="form-select" style="padding: 3px 4px; font-size: 0.82rem;" onchange="updateAdminDBField('${taskId}', 'unidad_nombre', this.value)">
@@ -1091,14 +1116,19 @@ function renderAdminDB() {
           ${pStatusOptsHtml}
         </select>
       </td>
+      <td>
+        <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 160px;" value="${item.proyecto_descripcion || ''}" onchange="updateAdminDBField('${taskId}', 'proyecto_descripcion', this.value)">
+      </td>
       <td><strong>${item.tarea_id || ""}</strong></td>
       <td>
         <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 140px;" value="${item.tarea_nombre || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_nombre', this.value)">
       </td>
       <td>
+        <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 160px;" value="${item.tarea_descripcion || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_descripcion', this.value)">
+      </td>
+      <td>
         <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 90px;" value="${item.tarea_responsable || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_responsable', this.value)">
       </td>
-
       <td>
         <select class="form-select" style="padding: 3px 4px; font-size: 0.82rem;" onchange="updateAdminDBField('${taskId}', 'tarea_estado', this.value)">
           ${tStatusOptsHtml}
@@ -1137,6 +1167,17 @@ function renderAdminDB() {
     `;
     tbody.appendChild(tr);
   });
+}
+
+function deleteTaskPermanently(taskId) {
+  const task = db.find(item => item.tarea_id === taskId);
+  if (!task) return;
+  const confirmMsg = `¿Está seguro de eliminar definitivamente la tarea "${task.tarea_nombre}" (${taskId}) de la base de datos? Esta acción no se puede deshacer.`;
+  if (confirm(confirmMsg)) {
+    db = db.filter(item => item.tarea_id !== taskId);
+    saveDB();
+    renderCurrentView();
+  }
 }
 
 
@@ -1565,7 +1606,7 @@ function renderFichaTarea() {
 
             <div class="form-group">
               <label class="form-label">Estado de la tarea:</label>
-              <select id="t-estado" class="form-select">
+              <select id="t-estado" class="form-select" onchange="onFichaEstadoChange(this.value)">
                 <option value="por iniciar" ${task.tarea_estado === "por iniciar" ? "selected" : ""}>por iniciar</option>
                 <option value="en desarrollo" ${task.tarea_estado === "en desarrollo" ? "selected" : ""}>en desarrollo</option>
                 <option value="detenida" ${task.tarea_estado === "detenida" ? "selected" : ""}>detenida</option>
@@ -1604,7 +1645,7 @@ function renderFichaTarea() {
 
             <div class="form-group">
               <label class="form-label">Fecha término:</label>
-              <input type="date" id="t-fecha-fin" class="form-input" value="${parseToYYYYMMDD(task.fecha_fin_proy)}">
+              <input type="date" id="t-fecha-fin" class="form-input" value="${parseToYYYYMMDD(task.fecha_fin_proy)}" ${(task.tarea_estado === "terminada" || task.tarea_estado === "eliminada") ? "disabled" : ""}>
             </div>
 
             <div class="form-group">
@@ -1626,6 +1667,17 @@ function renderFichaTarea() {
   document.getElementById("btn-back-to-project").onclick = function() {
     switchView("dashboard");
   };
+}
+
+function onFichaEstadoChange(newVal) {
+  const finInput = document.getElementById("t-fecha-fin");
+  if (!finInput) return;
+  const st = (newVal || "").toLowerCase().trim();
+  if (st === "terminada" || st === "eliminada") {
+    finInput.disabled = true;
+  } else {
+    finInput.disabled = false;
+  }
 }
 
 function handleSaveButtonClick() {

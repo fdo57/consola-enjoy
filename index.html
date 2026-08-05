@@ -181,15 +181,44 @@
         </div>
 
         <!-- Proyectos Admin -->
-        <div class="admin-card">
+        <div class="admin-card" style="grid-column: 1 / -1;">
           <div class="admin-card-header">
             <h2 class="admin-title">Proyectos Admin</h2>
             <button id="btn-admin-db" class="icon-btn" onclick="switchView('admin-db')">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-              Base de datos
+              Ver en pantalla completa
             </button>
           </div>
-          <p class="admin-desc">administre y edite la base de datos completa de proyectos y tareas</p>
+          <p class="admin-desc">Esta subsección permite administrar directamente los registros de proyectos existentes en la base de datos.</p>
+          <div class="table-container" style="overflow-x: auto; max-height: 500px; margin-top: 12px;">
+            <table class="corp-table" style="min-width: 2200px;">
+              <thead>
+                <tr>
+                  <th style="position: sticky; left: 0; background-color: #EBEBEB; z-index: 12; box-shadow: 2px 0 5px rgba(0,0,0,0.1); min-width: 140px; text-align: center;">Borrado Permanente</th>
+                  <th>ID Proyecto</th>
+                  <th>UN Negocios</th>
+                  <th>Nombre Proyecto</th>
+                  <th>Estado Proyecto</th>
+                  <th>Descripción Proyecto</th>
+                  <th>ID Tarea</th>
+                  <th>Nombre Tarea</th>
+                  <th>Descripción Tarea</th>
+                  <th>Responsable</th>
+                  <th>Estado Tarea</th>
+                  <th>Contraparte</th>
+                  <th>Avance %</th>
+                  <th>Fecha Creación</th>
+                  <th>Fecha Minuta</th>
+                  <th>En Alerta</th>
+                  <th>Fecha Inicio (Proy)</th>
+                  <th>Fecha Inicio (Real)</th>
+                  <th>Fecha Fin (Proy)</th>
+                  <th>Fecha Fin (Real)</th>
+                </tr>
+              </thead>
+              <tbody id="admin-main-table-body"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>
@@ -203,15 +232,18 @@
         </div>
       </div>
       <div class="table-container" style="overflow-x: auto; max-height: calc(100vh - 160px);">
-        <table class="corp-table" style="min-width: 1900px;">
+        <table class="corp-table" style="min-width: 2200px;">
           <thead>
             <tr>
+              <th style="position: sticky; left: 0; background-color: #EBEBEB; z-index: 12; box-shadow: 2px 0 5px rgba(0,0,0,0.1); min-width: 140px; text-align: center;">Borrado Permanente</th>
               <th>ID Proyecto</th>
               <th>UN Negocios</th>
               <th>Nombre Proyecto</th>
               <th>Estado Proyecto</th>
+              <th>Descripción Proyecto</th>
               <th>ID Tarea</th>
               <th>Nombre Tarea</th>
+              <th>Descripción Tarea</th>
               <th>Responsable</th>
               <th>Estado Tarea</th>
               <th>Contraparte</th>

@@ -427,11 +427,11 @@ descarga la base de datos en un archivo .xlsx ordenada en columnas con los mismo
 
 "Proyectos Admin"
 
-Esta subsección permite administrar directamente los registros existentes en la base de datos. Su objetivo es permitir la revisión, corrección y mantención de los datos principales de cada proyecto y sus tareas desde la consola, sin necesidad de editar manualmente el archivo base.
+Esta subsección permite administrar directamente los registros de proyectos existentes en la base de datos. Su objetivo es permitir la revisión, corrección y mantención de los datos principales de cada proyecto desde la consola, sin necesidad de editar manualmente el archivo base.
 
-Debe mostrarse como una tabla editable con una fila por registro/tarea. La tabla debe incluir los siguientes campos:
+Debe mostrarse como una tabla editable con una fila por proyecto. La tabla debe incluir los siguientes campos:
 
-- `borrado_permanente`: no corresponde a un campo de datos. En esta columna debe aparecer un botón de borrado que elimine de manera permanente de la base de datos la fila/registro correspondiente.
+- `borrado_permanente`: en esta columna debe aparecer un botón de borrado, que borra de manera permanente de la base de datos la fila correspondiente
 - `proyecto_id`: no editable. Identificador único del proyecto en la base de datos.
 - `unidad_nombre`: editable. Unidad de Negocio a la que pertenece el proyecto.
 - `proyecto_nombre`: editable. Nombre del proyecto.
@@ -452,8 +452,8 @@ Debe mostrarse como una tabla editable con una fila por registro/tarea. La tabla
 - `fecha_fin_proy`: editable. Debe incluir un botón para desplegar un calendario.
 - `fecha_fin_real`: editable. Debe incluir un botón para desplegar un calendario.
 
-El botón de borrado permanente debe estar claramente diferenciado de otros botones de eliminación lógica. Su acción debe eliminar el registro/fila de forma definitiva desde la base de datos, no sólo cambiar su estado a `"eliminada"`. Antes de ejecutar el borrado permanente, la app debe solicitar confirmación al usuario.
 
+El botón de borrado permanente debe estar claramente diferenciado de otros botones de eliminación lógica. Su acción debe eliminar el registro de forma definitiva desde la base de datos, no sólo cambiar su estado a `"eliminada"`. Antes de ejecutar el borrado permanente, la app debe solicitar confirmación al usuario.
 # Fichas
 
 ## Ficha "Unidad de Negocio"
