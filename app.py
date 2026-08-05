@@ -30,9 +30,9 @@ st.markdown("""
 dir_path = os.path.dirname(os.path.abspath(__file__))
 
 # ---------------------------------------------------------
-# 1. Load Central Data with caching (TTL=60s to prevent 429 quota errors)
+# 1. Load Central Data (Google Sheets / db_manager)
 # ---------------------------------------------------------
-central_res = db_manager.fetch_central_data_cached()
+central_res = db_manager.load_central_data()
 
 # Always refresh Session State from central DB if load succeeded
 if central_res["status"] == "ok" and isinstance(central_res.get("data"), list):
@@ -73,7 +73,7 @@ component_value = consola_component(
 )
 
 # ---------------------------------------------------------
-# 3. Handle Frontend Mutation Events (Bulk Save & Cache Invalidation)
+# 3. Handle Frontend Mutation Events
 # ---------------------------------------------------------
 if component_value and isinstance(component_value, dict):
     action = component_value.get("action")
@@ -82,14 +82,8 @@ if component_value and isinstance(component_value, dict):
         if isinstance(new_data, list):
             save_result = db_manager.save_central_data(new_data)
             if save_result["status"] == "ok":
-                # Update session state directly without performing immediate re-fetch
                 st.session_state["central_db"] = new_data
                 st.session_state["save_status"] = {"status": "ok"}
-                # Clear cached read so future routine reads reflect saved data
-                db_manager.fetch_central_data_cached.clear()
             else:
-                st.session_state["save_status"] = {
-                    "status": "error",
-                    "message": save_result.get("message", "Error al guardar en Google Sheets.")
-                }
+                st.session_state["save_status"] = {"status": "error"}
             st.rerun()
