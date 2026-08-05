@@ -1100,7 +1100,7 @@ function renderAdminDBTable(tbodyId) {
 
     tr.innerHTML = `
       <td style="position: sticky; left: 0; background-color: #fff; z-index: 5; text-align: center; box-shadow: 2px 0 5px rgba(0,0,0,0.08);">
-        <button class="btn-delete" style="padding: 5px 12px; font-size: 0.82rem; font-weight: 700; background-color: #d9534f; color: #fff; border: none; border-radius: 4px; cursor: pointer;" onclick="deleteTaskPermanently('${taskId}')" title="Eliminar definitivamente esta tarea de la BD">Borrar</button>
+        <button class="action-btn delete-btn" style="padding: 6px; background-color: #d9534f; color: #fff; border: none; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;" onclick="deleteTaskPermanently('${taskId}')" title="Eliminar definitivamente de la base de datos">${ICON_DELETE}</button>
       </td>
       <td><strong>${item.proyecto_id || ""}</strong></td>
       <td>
