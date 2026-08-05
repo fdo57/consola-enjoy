@@ -14,30 +14,43 @@ HEADERS = [
 DIR_PATH = os.path.dirname(os.path.abspath(__file__))
 SQLITE_DB_PATH = os.path.join(DIR_PATH, "consola_enjoy.db")
 DATA_JS_PATH = os.path.join(DIR_PATH, "data.js")
-DEFAULT_SPREADSHEET_ID = "1dpA2Nnk9dZ_NVkhJD1HHRBN4CH6Ry8bzm2Iuf_oXV8Y"
+OFFICIAL_SPREADSHEET_ID = "1dpA2Nnk9dZ_NVkhJD1HHRBN4CH6Ry8bzm2Iuf_oXV8Y"
 
-def load_seed_data():
-    """Loads seed data from data.js if central DB is empty."""
-    if not os.path.exists(DATA_JS_PATH):
-        return []
+def extract_spreadsheet_id(target):
+    """Parses a spreadsheet URL or raw string to get the 44-character ID."""
+    if not target:
+        return OFFICIAL_SPREADSHEET_ID
+    s = str(target).strip()
+    match = re.search(r"/d/([a-zA-Z0-9-_]+)", s)
+    if match:
+        return match.group(1)
+    if len(s) >= 25 and not s.startswith("http"):
+        return s
+    return OFFICIAL_SPREADSHEET_ID
+
+def get_spreadsheet_id(config_data=None):
+    """Determines the target Google Spreadsheet ID from st.secrets or fallback to official ID."""
     try:
-        with open(DATA_JS_PATH, "r", encoding="utf-8") as f:
-            content = f.read()
-        match = re.search(r"window\.INITIAL_DATA\s*=\s*(\[[\s\S]*?\]);", content)
-        if match:
-            raw_json = match.group(1)
-            records = json.loads(raw_json)
-            cleaned = []
-            for r in records:
-                obj = {}
-                for h in HEADERS:
-                    val = r.get(h, "")
-                    obj[h] = "" if val is None else str(val).strip()
-                cleaned.append(obj)
-            return cleaned
-    except Exception as e:
-        print(f"Error reading seed data from data.js: {e}")
-    return []
+        if hasattr(st, "secrets"):
+            secrets = st.secrets
+            top_target = secrets.get("spreadsheet_id") or secrets.get("spreadsheet") or secrets.get("spreadsheet_url")
+            if top_target:
+                return extract_spreadsheet_id(top_target)
+
+            gs = secrets.get("gsheets") or secrets.get("connections", {}).get("gsheets") or secrets.get("google_sheets")
+            if isinstance(gs, dict):
+                gs_target = gs.get("spreadsheet_id") or gs.get("spreadsheet") or gs.get("spreadsheet_url")
+                if gs_target:
+                    return extract_spreadsheet_id(gs_target)
+    except Exception:
+        pass
+
+    if config_data and isinstance(config_data, dict):
+        cfg_target = config_data.get("spreadsheet_id") or config_data.get("spreadsheet") or config_data.get("spreadsheet_url")
+        if cfg_target:
+            return extract_spreadsheet_id(cfg_target)
+
+    return OFFICIAL_SPREADSHEET_ID
 
 def get_gsheets_config():
     """Extracts Google Sheets configuration from st.secrets if available."""
@@ -45,18 +58,25 @@ def get_gsheets_config():
         if not hasattr(st, "secrets"):
             return None, None
         secrets = st.secrets
+
+        # 1. Service account nested config
+        gs_secrets = secrets.get("gsheets") or secrets.get("connections", {}).get("gsheets") or secrets.get("google_sheets")
+        if gs_secrets and isinstance(gs_secrets, dict):
+            if "client_email" in gs_secrets and "private_key" in gs_secrets:
+                return "service_account", gs_secrets
+            if "web_app_url" in gs_secrets:
+                return "web_app", {"url": gs_secrets["web_app_url"]}
+
+        # 2. Service account at root level
+        if secrets.get("client_email") and secrets.get("private_key"):
+            return "service_account", dict(secrets)
+
+        # 3. Web App URL at root level
         web_url = secrets.get("gsheets_url") or secrets.get("GAPPS_SCRIPT_URL") or secrets.get("web_app_url")
         if web_url:
             return "web_app", {"url": web_url}
-
-        gs_secrets = secrets.get("gsheets") or secrets.get("connections", {}).get("gsheets") or secrets.get("google_sheets")
-        if gs_secrets and isinstance(gs_secrets, dict):
-            if "web_app_url" in gs_secrets:
-                return "web_app", {"url": gs_secrets["web_app_url"]}
-            if "client_email" in gs_secrets and "private_key" in gs_secrets:
-                return "service_account", gs_secrets
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Error reading st.secrets: {e}")
 
     return None, None
 
@@ -70,8 +90,7 @@ def _get_gspread_client(sa_config):
     ]
 
     sa_info = dict(sa_config)
-    # Ensure private key formatting
-    if "private_key" in sa_info:
+    if "private_key" in sa_info and isinstance(sa_info["private_key"], str):
         sa_info["private_key"] = sa_info["private_key"].replace("\\n", "\n")
 
     creds = Credentials.from_service_account_info(sa_info, scopes=scopes)
@@ -79,23 +98,14 @@ def _get_gspread_client(sa_config):
 
 def _load_from_gsheets_sa(sa_config):
     client = _get_gspread_client(sa_config)
-    sheet_target = sa_config.get("spreadsheet") or sa_config.get("spreadsheet_url") or sa_config.get("spreadsheet_id") or DEFAULT_SPREADSHEET_ID
+    sheet_id = get_spreadsheet_id(sa_config)
 
-    if sheet_target.startswith("http://") or sheet_target.startswith("https://"):
-        sh = client.open_by_url(sheet_target)
-    else:
-        sh = client.open_by_key(sheet_target) if len(sheet_target) > 20 else client.open(sheet_target)
-
+    sh = client.open_by_key(sheet_id)
     worksheet = sh.sheet1
     all_values = worksheet.get_all_values()
 
     if not all_values or len(all_values) <= 1:
-        # Sheet is empty, seed it
-        seed = load_seed_data()
-        if seed:
-            _save_to_gsheets_sa(sa_config, seed)
-            return seed
-        return []
+        return [], sheet_id
 
     headers = [str(h).strip() for h in all_values[0]]
     records = []
@@ -112,19 +122,15 @@ def _load_from_gsheets_sa(sa_config):
                 obj[h] = ""
         records.append(obj)
 
-    return records
+    return records, sheet_id
 
 def _save_to_gsheets_sa(sa_config, records):
     client = _get_gspread_client(sa_config)
-    sheet_target = sa_config.get("spreadsheet") or sa_config.get("spreadsheet_url") or sa_config.get("spreadsheet_id") or DEFAULT_SPREADSHEET_ID
+    sheet_id = get_spreadsheet_id(sa_config)
 
-    if sheet_target.startswith("http://") or sheet_target.startswith("https://"):
-        sh = client.open_by_url(sheet_target)
-    else:
-        sh = client.open_by_key(sheet_target) if len(sheet_target) > 20 else client.open(sheet_target)
-
+    sh = client.open_by_key(sheet_id)
     worksheet = sh.sheet1
-    
+
     rows = [HEADERS]
     for r in records:
         row = [str(r.get(h, "")) for h in HEADERS]
@@ -135,22 +141,23 @@ def _save_to_gsheets_sa(sa_config, records):
 
 def _load_from_gsheets_webapp(url):
     import requests
+    sheet_id = get_spreadsheet_id()
     resp = requests.get(url, timeout=10)
     resp.raise_for_status()
     data = resp.json()
+    
+    cleaned = []
+    raw_list = []
     if isinstance(data, list):
-        if len(data) == 0:
-            seed = load_seed_data()
-            if seed:
-                _save_to_gsheets_webapp(url, seed)
-                return seed
-            return []
-        cleaned = []
-        for r in data:
-            obj = {h: str(r.get(h, "")).strip() for h in HEADERS}
-            cleaned.append(obj)
-        return cleaned
-    return []
+        raw_list = data
+    elif isinstance(data, dict) and "data" in data and isinstance(data["data"], list):
+        raw_list = data["data"]
+
+    for r in raw_list:
+        obj = {h: str(r.get(h, "")).strip() for h in HEADERS}
+        cleaned.append(obj)
+
+    return cleaned, sheet_id
 
 def _save_to_gsheets_webapp(url, records):
     import requests
@@ -159,46 +166,36 @@ def _save_to_gsheets_webapp(url, records):
     resp.raise_for_status()
 
 # ---------------------------------------------------------
-# SQLite Local Fallback (For local dev only)
+# SQLite Local Fallback (Only for local dev without st.secrets)
 # ---------------------------------------------------------
-def _init_sqlite_db():
-    conn = sqlite3.connect(SQLITE_DB_PATH)
-    cursor = conn.cursor()
-    columns_def = ", ".join([f"{h} TEXT" for h in HEADERS])
-    cursor.execute(f"CREATE TABLE IF NOT EXISTS proyectos_tareas ({columns_def})")
-    conn.commit()
-    
-    cursor.execute("SELECT COUNT(*) FROM proyectos_tareas")
-    count = cursor.fetchone()[0]
-    if count == 0:
-        seed = load_seed_data()
-        if seed:
-            _save_to_sqlite(seed)
-    conn.close()
-
 def _load_from_sqlite():
-    _init_sqlite_db()
+    if not os.path.exists(SQLITE_DB_PATH):
+        return []
     conn = sqlite3.connect(SQLITE_DB_PATH)
     cursor = conn.cursor()
-    cursor.execute(f"SELECT {', '.join(HEADERS)} FROM proyectos_tareas")
-    rows = cursor.fetchall()
-    conn.close()
-
-    records = []
-    for r in rows:
-        obj = {HEADERS[i]: "" if r[i] is None else str(r[i]).strip() for i in range(len(HEADERS))}
-        records.append(obj)
-
-    return records
+    try:
+        cursor.execute(f"SELECT {', '.join(HEADERS)} FROM proyectos_tareas")
+        rows = cursor.fetchall()
+        conn.close()
+        records = []
+        for r in rows:
+            obj = {HEADERS[i]: "" if r[i] is None else str(r[i]).strip() for i in range(len(HEADERS))}
+            records.append(obj)
+        return records
+    except Exception:
+        conn.close()
+        return []
 
 def _save_to_sqlite(records):
     conn = sqlite3.connect(SQLITE_DB_PATH)
     cursor = conn.cursor()
+    columns_def = ", ".join([f"{h} TEXT" for h in HEADERS])
+    cursor.execute(f"CREATE TABLE IF NOT EXISTS proyectos_tareas ({columns_def})")
     cursor.execute("DELETE FROM proyectos_tareas")
-    
+
     placeholders = ", ".join(["?"] * len(HEADERS))
     query = f"INSERT INTO proyectos_tareas ({', '.join(HEADERS)}) VALUES ({placeholders})"
-    
+
     data_tuples = []
     for r in records:
         tup = tuple(str(r.get(h, "")).strip() for h in HEADERS)
@@ -214,120 +211,113 @@ def _save_to_sqlite(records):
 def load_central_data():
     """
     Main entrypoint to load data from central DB.
-    Returns dict:
-      {
-        "status": "ok" | "warning" | "error",
-        "message": str,
-        "source": "google_sheets" | "sqlite_local_dev",
-        "data": list of record dicts
-      }
+    Guarantees no fallbacks to old seed data or SQLite in production.
     """
     config_type, config_data = get_gsheets_config()
+    sheet_id = get_spreadsheet_id(config_data)
 
     if config_type == "service_account":
         try:
-            records = _load_from_gsheets_sa(config_data)
+            records, active_sheet_id = _load_from_gsheets_sa(config_data)
             return {
                 "status": "ok",
-                "message": "Datos cargados exitosamente desde Google Sheets (Service Account).",
-                "source": "google_sheets",
+                "message": f"Cargados {len(records)} registros desde Google Sheets (Service Account).",
+                "source": "google_sheets_service_account",
+                "spreadsheet_id": active_sheet_id,
+                "row_count": len(records),
                 "data": records
             }
         except Exception as e:
             return {
                 "status": "error",
-                "message": f"Error al conectar con Google Sheets: {e}",
-                "source": "google_sheets",
+                "message": f"Error al conectar con Google Sheets (Service Account): {e}",
+                "source": "google_sheets_service_account",
+                "spreadsheet_id": sheet_id,
+                "row_count": 0,
                 "data": []
             }
 
     elif config_type == "web_app":
         try:
-            records = _load_from_gsheets_webapp(config_data["url"])
+            records, active_sheet_id = _load_from_gsheets_webapp(config_data["url"])
             return {
                 "status": "ok",
-                "message": "Datos cargados exitosamente desde Google Sheets (Web App).",
-                "source": "google_sheets",
+                "message": f"Cargados {len(records)} registros desde Google Sheets (Web App).",
+                "source": "google_sheets_web_app",
+                "spreadsheet_id": active_sheet_id,
+                "row_count": len(records),
                 "data": records
             }
         except Exception as e:
             return {
                 "status": "error",
                 "message": f"Error al conectar con Google Sheets Web App: {e}",
-                "source": "google_sheets",
+                "source": "google_sheets_web_app",
+                "spreadsheet_id": sheet_id,
+                "row_count": 0,
                 "data": []
             }
 
-    # No Google Sheets secret configured
-    # Check if running in Streamlit Cloud / Hosted production environment
-    is_streamlit_cloud = bool(os.environ.get("STREAMLIT_SERVER_PORT") or os.environ.get("IS_STREAMLIT_CLOUD"))
+    # Check if running in hosted/production environment
+    is_hosted = bool(
+        os.environ.get("STREAMLIT_SERVER_PORT") or 
+        os.environ.get("IS_STREAMLIT_CLOUD") or 
+        os.environ.get("STREAMLIT_SHARING_MODE") or
+        hasattr(st, "secrets")
+    )
 
-    if is_streamlit_cloud:
+    if is_hosted:
         return {
             "status": "warning",
-            "message": "Configuración incompleta: No se detectaron credenciales de Google Sheets en st.secrets para el entorno de producción. La persistencia multiusuario requiere configurar Google Sheets.",
-            "source": "none",
+            "message": "Sin credenciales en st.secrets: Configure Google Sheets en st.secrets de Streamlit Cloud para conectar la BD central oficial.",
+            "source": "desconectado_produccion",
+            "spreadsheet_id": sheet_id,
+            "row_count": 0,
             "data": []
         }
     else:
-        # Local development fallback
-        try:
-            records = _load_from_sqlite()
-            return {
-                "status": "ok",
-                "message": "Modo Desarrollo Local: Utilizando SQLite local consola_enjoy.db (No apto para producción multiusuario).",
-                "source": "sqlite_local_dev",
-                "data": records
-            }
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": f"Error al cargar base local SQLite: {e}",
-                "source": "sqlite_local_dev",
-                "data": []
-            }
+        # Local development only when st.secrets is absent
+        records = _load_from_sqlite()
+        return {
+            "status": "ok",
+            "message": f"Modo Desarrollo Local: Utilizando SQLite local (consola_enjoy.db) con {len(records)} filas.",
+            "source": "sqlite_local_dev",
+            "spreadsheet_id": sheet_id,
+            "row_count": len(records),
+            "data": records
+        }
 
 def save_central_data(records):
-    """
-    Main entrypoint to save data to central DB.
-    Returns dict:
-      {
-        "status": "ok" | "error",
-        "message": str,
-        "data": list of saved record dicts
-      }
-    """
+    """Main entrypoint to save data to central DB."""
     if not isinstance(records, list):
-        return {"status": "error", "message": "Los datos recibidos deben ser una lista de registros.", "data": []}
+        return {"status": "error", "message": "Los datos deben ser una lista.", "data": []}
 
     config_type, config_data = get_gsheets_config()
+    sheet_id = get_spreadsheet_id(config_data)
 
     if config_type == "service_account":
         try:
             _save_to_gsheets_sa(config_data, records)
-            return {"status": "ok", "message": "Base de datos guardada exitosamente en Google Sheets.", "data": records}
+            return {"status": "ok", "message": "Guardado exitosamente en Google Sheets.", "spreadsheet_id": sheet_id, "data": records}
         except Exception as e:
-            return {"status": "error", "message": f"Error al guardar en Google Sheets: {e}", "data": []}
+            return {"status": "error", "message": f"Error al guardar en Google Sheets: {e}", "spreadsheet_id": sheet_id, "data": []}
 
     elif config_type == "web_app":
         try:
             _save_to_gsheets_webapp(config_data["url"], records)
-            return {"status": "ok", "message": "Base de datos guardada exitosamente en Google Sheets (Web App).", "data": records}
+            return {"status": "ok", "message": "Guardado exitosamente en Google Sheets (Web App).", "spreadsheet_id": sheet_id, "data": records}
         except Exception as e:
-            return {"status": "error", "message": f"Error al guardar en Google Sheets Web App: {e}", "data": []}
+            return {"status": "error", "message": f"Error al guardar en Web App: {e}", "spreadsheet_id": sheet_id, "data": []}
 
-    # Fallback to local SQLite if not production
-    is_streamlit_cloud = bool(os.environ.get("STREAMLIT_SERVER_PORT") or os.environ.get("IS_STREAMLIT_CLOUD"))
+    is_hosted = bool(
+        os.environ.get("STREAMLIT_SERVER_PORT") or 
+        os.environ.get("IS_STREAMLIT_CLOUD") or 
+        os.environ.get("STREAMLIT_SHARING_MODE") or
+        hasattr(st, "secrets")
+    )
 
-    if is_streamlit_cloud:
-        return {
-            "status": "error",
-            "message": "Configuración incompleta: Imposible guardar. Configure las credenciales de Google Sheets en st.secrets.",
-            "data": []
-        }
+    if is_hosted:
+        return {"status": "error", "message": "Imposible guardar: Configure st.secrets en Streamlit Cloud.", "spreadsheet_id": sheet_id, "data": []}
     else:
-        try:
-            _save_to_sqlite(records)
-            return {"status": "ok", "message": "Base de datos guardada localmente en SQLite.", "data": records}
-        except Exception as e:
-            return {"status": "error", "message": f"Error al guardar en SQLite local: {e}", "data": []}
+        _save_to_sqlite(records)
+        return {"status": "ok", "message": "Guardado localmente en SQLite.", "spreadsheet_id": sheet_id, "data": records}

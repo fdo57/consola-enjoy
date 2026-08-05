@@ -249,10 +249,10 @@ No deben usarse `fecha_legacy`, `fecha_inicio_proy` ni `fecha_inicio_real` para 
 Una tarea debe aparecer en **Tareas Terminadas** sólo si cumple todos estos criterios:
 
 * `tarea_estado` es `"terminada"` o `"eliminada"`.
-* `fecha_fin_real` tiene valor.
-* `fecha_fin_real` pertenece a la misma semana de la **Fecha de Informe**.
+* `fecha_fin_proy` tiene valor.
+* `fecha_fin_proy` pertenece a la misma semana de la **Fecha de Informe**.
 
-La variable oficial para determinar cierre semanal es `fecha_fin_real`.
+La variable oficial para determinar cierre semanal es `fecha_fin_proy`.
 
 #### Actualizar Fechas
 

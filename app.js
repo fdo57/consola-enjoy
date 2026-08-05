@@ -174,49 +174,48 @@ function renderStatusBanner() {
   const banner = document.getElementById("db-status-banner");
   if (!banner) return;
 
+  const statusObj = window.DB_STATUS || {};
+  const status = statusObj.status || "ok";
+  const source = statusObj.source || (isStreamlitConnected ? "streamlit" : "desconectado_local");
+  const rowCount = db ? db.length : 0;
+  const sheetId = statusObj.spreadsheet_id || "1dpA2Nnk9dZ_NVkhJD1HHRBN4CH6Ry8bzm2Iuf_oXV8Y";
+
+  const diagInfo = `📊 <strong>DIAGNÓSTICO BD:</strong> Fuente: <code>${source}</code> | Filas cargadas: <code>${rowCount}</code> | Spreadsheet ID: <code>${sheetId}</code>`;
+
   if (!isStreamlitConnected) {
     banner.style.display = "block";
     banner.style.backgroundColor = "#fff3cd";
     banner.style.color = "#856404";
     banner.style.border = "1px solid #ffeeba";
-    banner.textContent = "⚠️ Advertencia: La app se abrió sin conexión a Streamlit. Los cambios no se guardarán en la base central.";
+    banner.innerHTML = `⚠️ Advertencia: Modo local sin conexión a Streamlit. | ${diagInfo}`;
     return;
   }
 
-  const status = window.DB_STATUS ? window.DB_STATUS.status : "ok";
   if (status === "warning") {
     banner.style.display = "block";
     banner.style.backgroundColor = "#fff3cd";
     banner.style.color = "#856404";
     banner.style.border = "1px solid #ffeeba";
-    banner.textContent = "⚠️ Advertencia: Sin conexión efectiva a la base central. Los cambios no se guardarán.";
+    banner.innerHTML = `⚠️ Advertencia: ${statusObj.message || 'Sin conexión a BD central.'} | ${diagInfo}`;
   } else if (status === "error") {
     banner.style.display = "block";
     banner.style.backgroundColor = "#f8d7da";
     banner.style.color = "#721c24";
     banner.style.border = "1px solid #f5c6cb";
-    banner.textContent = "❌ Error: Sin conexión a la base central. Los cambios no se guardarán.";
+    banner.innerHTML = `❌ Error: ${statusObj.message || 'Error en BD central.'} | ${diagInfo}`;
   } else {
-    banner.style.display = "none";
+    banner.style.display = "block";
+    banner.style.backgroundColor = "#e8f4f8";
+    banner.style.color = "#31708f";
+    banner.style.border = "1px solid #bce8f1";
+    banner.innerHTML = diagInfo;
   }
 }
 
 // Initialize State
 function initDB() {
-  // Load from localStorage ONLY as temporary cache until central DB responds
-  try {
-    const localData = localStorage.getItem("ENJOY_PROJECTS_DB_V3");
-    if (localData) {
-      const parsed = JSON.parse(localData);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        db = parsed;
-      }
-    }
-  } catch (e) {}
-
   notifyStreamlitReady();
 
-  // If Streamlit connection isn't confirmed within 1.2s, display disconnection banner
   setTimeout(() => {
     renderStatusBanner();
   }, 1200);
@@ -602,8 +601,8 @@ function isSameWeek(dateStr1, dateStr2) {
     if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
     const st = normalizeEstado(item.tarea_estado);
     if (st !== "terminada" && st !== "eliminada") return false;
-    if (isEmptyDate(item.fecha_fin_real)) return false;
-    return isSameWeek(item.fecha_fin_real, fechaInforme);
+    if (isEmptyDate(item.fecha_fin_proy)) return false;
+    return isSameWeek(item.fecha_fin_proy, fechaInforme);
   });
 
   if (finishedTasks.length === 0) {

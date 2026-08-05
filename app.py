@@ -34,20 +34,27 @@ dir_path = os.path.dirname(os.path.abspath(__file__))
 # ---------------------------------------------------------
 central_res = db_manager.load_central_data()
 
-# Initialize Session State
-if "central_db" not in st.session_state:
-    if central_res["status"] == "ok":
-        st.session_state["central_db"] = central_res.get("data", [])
-    else:
-        st.session_state["central_db"] = []
+# Always refresh Session State from central DB if load succeeded
+if central_res["status"] == "ok" and isinstance(central_res.get("data"), list):
+    st.session_state["central_db"] = central_res["data"]
+elif "central_db" not in st.session_state:
+    st.session_state["central_db"] = central_res.get("data", [])
 
 current_db_data = st.session_state["central_db"]
 
-# Optional banner for st.secrets configuration issues in production
-if central_res["status"] == "warning":
-    st.warning(f"⚠️ {central_res['message']}")
-elif central_res["status"] == "error":
-    st.error(f"❌ {central_res['message']}")
+# Visible Diagnostic Indicator in Production
+source_type = central_res.get("source", "desconocida")
+row_count = len(current_db_data)
+sheet_id = central_res.get("spreadsheet_id", "N/A")
+msg = central_res.get("message", "")
+
+st.info(
+    f"📊 **DIAGNÓSTICO BD CENTRAL EN VIVO** | "
+    f"**Fuente:** `{source_type}` | "
+    f"**Filas cargadas:** `{row_count}` | "
+    f"**Spreadsheet ID:** `{sheet_id}` | "
+    f"**Estado:** {msg}"
+)
 
 # Fetch save_status if set during previous mutation
 save_status = st.session_state.pop("save_status", None)
