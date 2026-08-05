@@ -232,11 +232,11 @@ function saveDB() {
     console.warn("localStorage write failed:", e);
   }
 
-  // Verify connection to Streamlit and central database
-  if (isStreamlitConnected && (!window.DB_STATUS || window.DB_STATUS.status === "ok")) {
+  // Verify connection to Streamlit and central database (must be google_sheets)
+  if (isStreamlitConnected && window.DB_STATUS && window.DB_STATUS.status === "ok" && window.DB_STATUS.source === "google_sheets") {
     sendToStreamlit("save_db", db);
   } else {
-    // If opened without Streamlit or without central DB, do not give false confirmation
+    // If source is not google_sheets or connection is offline, do not simulate success
     showSaveToast(false);
     renderStatusBanner();
   }
