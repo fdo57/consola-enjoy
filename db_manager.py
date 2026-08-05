@@ -60,67 +60,70 @@ def get_spreadsheet_id(config_data=None):
     return OFFICIAL_SPREADSHEET_ID
 
 def get_gsheets_config():
-    """
-    Extracts Google Sheets configuration from st.secrets.
+    """Extract Google Sheets configuration from st.secrets.
+
     Priority:
-    1. Service Account ([gsheets], [google_sheets], [connections.gsheets] or root)
-    2. Web App URL (gsheets_url / GAPPS_SCRIPT_URL / web_app_url) as fallback
-    
-    Returns: (config_type, config_data_or_error_dict)
+    1) Service Account in [gsheets] with spreadsheet_id/client_email/private_key.
+    2) Service Account in other supported secret blocks.
+    3) Apps Script Web App URL as fallback only.
     """
-    secrets = get_st_secrets_dict()
-    if not secrets:
-        return None, {"missing": ["gsheets.client_email", "gsheets.private_key", "gsheets.spreadsheet_id"]}
+    try:
+        if not hasattr(st, "secrets"):
+            return None, None
+        secrets = st.secrets
 
-    # Locate Service Account section if present
-    gs_section = None
-    if "gsheets" in secrets and isinstance(secrets["gsheets"], dict):
-        gs_section = secrets["gsheets"]
-    elif "google_sheets" in secrets and isinstance(secrets["google_sheets"], dict):
-        gs_section = secrets["google_sheets"]
-    elif "connections" in secrets and isinstance(secrets["connections"], dict) and "gsheets" in secrets["connections"] and isinstance(secrets["connections"]["gsheets"], dict):
-        gs_section = secrets["connections"]["gsheets"]
-    elif "service_account" in secrets and isinstance(secrets["service_account"], dict):
-        gs_section = secrets["service_account"]
-    elif "client_email" in secrets or "private_key" in secrets:
-        gs_section = dict(secrets)
+        def as_dict(value):
+            try:
+                return dict(value) if value is not None else None
+            except Exception:
+                return value if isinstance(value, dict) else None
 
-    # 1. Primary Method: Evaluate Service Account
-    if gs_section is not None:
-        missing = []
-        spreadsheet_id = gs_section.get("spreadsheet_id") or gs_section.get("spreadsheet") or gs_section.get("spreadsheet_url") or secrets.get("spreadsheet_id") or OFFICIAL_SPREADSHEET_ID
-        client_email = gs_section.get("client_email")
-        private_key = gs_section.get("private_key")
+        def valid_sa(d):
+            return isinstance(d, dict) and bool(d.get("client_email")) and bool(d.get("private_key"))
 
-        if not spreadsheet_id:
-            missing.append("gsheets.spreadsheet_id")
-        if not client_email:
-            missing.append("gsheets.client_email")
-        if not private_key:
-            missing.append("gsheets.private_key")
+        # 1. Main supported format: [gsheets]
+        gsheets = as_dict(secrets.get("gsheets"))
+        if valid_sa(gsheets):
+            cfg = dict(gsheets)
+            cfg["spreadsheet_id"] = cfg.get("spreadsheet_id") or cfg.get("spreadsheet") or cfg.get("spreadsheet_url") or OFFICIAL_SPREADSHEET_ID
+            return "service_account", cfg
 
-        active_sheet_id = extract_spreadsheet_id(spreadsheet_id)
+        # 2. Alternative service account blocks
+        for key in ("google_sheets", "gcp_service_account", "service_account"):
+            cand = as_dict(secrets.get(key))
+            if valid_sa(cand):
+                cfg = dict(cand)
+                cfg["spreadsheet_id"] = cfg.get("spreadsheet_id") or cfg.get("spreadsheet") or cfg.get("spreadsheet_url") or OFFICIAL_SPREADSHEET_ID
+                return "service_account", cfg
 
-        if missing:
-            return "service_account_error", {
-                "missing": missing,
-                "spreadsheet_id": active_sheet_id
-            }
+        google = as_dict(secrets.get("google"))
+        if isinstance(google, dict):
+            cand = as_dict(google.get("service_account"))
+            if valid_sa(cand):
+                cfg = dict(cand)
+                cfg["spreadsheet_id"] = cfg.get("spreadsheet_id") or cfg.get("spreadsheet") or cfg.get("spreadsheet_url") or OFFICIAL_SPREADSHEET_ID
+                return "service_account", cfg
 
-        return "service_account", {
-            "client_email": client_email,
-            "private_key": private_key,
-            "spreadsheet_id": active_sheet_id,
-            "raw_section": gs_section
+        # 3. Root-level service account fields, if used
+        root_sa = {
+            "spreadsheet_id": secrets.get("spreadsheet_id") or secrets.get("spreadsheet") or OFFICIAL_SPREADSHEET_ID,
+            "client_email": secrets.get("client_email"),
+            "private_key": secrets.get("private_key"),
         }
+        if valid_sa(root_sa):
+            return "service_account", root_sa
 
-    # 2. Fallback Method: Web App URL
-    web_url = secrets.get("gsheets_url") or secrets.get("GAPPS_SCRIPT_URL") or secrets.get("web_app_url") or secrets.get("url")
-    if web_url and isinstance(web_url, str):
-        return "web_app", {"url": web_url, "spreadsheet_id": OFFICIAL_SPREADSHEET_ID}
+        # 4. Web App URL fallback only
+        web_url = secrets.get("gsheets_url") or secrets.get("GAPPS_SCRIPT_URL") or secrets.get("web_app_url")
+        if not web_url and isinstance(gsheets, dict):
+            web_url = gsheets.get("web_app_url") or gsheets.get("url") or gsheets.get("gsheets_url")
+        if web_url:
+            return "web_app", {"url": web_url, "spreadsheet_id": OFFICIAL_SPREADSHEET_ID}
 
-    # Default missing fields if no valid configuration section found
-    return None, {"missing": ["gsheets.client_email", "gsheets.private_key", "gsheets.spreadsheet_id"], "spreadsheet_id": OFFICIAL_SPREADSHEET_ID}
+    except Exception as e:
+        print(f"Error reading st.secrets: {e}")
+
+    return None, None
 
 def _get_gspread_client(sa_config):
     import gspread
