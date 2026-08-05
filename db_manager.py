@@ -135,6 +135,17 @@ def _get_gspread_client(sa_config):
     ]
 
     sa_info = dict(sa_config.get("raw_section") or sa_config)
+
+    # Streamlit secrets may contain only the minimal service-account fields.
+    # google.oauth2.service_account.Credentials requires token_uri and type.
+    sa_info.setdefault("type", "service_account")
+    sa_info.setdefault("token_uri", "https://oauth2.googleapis.com/token")
+
+    # Remove app-only aliases that are not part of Google service account JSON.
+    sa_info.pop("spreadsheet_id", None)
+    sa_info.pop("spreadsheet", None)
+    sa_info.pop("spreadsheet_url", None)
+    sa_info.pop("raw_section", None)
     
     # Process private_key string escaping
     private_key = sa_info.get("private_key", "")
