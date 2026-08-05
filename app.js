@@ -232,11 +232,14 @@ function saveDB() {
     console.warn("localStorage write failed:", e);
   }
 
-  // Verify connection to Streamlit and central database (must be google_sheets)
-  if (isStreamlitConnected && window.DB_STATUS && window.DB_STATUS.status === "ok" && window.DB_STATUS.source === "google_sheets") {
+  // Verify connection to Streamlit and central database (must be google_sheets_service_account)
+  const isGoogleSheetsActive = window.DB_STATUS && window.DB_STATUS.status === "ok" && 
+    (window.DB_STATUS.source === "google_sheets_service_account" || window.DB_STATUS.source === "google_sheets" || window.DB_STATUS.source === "google_sheets_web_app");
+
+  if (isStreamlitConnected && isGoogleSheetsActive) {
     sendToStreamlit("save_db", db);
   } else {
-    // If source is not google_sheets or connection is offline, do not simulate success
+    // If source is not google_sheets_service_account or connection is offline, do not simulate success
     showSaveToast(false);
     renderStatusBanner();
   }

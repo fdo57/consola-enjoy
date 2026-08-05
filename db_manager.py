@@ -62,56 +62,65 @@ def get_spreadsheet_id(config_data=None):
 def get_gsheets_config():
     """
     Extracts Google Sheets configuration from st.secrets.
-    Supports Web App (Apps Script) URLs (gsheets_url, GAPPS_SCRIPT_URL, web_app_url)
-    as well as Service Account credentials.
+    Priority:
+    1. Service Account ([gsheets], [google_sheets], [connections.gsheets] or root)
+    2. Web App URL (gsheets_url / GAPPS_SCRIPT_URL / web_app_url) as fallback
+    
+    Returns: (config_type, config_data_or_error_dict)
     """
     secrets = get_st_secrets_dict()
     if not secrets:
-        return None, None
+        return None, {"missing": ["gsheets.client_email", "gsheets.private_key", "gsheets.spreadsheet_id"]}
 
-    def is_sa_dict(d):
-        return isinstance(d, dict) and "client_email" in d and "private_key" in d
+    # Locate Service Account section if present
+    gs_section = None
+    if "gsheets" in secrets and isinstance(secrets["gsheets"], dict):
+        gs_section = secrets["gsheets"]
+    elif "google_sheets" in secrets and isinstance(secrets["google_sheets"], dict):
+        gs_section = secrets["google_sheets"]
+    elif "connections" in secrets and isinstance(secrets["connections"], dict) and "gsheets" in secrets["connections"] and isinstance(secrets["connections"]["gsheets"], dict):
+        gs_section = secrets["connections"]["gsheets"]
+    elif "service_account" in secrets and isinstance(secrets["service_account"], dict):
+        gs_section = secrets["service_account"]
+    elif "client_email" in secrets or "private_key" in secrets:
+        gs_section = dict(secrets)
 
-    def get_web_url(val):
-        if isinstance(val, str) and ("script.google.com" in val or "http" in val):
-            return val
-        if isinstance(val, dict):
-            return val.get("web_app_url") or val.get("url") or val.get("GAPPS_SCRIPT_URL") or val.get("gsheets_url")
-        return None
+    # 1. Primary Method: Evaluate Service Account
+    if gs_section is not None:
+        missing = []
+        spreadsheet_id = gs_section.get("spreadsheet_id") or gs_section.get("spreadsheet") or gs_section.get("spreadsheet_url") or secrets.get("spreadsheet_id") or OFFICIAL_SPREADSHEET_ID
+        client_email = gs_section.get("client_email")
+        private_key = gs_section.get("private_key")
 
-    # 1. Prioritize Web App URL (gsheets_url, GAPPS_SCRIPT_URL, web_app_url)
-    web_url_candidates = [
-        secrets.get("gsheets_url"),
-        secrets.get("GAPPS_SCRIPT_URL"),
-        secrets.get("web_app_url"),
-        secrets.get("url"),
-        secrets.get("gsheets"),
-        secrets.get("google_sheets"),
-        secrets.get("connections", {}).get("gsheets") if isinstance(secrets.get("connections"), dict) else None,
-    ]
-    for cand in web_url_candidates:
-        url = get_web_url(cand)
-        if url:
-            return "web_app", {"url": url}
+        if not spreadsheet_id:
+            missing.append("gsheets.spreadsheet_id")
+        if not client_email:
+            missing.append("gsheets.client_email")
+        if not private_key:
+            missing.append("gsheets.private_key")
 
-    # 2. Service Account in sub-dicts
-    sa_candidates = [
-        secrets.get("gsheets"),
-        secrets.get("google_sheets"),
-        secrets.get("connections", {}).get("gsheets") if isinstance(secrets.get("connections"), dict) else None,
-        secrets.get("gcp_service_account"),
-        secrets.get("service_account"),
-        secrets.get("google", {}).get("service_account") if isinstance(secrets.get("google"), dict) else None,
-    ]
-    for cand in sa_candidates:
-        if is_sa_dict(cand):
-            return "service_account", cand
+        active_sheet_id = extract_spreadsheet_id(spreadsheet_id)
 
-    # 3. Service Account at root level
-    if is_sa_dict(secrets):
-        return "service_account", dict(secrets)
+        if missing:
+            return "service_account_error", {
+                "missing": missing,
+                "spreadsheet_id": active_sheet_id
+            }
 
-    return None, None
+        return "service_account", {
+            "client_email": client_email,
+            "private_key": private_key,
+            "spreadsheet_id": active_sheet_id,
+            "raw_section": gs_section
+        }
+
+    # 2. Fallback Method: Web App URL
+    web_url = secrets.get("gsheets_url") or secrets.get("GAPPS_SCRIPT_URL") or secrets.get("web_app_url") or secrets.get("url")
+    if web_url and isinstance(web_url, str):
+        return "web_app", {"url": web_url, "spreadsheet_id": OFFICIAL_SPREADSHEET_ID}
+
+    # Default missing fields if no valid configuration section found
+    return None, {"missing": ["gsheets.client_email", "gsheets.private_key", "gsheets.spreadsheet_id"], "spreadsheet_id": OFFICIAL_SPREADSHEET_ID}
 
 def _get_gspread_client(sa_config):
     import gspread
@@ -122,19 +131,26 @@ def _get_gspread_client(sa_config):
         "https://www.googleapis.com/auth/drive"
     ]
 
-    sa_info = dict(sa_config)
-    if "private_key" in sa_info and isinstance(sa_info["private_key"], str):
-        sa_info["private_key"] = sa_info["private_key"].replace("\\n", "\n")
+    sa_info = dict(sa_config.get("raw_section") or sa_config)
+    
+    # Process private_key string escaping
+    private_key = sa_info.get("private_key", "")
+    if isinstance(private_key, str):
+        sa_info["private_key"] = private_key.replace("\\n", "\n")
 
     creds = Credentials.from_service_account_info(sa_info, scopes=scopes)
     return gspread.authorize(creds)
 
 def _load_from_gsheets_sa(sa_config):
     client = _get_gspread_client(sa_config)
-    sheet_id = get_spreadsheet_id(sa_config)
+    sheet_id = sa_config.get("spreadsheet_id") or OFFICIAL_SPREADSHEET_ID
 
     sh = client.open_by_key(sheet_id)
-    worksheet = sh.sheet1
+    try:
+        worksheet = sh.worksheet("Base_de_Datos")
+    except Exception:
+        worksheet = sh.sheet1
+
     all_values = worksheet.get_all_values()
 
     if not all_values or len(all_values) <= 1:
@@ -159,10 +175,13 @@ def _load_from_gsheets_sa(sa_config):
 
 def _save_to_gsheets_sa(sa_config, records):
     client = _get_gspread_client(sa_config)
-    sheet_id = get_spreadsheet_id(sa_config)
+    sheet_id = sa_config.get("spreadsheet_id") or OFFICIAL_SPREADSHEET_ID
 
     sh = client.open_by_key(sheet_id)
-    worksheet = sh.sheet1
+    try:
+        worksheet = sh.worksheet("Base_de_Datos")
+    except Exception:
+        worksheet = sh.sheet1
 
     rows = [HEADERS]
     for r in records:
@@ -213,19 +232,52 @@ def _save_to_gsheets_webapp(url, records):
 def load_central_data():
     """
     Main entrypoint to load data from central DB.
-    Guarantees 'google_sheets' source when connected via Web App or Service Account.
+    Prioritizes Service Account and returns google_sheets_service_account source.
     Rejects sqlite_local_dev fallback in production.
     """
     config_type, config_data = get_gsheets_config()
-    sheet_id = get_spreadsheet_id(config_data)
+    sheet_id = config_data.get("spreadsheet_id", OFFICIAL_SPREADSHEET_ID) if isinstance(config_data, dict) else OFFICIAL_SPREADSHEET_ID
 
-    if config_type == "web_app":
+    if config_type == "service_account":
+        try:
+            records, active_sheet_id = _load_from_gsheets_sa(config_data)
+            return {
+                "status": "ok",
+                "message": "Conexión exitosa a Google Sheets vía Service Account.",
+                "source": "google_sheets_service_account",
+                "spreadsheet_id": active_sheet_id,
+                "row_count": len(records),
+                "data": records
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Error al conectar con Google Sheets vía Service Account: {e}",
+                "source": "google_sheets_service_account",
+                "spreadsheet_id": sheet_id,
+                "row_count": 0,
+                "data": []
+            }
+
+    elif config_type == "service_account_error":
+        missing_list = config_data.get("missing", [])
+        missing_str = ", ".join(missing_list)
+        return {
+            "status": "error",
+            "message": f"Falta el campo requerido en st.secrets: {missing_str}",
+            "source": "google_sheets_service_account",
+            "spreadsheet_id": sheet_id,
+            "row_count": 0,
+            "data": []
+        }
+
+    elif config_type == "web_app":
         try:
             records, active_sheet_id = _load_from_gsheets_webapp(config_data["url"])
             return {
                 "status": "ok",
-                "message": f"Conexión exitosa a Google Sheets (Web App). {len(records)} filas cargadas.",
-                "source": "google_sheets",
+                "message": "Conexión exitosa a Google Sheets vía Web App.",
+                "source": "google_sheets_web_app",
                 "spreadsheet_id": active_sheet_id,
                 "row_count": len(records),
                 "data": records
@@ -234,34 +286,13 @@ def load_central_data():
             return {
                 "status": "error",
                 "message": f"Error al conectar con Google Sheets Web App: {e}",
-                "source": "google_sheets_error",
+                "source": "google_sheets_web_app",
                 "spreadsheet_id": sheet_id,
                 "row_count": 0,
                 "data": []
             }
 
-    elif config_type == "service_account":
-        try:
-            records, active_sheet_id = _load_from_gsheets_sa(config_data)
-            return {
-                "status": "ok",
-                "message": f"Conexión exitosa a Google Sheets (Service Account). {len(records)} filas cargadas.",
-                "source": "google_sheets",
-                "spreadsheet_id": active_sheet_id,
-                "row_count": len(records),
-                "data": records
-            }
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": f"Error al conectar con Google Sheets (Service Account): {e}",
-                "source": "google_sheets_error",
-                "spreadsheet_id": sheet_id,
-                "row_count": 0,
-                "data": []
-            }
-
-    # Check if running under Streamlit
+    # Production environment check
     is_streamlit_env = False
     try:
         import streamlit.runtime as st_runtime
@@ -270,20 +301,22 @@ def load_central_data():
         is_streamlit_env = hasattr(st, "secrets")
 
     if is_streamlit_env:
+        missing_list = config_data.get("missing", ["gsheets.client_email", "gsheets.private_key", "gsheets.spreadsheet_id"]) if isinstance(config_data, dict) else ["gsheets.client_email", "gsheets.private_key", "gsheets.spreadsheet_id"]
+        missing_str = ", ".join(missing_list)
         return {
             "status": "error",
-            "message": "Falta gsheets_url en st.secrets: Configure la URL de Google Apps Script Web App en Streamlit Cloud.",
-            "source": "google_sheets_desconectado",
-            "spreadsheet_id": sheet_id,
+            "message": f"Falta el campo requerido en st.secrets: {missing_str}",
+            "source": "google_sheets_service_account",
+            "spreadsheet_id": OFFICIAL_SPREADSHEET_ID,
             "row_count": 0,
             "data": []
         }
     else:
         return {
             "status": "error",
-            "message": "Sin credenciales gsheets_url configuradas.",
+            "message": "Sin credenciales de Google Sheets configuradas en entorno local.",
             "source": "sqlite_local_dev",
-            "spreadsheet_id": sheet_id,
+            "spreadsheet_id": OFFICIAL_SPREADSHEET_ID,
             "row_count": 0,
             "data": []
         }
@@ -291,31 +324,31 @@ def load_central_data():
 def save_central_data(records):
     """
     Main entrypoint to save data to central DB.
-    Rejects saving if active source is not google_sheets.
+    Prioritizes Service Account. Rejects saving if active source is not google_sheets_service_account or web_app.
     """
     if not isinstance(records, list):
         return {"status": "error", "message": "Los datos deben ser una lista.", "data": []}
 
     config_type, config_data = get_gsheets_config()
-    sheet_id = get_spreadsheet_id(config_data)
+    sheet_id = config_data.get("spreadsheet_id", OFFICIAL_SPREADSHEET_ID) if isinstance(config_data, dict) else OFFICIAL_SPREADSHEET_ID
 
-    if config_type == "web_app":
+    if config_type == "service_account":
+        try:
+            _save_to_gsheets_sa(config_data, records)
+            return {"status": "ok", "message": "Guardado exitoso en Google Sheets vía Service Account.", "spreadsheet_id": sheet_id, "data": records}
+        except Exception as e:
+            return {"status": "error", "message": f"Error al guardar en Google Sheets: {e}", "spreadsheet_id": sheet_id, "data": []}
+
+    elif config_type == "web_app":
         try:
             _save_to_gsheets_webapp(config_data["url"], records)
             return {"status": "ok", "message": "Guardado exitoso en Google Sheets (Web App).", "spreadsheet_id": sheet_id, "data": records}
         except Exception as e:
             return {"status": "error", "message": f"Error al guardar en Web App: {e}", "spreadsheet_id": sheet_id, "data": []}
 
-    elif config_type == "service_account":
-        try:
-            _save_to_gsheets_sa(config_data, records)
-            return {"status": "ok", "message": "Guardado exitoso en Google Sheets central.", "spreadsheet_id": sheet_id, "data": records}
-        except Exception as e:
-            return {"status": "error", "message": f"Error al guardar en Google Sheets: {e}", "spreadsheet_id": sheet_id, "data": []}
-
     return {
         "status": "error",
-        "message": "Guardado rechazado: La app está en producción sin conexión a Google Sheets. Configure gsheets_url en st.secrets.",
+        "message": "Guardado rechazado: No hay conexión activa con Service Account en st.secrets.",
         "spreadsheet_id": sheet_id,
         "data": []
     }
