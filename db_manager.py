@@ -2,6 +2,7 @@ import os
 import json
 import sqlite3
 import re
+import time
 import streamlit as st
 
 HEADERS = [
@@ -14,6 +15,23 @@ HEADERS = [
 DIR_PATH = os.path.dirname(os.path.abspath(__file__))
 SQLITE_DB_PATH = os.path.join(DIR_PATH, "consola_enjoy.db")
 OFFICIAL_SPREADSHEET_ID = "1dpA2Nnk9dZ_NVkhJD1HHRBN4CH6Ry8bzm2Iuf_oXV8Y"
+
+def _execute_with_backoff(func, *args, **kwargs):
+    """
+    Executes a function with exponential backoff for HTTP 429 / Rate Limit / Quota Exceeded errors.
+    Delays: 2s, 5s, 10s.
+    """
+    delays = [2, 5, 10]
+    for attempt in range(len(delays) + 1):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            err_str = str(e).lower()
+            is_429 = "429" in err_str or "quota" in err_str or "resource_exhausted" in err_str or "too many requests" in err_str
+            if is_429 and attempt < len(delays):
+                time.sleep(delays[attempt])
+            else:
+                raise e
 
 def extract_spreadsheet_id(target):
     """Parses a spreadsheet URL or raw string to get the 44-character ID."""
@@ -60,70 +78,63 @@ def get_spreadsheet_id(config_data=None):
     return OFFICIAL_SPREADSHEET_ID
 
 def get_gsheets_config():
-    """Extract Google Sheets configuration from st.secrets.
-
-    Priority:
-    1) Service Account in [gsheets] with spreadsheet_id/client_email/private_key.
-    2) Service Account in other supported secret blocks.
-    3) Apps Script Web App URL as fallback only.
     """
-    try:
-        if not hasattr(st, "secrets"):
-            return None, None
-        secrets = st.secrets
+    Extracts Google Sheets configuration from st.secrets.
+    Priority:
+    1. Service Account ([gsheets], [google_sheets], [connections.gsheets] or root)
+    2. Web App URL (gsheets_url / GAPPS_SCRIPT_URL / web_app_url) as fallback
+    """
+    secrets = get_st_secrets_dict()
+    if not secrets:
+        return None, {"missing": ["gsheets.client_email", "gsheets.private_key", "gsheets.spreadsheet_id"]}
 
-        def as_dict(value):
-            try:
-                return dict(value) if value is not None else None
-            except Exception:
-                return value if isinstance(value, dict) else None
+    gs_section = None
+    if "gsheets" in secrets and isinstance(secrets["gsheets"], dict):
+        gs_section = secrets["gsheets"]
+    elif "google_sheets" in secrets and isinstance(secrets["google_sheets"], dict):
+        gs_section = secrets["google_sheets"]
+    elif "connections" in secrets and isinstance(secrets["connections"], dict) and "gsheets" in secrets["connections"] and isinstance(secrets["connections"]["gsheets"], dict):
+        gs_section = secrets["connections"]["gsheets"]
+    elif "service_account" in secrets and isinstance(secrets["service_account"], dict):
+        gs_section = secrets["service_account"]
+    elif "client_email" in secrets or "private_key" in secrets:
+        gs_section = dict(secrets)
 
-        def valid_sa(d):
-            return isinstance(d, dict) and bool(d.get("client_email")) and bool(d.get("private_key"))
+    # 1. Primary Method: Evaluate Service Account
+    if gs_section is not None:
+        missing = []
+        spreadsheet_id = gs_section.get("spreadsheet_id") or gs_section.get("spreadsheet") or gs_section.get("spreadsheet_url") or secrets.get("spreadsheet_id") or OFFICIAL_SPREADSHEET_ID
+        client_email = gs_section.get("client_email")
+        private_key = gs_section.get("private_key")
 
-        # 1. Main supported format: [gsheets]
-        gsheets = as_dict(secrets.get("gsheets"))
-        if valid_sa(gsheets):
-            cfg = dict(gsheets)
-            cfg["spreadsheet_id"] = cfg.get("spreadsheet_id") or cfg.get("spreadsheet") or cfg.get("spreadsheet_url") or OFFICIAL_SPREADSHEET_ID
-            return "service_account", cfg
+        if not spreadsheet_id:
+            missing.append("gsheets.spreadsheet_id")
+        if not client_email:
+            missing.append("gsheets.client_email")
+        if not private_key:
+            missing.append("gsheets.private_key")
 
-        # 2. Alternative service account blocks
-        for key in ("google_sheets", "gcp_service_account", "service_account"):
-            cand = as_dict(secrets.get(key))
-            if valid_sa(cand):
-                cfg = dict(cand)
-                cfg["spreadsheet_id"] = cfg.get("spreadsheet_id") or cfg.get("spreadsheet") or cfg.get("spreadsheet_url") or OFFICIAL_SPREADSHEET_ID
-                return "service_account", cfg
+        active_sheet_id = extract_spreadsheet_id(spreadsheet_id)
 
-        google = as_dict(secrets.get("google"))
-        if isinstance(google, dict):
-            cand = as_dict(google.get("service_account"))
-            if valid_sa(cand):
-                cfg = dict(cand)
-                cfg["spreadsheet_id"] = cfg.get("spreadsheet_id") or cfg.get("spreadsheet") or cfg.get("spreadsheet_url") or OFFICIAL_SPREADSHEET_ID
-                return "service_account", cfg
+        if missing:
+            return "service_account_error", {
+                "missing": missing,
+                "spreadsheet_id": active_sheet_id
+            }
 
-        # 3. Root-level service account fields, if used
-        root_sa = {
-            "spreadsheet_id": secrets.get("spreadsheet_id") or secrets.get("spreadsheet") or OFFICIAL_SPREADSHEET_ID,
-            "client_email": secrets.get("client_email"),
-            "private_key": secrets.get("private_key"),
+        return "service_account", {
+            "client_email": client_email,
+            "private_key": private_key,
+            "spreadsheet_id": active_sheet_id,
+            "raw_section": gs_section
         }
-        if valid_sa(root_sa):
-            return "service_account", root_sa
 
-        # 4. Web App URL fallback only
-        web_url = secrets.get("gsheets_url") or secrets.get("GAPPS_SCRIPT_URL") or secrets.get("web_app_url")
-        if not web_url and isinstance(gsheets, dict):
-            web_url = gsheets.get("web_app_url") or gsheets.get("url") or gsheets.get("gsheets_url")
-        if web_url:
-            return "web_app", {"url": web_url, "spreadsheet_id": OFFICIAL_SPREADSHEET_ID}
+    # 2. Fallback Method: Web App URL
+    web_url = secrets.get("gsheets_url") or secrets.get("GAPPS_SCRIPT_URL") or secrets.get("web_app_url") or secrets.get("url")
+    if web_url and isinstance(web_url, str):
+        return "web_app", {"url": web_url, "spreadsheet_id": OFFICIAL_SPREADSHEET_ID}
 
-    except Exception as e:
-        print(f"Error reading st.secrets: {e}")
-
-    return None, None
+    return None, {"missing": ["gsheets.client_email", "gsheets.private_key", "gsheets.spreadsheet_id"], "spreadsheet_id": OFFICIAL_SPREADSHEET_ID}
 
 def _get_gspread_client(sa_config):
     import gspread
@@ -135,19 +146,14 @@ def _get_gspread_client(sa_config):
     ]
 
     sa_info = dict(sa_config.get("raw_section") or sa_config)
-
-    # Streamlit secrets may contain only the minimal service-account fields.
-    # google.oauth2.service_account.Credentials requires token_uri and type.
     sa_info.setdefault("type", "service_account")
     sa_info.setdefault("token_uri", "https://oauth2.googleapis.com/token")
 
-    # Remove app-only aliases that are not part of Google service account JSON.
     sa_info.pop("spreadsheet_id", None)
     sa_info.pop("spreadsheet", None)
     sa_info.pop("spreadsheet_url", None)
     sa_info.pop("raw_section", None)
-    
-    # Process private_key string escaping
+
     private_key = sa_info.get("private_key", "")
     if isinstance(private_key, str):
         sa_info["private_key"] = private_key.replace("\\n", "\n")
@@ -156,16 +162,17 @@ def _get_gspread_client(sa_config):
     return gspread.authorize(creds)
 
 def _load_from_gsheets_sa(sa_config):
-    client = _get_gspread_client(sa_config)
-    sheet_id = sa_config.get("spreadsheet_id") or OFFICIAL_SPREADSHEET_ID
+    def _do_load():
+        client = _get_gspread_client(sa_config)
+        sheet_id = sa_config.get("spreadsheet_id") or OFFICIAL_SPREADSHEET_ID
+        sh = client.open_by_key(sheet_id)
+        try:
+            worksheet = sh.worksheet("Base_de_Datos")
+        except Exception:
+            worksheet = sh.sheet1
+        return worksheet.get_all_values(), sheet_id
 
-    sh = client.open_by_key(sheet_id)
-    try:
-        worksheet = sh.worksheet("Base_de_Datos")
-    except Exception:
-        worksheet = sh.sheet1
-
-    all_values = worksheet.get_all_values()
+    all_values, sheet_id = _execute_with_backoff(_do_load)
 
     if not all_values or len(all_values) <= 1:
         return [], sheet_id
@@ -188,30 +195,36 @@ def _load_from_gsheets_sa(sa_config):
     return records, sheet_id
 
 def _save_to_gsheets_sa(sa_config, records):
-    client = _get_gspread_client(sa_config)
-    sheet_id = sa_config.get("spreadsheet_id") or OFFICIAL_SPREADSHEET_ID
+    def _do_save():
+        client = _get_gspread_client(sa_config)
+        sheet_id = sa_config.get("spreadsheet_id") or OFFICIAL_SPREADSHEET_ID
+        sh = client.open_by_key(sheet_id)
+        try:
+            worksheet = sh.worksheet("Base_de_Datos")
+        except Exception:
+            worksheet = sh.sheet1
 
-    sh = client.open_by_key(sheet_id)
-    try:
-        worksheet = sh.worksheet("Base_de_Datos")
-    except Exception:
-        worksheet = sh.sheet1
+        rows = [HEADERS]
+        for r in records:
+            row = [str(r.get(h, "")) for h in HEADERS]
+            rows.append(row)
 
-    rows = [HEADERS]
-    for r in records:
-        row = [str(r.get(h, "")) for h in HEADERS]
-        rows.append(row)
+        worksheet.clear()
+        worksheet.update("A1", rows)
 
-    worksheet.clear()
-    worksheet.update("A1", rows)
+    _execute_with_backoff(_do_save)
 
 def _load_from_gsheets_webapp(url):
     import requests
     sheet_id = get_spreadsheet_id()
-    resp = requests.get(url, allow_redirects=True, timeout=15)
-    resp.raise_for_status()
-    data = resp.json()
     
+    def _do_get():
+        resp = requests.get(url, allow_redirects=True, timeout=15)
+        resp.raise_for_status()
+        return resp.json()
+
+    data = _execute_with_backoff(_do_get)
+
     cleaned = []
     raw_list = []
     if isinstance(data, list):
@@ -230,15 +243,15 @@ def _save_to_gsheets_webapp(url, records):
     sheet_id = get_spreadsheet_id()
     payload = {"records": records}
     headers = {"Content-Type": "application/json"}
-    resp = requests.post(url, data=json.dumps(payload), headers=headers, allow_redirects=True, timeout=25)
-    resp.raise_for_status()
-    try:
-        result = resp.json()
-        if isinstance(result, dict) and result.get("status") == "error":
-            raise Exception(result.get("message", "Error reportado por Google Apps Script Web App"))
-    except Exception as e:
-        if "Error reportado" in str(e):
-            raise e
+    
+    def _do_post():
+        resp = requests.post(url, data=json.dumps(payload), headers=headers, allow_redirects=True, timeout=25)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = _execute_with_backoff(_do_post)
+    if isinstance(result, dict) and result.get("status") == "error":
+        raise Exception(result.get("message", "Error reportado por Google Apps Script Web App"))
 
 # ---------------------------------------------------------
 # Public API
@@ -247,7 +260,6 @@ def load_central_data():
     """
     Main entrypoint to load data from central DB.
     Prioritizes Service Account and returns google_sheets_service_account source.
-    Rejects sqlite_local_dev fallback in production.
     """
     config_type, config_data = get_gsheets_config()
     sheet_id = config_data.get("spreadsheet_id", OFFICIAL_SPREADSHEET_ID) if isinstance(config_data, dict) else OFFICIAL_SPREADSHEET_ID
@@ -264,9 +276,12 @@ def load_central_data():
                 "data": records
             }
         except Exception as e:
+            err_msg = str(e)
+            if "429" in err_msg or "quota" in err_msg.lower():
+                err_msg = "Límite de cuota alcanzado en Google Sheets (Error 429). Por favor espere un momento antes de recargar."
             return {
                 "status": "error",
-                "message": f"Error al conectar con Google Sheets vía Service Account: {e}",
+                "message": f"Error al conectar con Google Sheets vía Service Account: {err_msg}",
                 "source": "google_sheets_service_account",
                 "spreadsheet_id": sheet_id,
                 "row_count": 0,
@@ -335,6 +350,14 @@ def load_central_data():
             "data": []
         }
 
+@st.cache_data(ttl=60, show_spinner=False)
+def fetch_central_data_cached():
+    """
+    Cached reader for Google Sheets data (TTL 60s).
+    Prevents repetitive 429 API quota calls across multiple Streamlit reruns.
+    """
+    return load_central_data()
+
 def save_central_data(records):
     """
     Main entrypoint to save data to central DB.
@@ -351,7 +374,10 @@ def save_central_data(records):
             _save_to_gsheets_sa(config_data, records)
             return {"status": "ok", "message": "Guardado exitoso en Google Sheets vía Service Account.", "spreadsheet_id": sheet_id, "data": records}
         except Exception as e:
-            return {"status": "error", "message": f"Error al guardar en Google Sheets: {e}", "spreadsheet_id": sheet_id, "data": []}
+            err_msg = str(e)
+            if "429" in err_msg or "quota" in err_msg.lower():
+                err_msg = "Límite de cuota alcanzado en Google Sheets (Error 429). Espere unos segundos."
+            return {"status": "error", "message": f"Error al guardar en Google Sheets: {err_msg}", "spreadsheet_id": sheet_id, "data": []}
 
     elif config_type == "web_app":
         try:
