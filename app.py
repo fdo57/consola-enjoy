@@ -79,11 +79,30 @@ if component_value and isinstance(component_value, dict):
     action = component_value.get("action")
     if action == "save_db":
         new_data = component_value.get("data")
+        context = component_value.get("context")
         if isinstance(new_data, list):
-            save_result = db_manager.save_central_data(new_data)
-            if save_result["status"] == "ok":
-                st.session_state["central_db"] = new_data
-                st.session_state["save_status"] = {"status": "ok"}
-            else:
-                st.session_state["save_status"] = {"status": "error"}
+            try:
+                save_result = db_manager.save_central_data(new_data)
+                if isinstance(save_result, dict) and save_result.get("status") == "ok":
+                    st.session_state["central_db"] = new_data
+                    st.session_state["save_status"] = {
+                        "status": "ok",
+                        "message": "Guardado exitoso en base central.",
+                        "context": context
+                    }
+                else:
+                    raw_msg = save_result.get("message", "") if isinstance(save_result, dict) else "Error desconocido"
+                    print(f"[SAVE_ERROR_LOG] Technical detail: {raw_msg}")
+                    st.session_state["save_status"] = {
+                        "status": "error",
+                        "message": "No se pudo guardar la información en la base de datos central. Por favor intente nuevamente.",
+                        "context": context
+                    }
+            except Exception as ex:
+                print(f"[SAVE_EXCEPTION_LOG] Exception detail: {ex}")
+                st.session_state["save_status"] = {
+                    "status": "error",
+                    "message": "No se pudo guardar la información en la base de datos central. Por favor intente nuevamente.",
+                    "context": context
+                }
             st.rerun()

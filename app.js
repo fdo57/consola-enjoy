@@ -132,10 +132,11 @@ let fechaInforme = new Date().toISOString().split('T')[0];
 let isStreamlitConnected = false;
 
 // Streamlit Custom Component Communication Bridge
-function sendToStreamlit(action, data) {
+function sendToStreamlit(action, data, context) {
   const payload = {
     action: action,
     data: data,
+    context: context || null,
     _ts: Date.now()
   };
 
@@ -242,13 +243,8 @@ function initDB() {
   renderFechaInformeDisplay();
 }
 
-function saveDB() {
-  // Update localStorage ONLY as temporary local cache
-  try {
-    localStorage.setItem("ENJOY_PROJECTS_DB_V3", JSON.stringify(db));
-  } catch (e) {
-    console.warn("localStorage write failed:", e);
-  }
+function saveDB(recordsToSave, contextPayload) {
+  const dataToSave = recordsToSave || db;
 
   // Verify connection to Streamlit and central database
   const isCentralSourceActive = window.DB_STATUS && window.DB_STATUS.status === "ok" && 
@@ -260,7 +256,7 @@ function saveDB() {
     );
 
   if (isStreamlitConnected && isCentralSourceActive) {
-    sendToStreamlit("save_db", db);
+    sendToStreamlit("save_db", dataToSave, contextPayload);
   } else {
     // If source is not a valid central database or connection is offline, do not simulate success
     showSaveToast(false);
@@ -886,14 +882,43 @@ function saveNuevoProyectoForm() {
 }
 
 
+function generateNextTaskId(targetProjId) {
+  if (!targetProjId) return "";
+  const projTasks = db.filter(item => item.proyecto_id === targetProjId);
+
+  let maxNum = 0;
+  projTasks.forEach(task => {
+    if (task.tarea_id) {
+      const parts = task.tarea_id.split('_');
+      if (parts.length > 0) {
+        const lastPart = parts[parts.length - 1];
+        const num = parseInt(lastPart, 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  });
+
+  let nextNum = maxNum + 1;
+  let candidateId = `${targetProjId}_${String(nextNum).padStart(3, '0')}`;
+
+  while (db.some(item => item.tarea_id === candidateId)) {
+    nextNum++;
+    candidateId = `${targetProjId}_${String(nextNum).padStart(3, '0')}`;
+  }
+
+  return candidateId;
+}
+
 // Formulario Creación Nueva Tarea
-function renderFormCrearTarea() {
+function renderFormCrearTarea(pendingRecord) {
   const selectUnit = document.getElementById("nt-unidad-nombre");
   selectUnit.innerHTML = "";
   const allUnits = ["Enjoy Rinconada", "Enjoy Pucón", "Enjoy Viña", "Enjoy Coquimbo", "Enjoy Chiloé", "Enjoy Transversales"];
   
-  let defaultUnit = selectedUnit;
-  if (selectedProjectId) {
+  let defaultUnit = (pendingRecord && pendingRecord.unidad_nombre) ? pendingRecord.unidad_nombre : selectedUnit;
+  if (!pendingRecord && selectedProjectId) {
     const pRecord = db.find(t => t.proyecto_id === selectedProjectId);
     if (pRecord && pRecord.unidad_nombre) {
       defaultUnit = pRecord.unidad_nombre;
@@ -910,23 +935,24 @@ function renderFormCrearTarea() {
 
   onNuevaTareaUnitChange(selectUnit.value || allUnits[0]);
 
-  if (selectedProjectId) {
+  const targetPid = (pendingRecord && pendingRecord.proyecto_id) ? pendingRecord.proyecto_id : selectedProjectId;
+  if (targetPid) {
     const selectProj = document.getElementById("nt-proyecto-nombre");
-    if (selectProj && selectProj.querySelector(`option[value="${selectedProjectId}"]`)) {
-      selectProj.value = selectedProjectId;
+    if (selectProj && selectProj.querySelector(`option[value="${targetPid}"]`)) {
+      selectProj.value = targetPid;
     }
   }
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  document.getElementById("nt-tarea-nombre").value = "";
-  document.getElementById("nt-tarea-descripcion").value = "";
-  document.getElementById("nt-tarea-responsable").value = "";
-  document.getElementById("nt-tarea-contraparte").value = "";
-  document.getElementById("nt-con-alerta").value = "no";
-  document.getElementById("nt-fecha-inicio-proy").value = todayStr;
-  document.getElementById("nt-fecha-inicio-real").value = todayStr;
-  document.getElementById("nt-fecha-fin-proy").value = "";
-  document.getElementById("nt-fecha-fin-real").value = "";
+  const todayStr = getTodayStr();
+  document.getElementById("nt-tarea-nombre").value = pendingRecord ? (pendingRecord.tarea_nombre || "") : "";
+  document.getElementById("nt-tarea-descripcion").value = pendingRecord ? (pendingRecord.tarea_descripcion || "") : "";
+  document.getElementById("nt-tarea-responsable").value = pendingRecord ? (pendingRecord.tarea_responsable || "") : "";
+  document.getElementById("nt-tarea-contraparte").value = pendingRecord ? (pendingRecord.tarea_contraparte || "") : "";
+  document.getElementById("nt-con-alerta").value = pendingRecord ? (pendingRecord.con_alerta || "no") : "no";
+  document.getElementById("nt-fecha-inicio-proy").value = pendingRecord ? (parseToYYYYMMDD(pendingRecord.fecha_inicio_proy) || todayStr) : todayStr;
+  document.getElementById("nt-fecha-inicio-real").value = pendingRecord ? (parseToYYYYMMDD(pendingRecord.fecha_inicio_real) || todayStr) : todayStr;
+  document.getElementById("nt-fecha-fin-proy").value = pendingRecord ? parseToYYYYMMDD(pendingRecord.fecha_fin_proy) : "";
+  document.getElementById("nt-fecha-fin-real").value = pendingRecord ? parseToYYYYMMDD(pendingRecord.fecha_fin_real) : "";
 }
 
 function onNuevaTareaUnitChange(uName) {
@@ -982,12 +1008,8 @@ function saveNuevaTareaForm() {
   const pStatus = projTask ? projTask.proyecto_estado : "en desarrollo";
   const pDesc = projTask ? projTask.proyecto_descripcion || "" : "";
 
-  const projTasks = db.filter(item => item.proyecto_id === targetProjId);
-  const nextTaskNum = projTasks.length + 1;
-  const seqStr = String(nextTaskNum).padStart(3, '0');
-  const newTaskId = `${targetProjId}_${seqStr}`;
-
-  const todayStr = new Date().toISOString().split('T')[0];
+  const newTaskId = generateNextTaskId(targetProjId);
+  const todayStr = getTodayStr();
 
   const fInicioProy = document.getElementById("nt-fecha-inicio-proy").value || todayStr;
   const fInicioReal = document.getElementById("nt-fecha-inicio-real").value || todayStr;
@@ -1016,11 +1038,15 @@ function saveNuevaTareaForm() {
     fecha_fin_real: fFinReal
   };
 
-  db.unshift(newRecord);
-  saveDB();
-  selectedTaskId = newTaskId;
-  isEditingTarea = true;
-  switchView("ficha-tarea");
+  const contextPayload = {
+    action_type: "create_task",
+    created_task_id: newTaskId,
+    pending_record: newRecord
+  };
+
+  const recordsToSave = [newRecord, ...db];
+
+  saveDB(recordsToSave, contextPayload);
 }
 
 
@@ -1595,7 +1621,6 @@ function renderFichaTarea() {
 
         <div class="task-buttons-stack">
           <button type="button" class="btn-edit" onclick="enableTareaEditing()">${ICON_EDIT} Editar</button>
-          <button type="button" class="btn-save" onclick="handleSaveButtonClick()">${ICON_SAVE} Guardar</button>
           <button type="button" class="btn-delete" onclick="deleteTaskFromFicha('${task.tarea_id}')">${ICON_DELETE} Eliminar</button>
         </div>
       </div>
@@ -1838,19 +1863,63 @@ window.addEventListener("message", function(event) {
       if (args.initial_data && Array.isArray(args.initial_data)) {
         // Prevalencia obligatoria de la BD central recibida desde Streamlit
         db = args.initial_data;
-        try {
-          localStorage.setItem("ENJOY_PROJECTS_DB_V3", JSON.stringify(db));
-        } catch (e) {}
       }
+
+      let isTaskCreationError = false;
+      let pendingRecordToRestore = null;
+
       if (args.save_status && typeof args.save_status === "object") {
+        const ctx = args.save_status.context;
+        const isCreateTaskAction = ctx && ctx.action_type === "create_task";
+
         if (args.save_status.status === "ok") {
+          try {
+            localStorage.setItem("ENJOY_PROJECTS_DB_V3", JSON.stringify(db));
+          } catch (e) {}
+
           showSaveToast(true);
+
+          if (isCreateTaskAction && ctx.created_task_id) {
+            selectedTaskId = ctx.created_task_id;
+            isEditingTarea = false;
+            switchView("ficha-tarea");
+            return;
+          }
         } else if (args.save_status.status === "error") {
           showSaveToast(false);
+          const banner = document.getElementById("db-status-banner");
+          if (banner) {
+            banner.style.display = "block";
+            banner.style.backgroundColor = "#f8d7da";
+            banner.style.color = "#721c24";
+            banner.style.border = "1px solid #f5c6cb";
+            banner.textContent = "";
+            const errSpan = document.createElement("span");
+            errSpan.textContent = `❌ Error al guardar: ${args.save_status.message || 'No se pudo guardar la información en la base de datos central.'}`;
+            banner.appendChild(errSpan);
+          }
+
+          if (isCreateTaskAction) {
+            isTaskCreationError = true;
+            pendingRecordToRestore = ctx ? ctx.pending_record : null;
+          }
         }
       }
+
       renderStatusBanner();
-      renderCurrentView();
+
+      if (isTaskCreationError) {
+        currentView = "crear-tarea";
+        document.querySelectorAll(".view-section").forEach(sec => sec.classList.remove("active"));
+        document.querySelectorAll(".nav-btn").forEach(btn => {
+          btn.classList.toggle("active", btn.getAttribute("data-view") === "crear-tarea");
+        });
+        const targetView = document.getElementById("view-crear-tarea");
+        if (targetView) targetView.classList.add("active");
+        renderFormCrearTarea(pendingRecordToRestore);
+      } else {
+        renderCurrentView();
+      }
     }
   }
 });
