@@ -250,14 +250,19 @@ function saveDB() {
     console.warn("localStorage write failed:", e);
   }
 
-  // Verify connection to Streamlit and central database (must be google_sheets_service_account)
-  const isGoogleSheetsActive = window.DB_STATUS && window.DB_STATUS.status === "ok" && 
-    (window.DB_STATUS.source === "google_sheets_service_account" || window.DB_STATUS.source === "google_sheets" || window.DB_STATUS.source === "google_sheets_web_app");
+  // Verify connection to Streamlit and central database
+  const isCentralSourceActive = window.DB_STATUS && window.DB_STATUS.status === "ok" && 
+    (
+      window.DB_STATUS.source === "google_sheets_service_account" || 
+      window.DB_STATUS.source === "google_sheets" || 
+      window.DB_STATUS.source === "google_sheets_web_app" ||
+      window.DB_STATUS.source === "postgresql_vps"
+    );
 
-  if (isStreamlitConnected && isGoogleSheetsActive) {
+  if (isStreamlitConnected && isCentralSourceActive) {
     sendToStreamlit("save_db", db);
   } else {
-    // If source is not google_sheets_service_account or connection is offline, do not simulate success
+    // If source is not a valid central database or connection is offline, do not simulate success
     showSaveToast(false);
     renderStatusBanner();
   }
