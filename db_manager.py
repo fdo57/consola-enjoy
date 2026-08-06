@@ -240,6 +240,25 @@ def _save_to_gsheets_webapp(url, records):
         if "Error reportado" in str(e):
             raise e
 
+def _load_from_sqlite_dev():
+    if not os.path.exists(SQLITE_DB_PATH):
+        return [], OFFICIAL_SPREADSHEET_ID
+    try:
+        conn = sqlite3.connect(SQLITE_DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM proyectos_tareas")
+        rows = cursor.fetchall()
+        records = []
+        for r in rows:
+            obj = {h: str(r[h] if r[h] is not None else "").strip() for h in HEADERS if h in r.keys()}
+            records.append(obj)
+        conn.close()
+        return records, OFFICIAL_SPREADSHEET_ID
+    except Exception as e:
+        print(f"Error loading from sqlite dev: {e}")
+        return [], OFFICIAL_SPREADSHEET_ID
+
 # ---------------------------------------------------------
 # Public API
 # ---------------------------------------------------------
@@ -314,7 +333,10 @@ def load_central_data():
     except Exception:
         is_streamlit_env = hasattr(st, "secrets")
 
-    if is_streamlit_env:
+    # Fallback to local SQLite DB if Google Sheets credentials are not provided
+    sqlite_records, active_sheet_id = _load_from_sqlite_dev()
+
+    if is_streamlit_env and not sqlite_records:
         missing_list = config_data.get("missing", ["gsheets.client_email", "gsheets.private_key", "gsheets.spreadsheet_id"]) if isinstance(config_data, dict) else ["gsheets.client_email", "gsheets.private_key", "gsheets.spreadsheet_id"]
         missing_str = ", ".join(missing_list)
         return {
@@ -327,12 +349,12 @@ def load_central_data():
         }
     else:
         return {
-            "status": "error",
-            "message": "Sin credenciales de Google Sheets configuradas en entorno local.",
+            "status": "ok" if sqlite_records else "warning",
+            "message": "Datos cargados desde base local de desarrollo (SQLite).",
             "source": "sqlite_local_dev",
-            "spreadsheet_id": OFFICIAL_SPREADSHEET_ID,
-            "row_count": 0,
-            "data": []
+            "spreadsheet_id": active_sheet_id,
+            "row_count": len(sqlite_records),
+            "data": sqlite_records
         }
 
 def save_central_data(records):

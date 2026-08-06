@@ -61,10 +61,19 @@ const ICON_ALERT_RED = `<span class="semaforo-dot semaforo-red" style="margin-le
 function formatDateDDMMYYYY(dateStr) {
   if (!dateStr || String(dateStr).trim() === "" || String(dateStr).trim() === "-") return "-";
   const str = String(dateStr).trim();
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) return str;
-  const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const ddmmyyyyMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (ddmmyyyyMatch) {
+    const day = ddmmyyyyMatch[1].padStart(2, '0');
+    const month = ddmmyyyyMatch[2].padStart(2, '0');
+    const year = ddmmyyyyMatch[3];
+    return `${day}/${month}/${year}`;
+  }
+  const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (isoMatch) {
-    return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+    const year = isoMatch[1];
+    const month = isoMatch[2].padStart(2, '0');
+    const day = isoMatch[3].padStart(2, '0');
+    return `${day}/${month}/${year}`;
   }
   const d = new Date(str);
   if (!isNaN(d.getTime())) {
@@ -79,11 +88,20 @@ function formatDateDDMMYYYY(dateStr) {
 function parseToYYYYMMDD(dateStr) {
   if (!dateStr || String(dateStr).trim() === "" || String(dateStr).trim() === "-") return "";
   const str = String(dateStr).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-  const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
-  const ddmmyyyy = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-  if (ddmmyyyy) return `${ddmmyyyy[3]}-${ddmmyyyy[2]}-${ddmmyyyy[1]}`;
+  const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    const year = isoMatch[1];
+    const month = isoMatch[2].padStart(2, '0');
+    const day = isoMatch[3].padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  const ddmmyyyy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (ddmmyyyy) {
+    const day = ddmmyyyy[1].padStart(2, '0');
+    const month = ddmmyyyy[2].padStart(2, '0');
+    const year = ddmmyyyy[3];
+    return `${year}-${month}-${day}`;
+  }
   return "";
 }
 
@@ -361,15 +379,6 @@ function renderFechaInforme() {
   if (inputEl) inputEl.value = fechaInforme;
 }
 
-function updateFechaInforme(val) {
-  if (val) {
-    fechaInforme = val;
-    localStorage.setItem("ENJOY_FECHA_INFORME", fechaInforme);
-    alert(`Fecha de informe actualizada a ${fechaInforme}`);
-    renderCurrentView();
-  }
-}
-
 // ---------------------------------------------------------
 // View 1: Dashboard
 // ---------------------------------------------------------
@@ -502,8 +511,8 @@ function getMondayTimestamp(dateStr) {
   const s = String(dateStr).trim();
 
   let year, month, day;
-  const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  const ddmmyyyyMatch = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  const isoMatch = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  const ddmmyyyyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
 
   if (isoMatch) {
     year = parseInt(isoMatch[1], 10);
