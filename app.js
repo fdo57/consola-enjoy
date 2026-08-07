@@ -27,6 +27,20 @@ const UNIT_ABBR = {
   "Transversales": "TR"
 };
 
+// ---------------------------------------------------------
+// Global Helper Functions (Available to all modules/views)
+// ---------------------------------------------------------
+function isEmptyDate(val) {
+  if (val === null || val === undefined) return true;
+  const s = String(val).trim().toLowerCase();
+  return s === "" || s === "-" || s === "nan" || s === "null" || s === "undefined";
+}
+
+function normalizeEstado(st) {
+  if (!st) return "";
+  return String(st).toLowerCase().trim();
+}
+
 function getUnitAbbr(name) {
   if (!name) return "TR";
   return UNIT_ABBR[name] || name.substring(0, 2).toUpperCase();
@@ -37,7 +51,6 @@ function toTitleCase(str) {
   return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 }
 
-// Helper filter functions
 function isProjectActive(status) {
   if (!status) return true;
   const s = String(status).toLowerCase().trim();
@@ -50,13 +63,27 @@ function isTaskActive(status) {
   return s !== "terminada" && s !== "eliminada";
 }
 
-// SVG Icons permitted by INSTRUCTIONS.md
-const ICON_CHECK = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-const ICON_DELETE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`;
-const ICON_SAVE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`;
-const ICON_EDIT = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
-const ICON_CALENDAR = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
-const ICON_ALERT_RED = `<span class="semaforo-dot semaforo-red" style="margin-left: 6px; vertical-align: middle;" title="Proyecto con tareas en alerta"></span>`;
+function getSemaforoClass(task) {
+  if (!task) return "semaforo-green";
+  const alerta = (task.con_alerta || "").toLowerCase().trim();
+  const estado = (task.tarea_estado || "").toLowerCase().trim();
+
+  if (alerta === "si" || alerta === "sí") {
+    return "semaforo-red";
+  }
+  if (estado === "detenida") {
+    return "semaforo-yellow";
+  }
+  return "semaforo-green";
+}
+
+function getTodayStr() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${day}/${month}/${year}`;
+}
 
 function formatDateDDMMYYYY(dateStr) {
   if (!dateStr || String(dateStr).trim() === "" || String(dateStr).trim() === "-") return "-";
@@ -105,6 +132,161 @@ function parseToYYYYMMDD(dateStr) {
   return "";
 }
 
+function parseDateForSort(dateStr) {
+  const ymd = parseToYYYYMMDD(dateStr);
+  if (ymd) {
+    const time = new Date(ymd).getTime();
+    if (!isNaN(time)) return time;
+  }
+  return 0;
+}
+
+function sortTasksByCreationDesc(taskList) {
+  return taskList.slice().sort((a, b) => {
+    const dateA = parseDateForSort(a.tarea_fecha_creacion || a.fecha_inicio_proy || a.fecha_legacy);
+    const dateB = parseDateForSort(b.tarea_fecha_creacion || b.fecha_inicio_proy || b.fecha_legacy);
+    if (dateB !== dateA) {
+      return dateB - dateA;
+    }
+    return (b.tarea_id || "").localeCompare(a.tarea_id || "");
+  });
+}
+
+function getMondayTimestamp(dateStr) {
+  if (isEmptyDate(dateStr)) return null;
+  const s = String(dateStr).trim();
+
+  let year, month, day;
+  const isoMatch = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  const ddmmyyyyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+
+  if (isoMatch) {
+    year = parseInt(isoMatch[1], 10);
+    month = parseInt(isoMatch[2], 10) - 1;
+    day = parseInt(isoMatch[3], 10);
+  } else if (ddmmyyyyMatch) {
+    day = parseInt(ddmmyyyyMatch[1], 10);
+    month = parseInt(ddmmyyyyMatch[2], 10) - 1;
+    year = parseInt(ddmmyyyyMatch[3], 10);
+  } else {
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      year = d.getFullYear();
+      month = d.getMonth();
+      day = d.getDate();
+    } else {
+      return null;
+    }
+  }
+
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+
+  const utcDate = new Date(Date.UTC(year, month, day, 12, 0, 0));
+  if (isNaN(utcDate.getTime())) return null;
+
+  const dayOfWeek = utcDate.getUTCDay();
+  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+  const mondayDate = new Date(Date.UTC(year, month, day + diffToMonday, 0, 0, 0));
+  return mondayDate.toISOString().substring(0, 10);
+}
+
+function isSameWeek(dateStr1, dateStr2) {
+  if (isEmptyDate(dateStr1) || isEmptyDate(dateStr2)) return false;
+  const m1 = getMondayTimestamp(dateStr1);
+  const m2 = getMondayTimestamp(dateStr2);
+  if (!m1 || !m2) return false;
+  return m1 === m2;
+}
+
+function setTaskState(taskOrId, newState) {
+  const task = typeof taskOrId === "string" ? db.find(t => t.tarea_id === taskOrId) : taskOrId;
+  if (!task) return null;
+
+  const oldState = (task.tarea_estado || "").toLowerCase().trim();
+  const normalizedNewState = (newState || "").toLowerCase().trim();
+
+  task.tarea_estado = newState;
+
+  const isNewFinished = (normalizedNewState === "terminada" || normalizedNewState === "eliminada");
+  const isOldFinished = (oldState === "terminada" || oldState === "eliminada");
+
+  if (isNewFinished) {
+    if (isEmptyDate(task.fecha_fin_real)) {
+      task.fecha_fin_real = getTodayStr();
+    }
+  } else if (isOldFinished && !isNewFinished) {
+    task.fecha_fin_real = "";
+  }
+
+  return task;
+}
+
+function normalizeDateStr(val) {
+  if (isEmptyDate(val)) return "";
+  return parseToYYYYMMDD(val) || String(val).trim();
+}
+
+function diagnoseDateConsistency(item) {
+  if (!item) return { isConsistent: true, reasons: [] };
+  const reasons = [];
+
+  const state = (item.tarea_estado || "").toLowerCase().trim();
+  const isActive = (state === "por iniciar" || state === "en desarrollo" || state === "detenida");
+  const isFinishedOrDeleted = (state === "terminada" || state === "eliminada");
+
+  const hasFinProy = !isEmptyDate(item.fecha_fin_proy);
+  const hasFinReal = !isEmptyDate(item.fecha_fin_real);
+  const hasInicioProy = !isEmptyDate(item.fecha_inicio_proy);
+
+  // 1. Tarea activa con fecha_fin_real o fecha_fin_proy informada
+  if (isActive && hasFinReal) {
+    reasons.push("Tarea activa con fecha de término real informada");
+  }
+  if (isActive && hasFinProy) {
+    reasons.push("Tarea activa con fecha de término proyectada informada");
+  }
+
+  // 2. Tareas terminadas o eliminadas sin fecha_fin_real
+  if (isFinishedOrDeleted && !hasFinReal) {
+    reasons.push("Tarea terminada/eliminada sin fecha de término real");
+  }
+
+  // 3. Tareas terminadas o eliminadas sin fecha_fin_proy
+  if (isFinishedOrDeleted && !hasFinProy) {
+    reasons.push("Tarea terminada/eliminada sin fecha de término proyectada");
+  }
+
+  // 4. Tareas sin fecha_inicio_proy
+  if (!hasInicioProy) {
+    reasons.push("Sin fecha de inicio proyectada");
+  }
+
+  // 5. Tareas terminadas con porcentaje de avance distinto a 100
+  const pctNum = parseInt(item.tarea_pct, 10);
+  if (isFinishedOrDeleted && state === "terminada" && !isNaN(pctNum) && pctNum !== 100) {
+    reasons.push("Tarea terminada con porcentaje de avance distinto a 100%");
+  }
+
+  // 6. Tareas activas con porcentaje de avance igual a 100
+  if (isActive && !isNaN(pctNum) && pctNum === 100 && (state === "en desarrollo" || state === "detenida")) {
+    reasons.push("Tarea activa con porcentaje de avance igual a 100%");
+  }
+
+  return {
+    isConsistent: reasons.length === 0,
+    reasons: reasons
+  };
+}
+
+// SVG Icons permitted by INSTRUCTIONS.md
+const ICON_CHECK = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+const ICON_DELETE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`;
+const ICON_SAVE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`;
+const ICON_EDIT = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+const ICON_CALENDAR = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+const ICON_ALERT_RED = `<span class="semaforo-dot semaforo-red" style="margin-left: 6px; vertical-align: middle;" title="Proyecto con tareas en alerta"></span>`;
+
 function renderDateCell(taskId, fieldName, dateVal) {
   const formattedVal = formatDateDDMMYYYY(dateVal);
   const displayVal = formattedVal !== "" ? formattedVal : "-";
@@ -130,6 +312,7 @@ let isEditingTarea = false;
 let fechaInforme = new Date().toISOString().split('T')[0];
 
 let isStreamlitConnected = false;
+let dashSelectedProjectId = "";
 
 // Streamlit Custom Component Communication Bridge
 function sendToStreamlit(action, data, context) {
@@ -270,15 +453,6 @@ function saveDB(recordsToSave, contextPayload) {
   }
 }
 
-
-function getTodayStr() {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${day}/${month}/${year}`;
-}
-
 function resetFechaInformeToToday() {
   fechaInforme = formatDateDDMMYYYY(getTodayStr());
   renderFechaInformeDisplay();
@@ -329,7 +503,6 @@ function renderCurrentView() {
   else if (currentView === "admin-db") renderAdminDB();
 }
 
-
 function openFichaUnidad(unitName) {
   selectedUnit = unitName || "Enjoy Rinconada";
   switchView("ficha-unidad");
@@ -346,8 +519,6 @@ function openFichaTarea(taskId) {
   switchView("ficha-tarea");
 }
 
-let dashSelectedProjectId = "";
-
 function selectDashProject(projId) {
   if (dashSelectedProjectId === projId) {
     dashSelectedProjectId = "";
@@ -355,26 +526,6 @@ function selectDashProject(projId) {
     dashSelectedProjectId = projId;
   }
   renderDashboard();
-}
-
-function parseDateForSort(dateStr) {
-  const ymd = parseToYYYYMMDD(dateStr);
-  if (ymd) {
-    const time = new Date(ymd).getTime();
-    if (!isNaN(time)) return time;
-  }
-  return 0;
-}
-
-function sortTasksByCreationDesc(taskList) {
-  return taskList.slice().sort((a, b) => {
-    const dateA = parseDateForSort(a.tarea_fecha_creacion || a.fecha_inicio_proy || a.fecha_legacy);
-    const dateB = parseDateForSort(b.tarea_fecha_creacion || b.fecha_inicio_proy || b.fecha_legacy);
-    if (dateB !== dateA) {
-      return dateB - dateA;
-    }
-    return (b.tarea_id || "").localeCompare(a.tarea_id || "");
-  });
 }
 
 // ---------------------------------------------------------
@@ -389,7 +540,8 @@ function renderFechaInforme() {
 // View 1: Dashboard
 // ---------------------------------------------------------
 function renderDashboard() {
-  const filterUnit = document.getElementById("dash-unit-filter").value;
+  const filterUnitEl = document.getElementById("dash-unit-filter");
+  const filterUnit = filterUnitEl ? filterUnitEl.value : "TODAS";
   const allUnits = ["Enjoy Rinconada", "Enjoy Pucón", "Enjoy Viña", "Enjoy Coquimbo", "Enjoy Chiloé", "Enjoy Transversales"];
 
   // Group active projects by unit
@@ -415,340 +567,198 @@ function renderDashboard() {
 
   // Zone 1: Proyectos por Unidad de Negocio List
   const unitListEl = document.getElementById("dash-unit-list");
-  unitListEl.innerHTML = "";
+  if (unitListEl) {
+    unitListEl.innerHTML = "";
 
-  allUnits.forEach(uName => {
-    const projs = unitsMap[uName] || {};
-    const projIds = Object.keys(projs);
-    if (projIds.length > 0) {
-      const containerDiv = document.createElement("div");
-      containerDiv.className = "unit-block";
+    allUnits.forEach(uName => {
+      const projs = unitsMap[uName] || {};
+      const projIds = Object.keys(projs);
+      if (projIds.length > 0) {
+        const containerDiv = document.createElement("div");
+        containerDiv.className = "unit-block";
 
-      const headerDiv = document.createElement("div");
-      headerDiv.className = "unit-header";
-      headerDiv.innerHTML = `
-        <span class="badge-btn">${projIds.length}</span>
-        <span class="unit-name-text">${uName}</span>
-      `;
-      containerDiv.appendChild(headerDiv);
-
-      const subUl = document.createElement("ul");
-      subUl.className = "proj-sublist";
-
-      projIds.forEach(pid => {
-        const pName = projs[pid];
-        const projTasks = db.filter(item => item.proyecto_id === pid && isTaskActive(item.tarea_estado));
-        const hasAlert = projTasks.some(t => (t.con_alerta || "").toLowerCase() === "si");
-        const alertIconHtml = hasAlert ? ICON_ALERT_RED : "";
-
-        const li = document.createElement("li");
-        const isSelected = pid === dashSelectedProjectId;
-        li.innerHTML = `
-          <span class="dash-proj-link ${isSelected ? 'active' : ''}" onclick="selectDashProject('${pid}')">${pName} ${alertIconHtml}</span>
+        const headerDiv = document.createElement("div");
+        headerDiv.className = "unit-header";
+        headerDiv.innerHTML = `
+          <span class="badge-btn">${projIds.length}</span>
+          <span class="unit-name-text">${uName}</span>
         `;
-        subUl.appendChild(li);
-      });
+        containerDiv.appendChild(headerDiv);
 
-      containerDiv.appendChild(subUl);
-      unitListEl.appendChild(containerDiv);
-    }
-  });
+        const subUl = document.createElement("ul");
+        subUl.className = "proj-sublist";
 
-function getSemaforoClass(task) {
-  const alerta = (task.con_alerta || "").toLowerCase().trim();
-  const estado = (task.tarea_estado || "").toLowerCase().trim();
+        projIds.forEach(pid => {
+          const pName = projs[pid];
+          const projTasks = db.filter(item => item.proyecto_id === pid && isTaskActive(item.tarea_estado));
+          const hasAlert = projTasks.some(t => (t.con_alerta || "").toLowerCase() === "si");
+          const alertIconHtml = hasAlert ? ICON_ALERT_RED : "";
 
-  if (alerta === "si" || alerta === "sí") {
-    return "semaforo-red";
+          const li = document.createElement("li");
+          const isSelected = pid === dashSelectedProjectId;
+          li.innerHTML = `
+            <span class="dash-proj-link ${isSelected ? 'active' : ''}" onclick="selectDashProject('${pid}')">${pName} ${alertIconHtml}</span>
+          `;
+          subUl.appendChild(li);
+        });
+
+        containerDiv.appendChild(subUl);
+        unitListEl.appendChild(containerDiv);
+      }
+    });
   }
-  if (estado === "detenida") {
-    return "semaforo-yellow";
-  }
-  return "semaforo-green";
-}
 
   // Zone 2: Tareas en Curso List (Tasks ordered by creation date, newest to oldest)
   const taskListEl = document.getElementById("dash-task-list");
-  taskListEl.innerHTML = "";
+  if (taskListEl) {
+    taskListEl.innerHTML = "";
 
-  let tasksToRender = [];
-  if (dashSelectedProjectId) {
-    tasksToRender = db.filter(item => item.proyecto_id === dashSelectedProjectId && isProjectActive(item.proyecto_estado) && isTaskActive(item.tarea_estado));
-  } else {
-    tasksToRender = db.filter(item => {
-      if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
-      return isProjectActive(item.proyecto_estado) && isTaskActive(item.tarea_estado);
-    });
-  }
-
-  const sortedTasks = sortTasksByCreationDesc(tasksToRender);
-  if (sortedTasks.length === 0) {
-    taskListEl.innerHTML = `<li class="task-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas en curso</li>`;
-  } else {
-    sortedTasks.forEach(task => {
-      const semaforoClass = getSemaforoClass(task);
-
-      const li = document.createElement("li");
-      li.className = "task-row-item";
-      li.innerHTML = `
-        <div style="display: flex; align-items: center;">
-          <span class="semaforo-dot ${semaforoClass}" title="Estado: ${task.tarea_estado}, Alerta: ${task.con_alerta}"></span>
-          <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
-        </div>
-        <span class="task-responsable-badge">${task.tarea_responsable || '-'}</span>
-      `;
-      taskListEl.appendChild(li);
-    });
-  }
-
-function isEmptyDate(val) {
-  if (val === null || val === undefined) return true;
-  const s = String(val).trim().toLowerCase();
-  return s === "" || s === "-" || s === "nan" || s === "null" || s === "undefined";
-}
-
-function normalizeEstado(st) {
-  if (!st) return "";
-  return String(st).toLowerCase().trim();
-}
-
-function getMondayTimestamp(dateStr) {
-  if (isEmptyDate(dateStr)) return null;
-  const s = String(dateStr).trim();
-
-  let year, month, day;
-  const isoMatch = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  const ddmmyyyyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-
-  if (isoMatch) {
-    year = parseInt(isoMatch[1], 10);
-    month = parseInt(isoMatch[2], 10) - 1;
-    day = parseInt(isoMatch[3], 10);
-  } else if (ddmmyyyyMatch) {
-    day = parseInt(ddmmyyyyMatch[1], 10);
-    month = parseInt(ddmmyyyyMatch[2], 10) - 1;
-    year = parseInt(ddmmyyyyMatch[3], 10);
-  } else {
-    const d = new Date(s);
-    if (!isNaN(d.getTime())) {
-      year = d.getFullYear();
-      month = d.getMonth();
-      day = d.getDate();
+    let tasksToRender = [];
+    if (dashSelectedProjectId) {
+      tasksToRender = db.filter(item => item.proyecto_id === dashSelectedProjectId && isProjectActive(item.proyecto_estado) && isTaskActive(item.tarea_estado));
     } else {
-      return null;
+      tasksToRender = db.filter(item => {
+        if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
+        return isProjectActive(item.proyecto_estado) && isTaskActive(item.tarea_estado);
+      });
+    }
+
+    const sortedTasks = sortTasksByCreationDesc(tasksToRender);
+    if (sortedTasks.length === 0) {
+      taskListEl.innerHTML = `<li class="task-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas en curso</li>`;
+    } else {
+      sortedTasks.forEach(task => {
+        const semaforoClass = getSemaforoClass(task);
+
+        const li = document.createElement("li");
+        li.className = "task-row-item";
+        li.innerHTML = `
+          <div style="display: flex; align-items: center;">
+            <span class="semaforo-dot ${semaforoClass}" title="Estado: ${task.tarea_estado}, Alerta: ${task.con_alerta}"></span>
+            <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
+          </div>
+          <span class="task-responsable-badge">${task.tarea_responsable || '-'}</span>
+        `;
+        taskListEl.appendChild(li);
+      });
     }
   }
-
-  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
-
-  const utcDate = new Date(Date.UTC(year, month, day, 12, 0, 0));
-  if (isNaN(utcDate.getTime())) return null;
-
-  const dayOfWeek = utcDate.getUTCDay();
-  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-
-  const mondayDate = new Date(Date.UTC(year, month, day + diffToMonday, 0, 0, 0));
-  return mondayDate.toISOString().substring(0, 10);
-}
-
-function isSameWeek(dateStr1, dateStr2) {
-  if (isEmptyDate(dateStr1) || isEmptyDate(dateStr2)) return false;
-  const m1 = getMondayTimestamp(dateStr1);
-  const m2 = getMondayTimestamp(dateStr2);
-  if (!m1 || !m2) return false;
-  return m1 === m2;
-}
 
   // Zone 3: Avance Semanal (Divided into 3 stacked sub-sections: Tareas Creadas, Tareas Terminadas, Actualizar Fechas)
   const alertListEl = document.getElementById("dash-alert-list");
-  alertListEl.innerHTML = `
-    <div style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
-      <div class="avance-section">
-        <h3 class="avance-sub-header" style="font-size: 0.95rem; font-weight: 700; color: var(--color-title); margin-bottom: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">Tareas Creadas</h3>
-        <ul id="avance-created-ul" class="item-list" style="margin: 0; padding: 0;"></ul>
-      </div>
-
-      <div class="avance-section">
-        <h3 class="avance-sub-header" style="font-size: 0.95rem; font-weight: 700; color: var(--color-title); margin-bottom: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">Tareas Terminadas</h3>
-        <ul id="avance-finished-ul" class="item-list" style="margin: 0; padding: 0;"></ul>
-      </div>
-
-      <div class="avance-section">
-        <h3 class="avance-sub-header" style="font-size: 0.95rem; font-weight: 700; color: var(--color-title); margin-bottom: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">Actualizar Fechas</h3>
-        <ul id="avance-update-ul" class="item-list" style="margin: 0; padding: 0;"></ul>
-      </div>
-    </div>
-  `;
-
-  const createdUl = document.getElementById("avance-created-ul");
-  const finishedUl = document.getElementById("avance-finished-ul");
-  const updateUl = document.getElementById("avance-update-ul");
-
-  // Part 1: Tareas Creadas (fecha_inicio_proy en misma semana de Fecha de Informe)
-  const createdTasks = db.filter(item => {
-    if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
-    const st = normalizeEstado(item.tarea_estado);
-    if (st !== "en desarrollo" && st !== "detenida") return false;
-    if (isEmptyDate(item.fecha_inicio_proy)) return false;
-    if (!isSameWeek(item.fecha_inicio_proy, fechaInforme)) return false;
-    if (!isEmptyDate(item.fecha_fin_real)) return false;
-    return true;
-  });
-
-  if (createdTasks.length === 0) {
-    createdUl.innerHTML = `<li class="alert-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas creadas esta semana</li>`;
-  } else {
-    createdTasks.forEach(task => {
-      const semaforoClass = getSemaforoClass(task);
-      const li = document.createElement("li");
-      li.className = "alert-row-item";
-      li.innerHTML = `
-        <span class="alert-unit-name">${task.unidad_nombre}</span>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
-          <span class="semaforo-dot ${semaforoClass}" title="Estado: ${task.tarea_estado}, Alerta: ${task.con_alerta}"></span>
+  if (alertListEl) {
+    alertListEl.innerHTML = `
+      <div style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
+        <div class="avance-section">
+          <h3 class="avance-sub-header" style="font-size: 0.95rem; font-weight: 700; color: var(--color-title); margin-bottom: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">Tareas Creadas</h3>
+          <ul id="avance-created-ul" class="item-list" style="margin: 0; padding: 0;"></ul>
         </div>
-      `;
-      createdUl.appendChild(li);
-    });
-  }
 
-  // Part 2: Tareas Terminadas (fecha_fin_real en misma semana de Fecha de Informe)
-  const finishedTasks = db.filter(item => {
-    if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
-    const st = normalizeEstado(item.tarea_estado);
-    if (st !== "terminada" && st !== "eliminada") return false;
-    if (isEmptyDate(item.fecha_fin_real)) return false;
-    return isSameWeek(item.fecha_fin_real, fechaInforme);
-  });
-
-  if (finishedTasks.length === 0) {
-    finishedUl.innerHTML = `<li class="alert-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas terminadas esta semana</li>`;
-  } else {
-    finishedTasks.forEach(task => {
-      const semaforoClass = getSemaforoClass(task);
-      const li = document.createElement("li");
-      li.className = "alert-row-item";
-      li.innerHTML = `
-        <span class="alert-unit-name">${task.unidad_nombre}</span>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
-          <span class="semaforo-dot ${semaforoClass}" title="Estado: ${task.tarea_estado}, Alerta: ${task.con_alerta}"></span>
+        <div class="avance-section">
+          <h3 class="avance-sub-header" style="font-size: 0.95rem; font-weight: 700; color: var(--color-title); margin-bottom: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">Tareas Terminadas</h3>
+          <ul id="avance-finished-ul" class="item-list" style="margin: 0; padding: 0;"></ul>
         </div>
-      `;
-      finishedUl.appendChild(li);
-    });
-  }
 
-  // Part 3: Actualizar Fechas (inconsistencias diagnosticadas)
-  const updateDateTasks = db.filter(item => {
-    if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
-    const diag = diagnoseDateConsistency(item);
-    return !diag.isConsistent;
-  });
-
-  if (updateDateTasks.length === 0) {
-    updateUl.innerHTML = `<li class="alert-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas pendientes de fecha</li>`;
-  } else {
-    updateDateTasks.forEach(task => {
-      const diag = diagnoseDateConsistency(task);
-      const reasonText = diag.reasons.join(", ");
-      const semaforoClass = getSemaforoClass(task);
-      const li = document.createElement("li");
-      li.className = "alert-row-item";
-      li.innerHTML = `
-        <span class="alert-unit-name">${task.unidad_nombre}</span>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')" title="${reasonText}">${task.tarea_nombre}</span>
-          <span class="semaforo-dot ${semaforoClass}" title="Estado: ${task.tarea_estado}, Alerta: ${task.con_alerta} - ${reasonText}"></span>
+        <div class="avance-section">
+          <h3 class="avance-sub-header" style="font-size: 0.95rem; font-weight: 700; color: var(--color-title); margin-bottom: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">Actualizar Fechas</h3>
+          <ul id="avance-update-ul" class="item-list" style="margin: 0; padding: 0;"></ul>
         </div>
-      `;
-      updateUl.appendChild(li);
+      </div>
+    `;
+
+    const createdUl = document.getElementById("avance-created-ul");
+    const finishedUl = document.getElementById("avance-finished-ul");
+    const updateUl = document.getElementById("avance-update-ul");
+
+    // Part 1: Tareas Creadas (fecha_inicio_proy en misma semana de Fecha de Informe)
+    const createdTasks = db.filter(item => {
+      if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
+      const st = normalizeEstado(item.tarea_estado);
+      if (st !== "en desarrollo" && st !== "detenida") return false;
+      if (isEmptyDate(item.fecha_inicio_proy)) return false;
+      if (!isSameWeek(item.fecha_inicio_proy, fechaInforme)) return false;
+      if (!isEmptyDate(item.fecha_fin_real)) return false;
+      return true;
     });
-  }
 
-}
-
-// Function: Centralized State Transition Management
-function setTaskState(taskOrId, newState) {
-  const task = typeof taskOrId === "string" ? db.find(t => t.tarea_id === taskOrId) : taskOrId;
-  if (!task) return null;
-
-  const oldState = (task.tarea_estado || "").toLowerCase().trim();
-  const normalizedNewState = (newState || "").toLowerCase().trim();
-
-  task.tarea_estado = newState;
-
-  const isNewFinished = (normalizedNewState === "terminada" || normalizedNewState === "eliminada");
-  const isOldFinished = (oldState === "terminada" || oldState === "eliminada");
-
-  if (isNewFinished) {
-    if (isEmptyDate(task.fecha_fin_real)) {
-      task.fecha_fin_real = getTodayStr();
+    if (createdUl) {
+      if (createdTasks.length === 0) {
+        createdUl.innerHTML = `<li class="alert-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas creadas esta semana</li>`;
+      } else {
+        createdTasks.forEach(task => {
+          const semaforoClass = getSemaforoClass(task);
+          const li = document.createElement("li");
+          li.className = "alert-row-item";
+          li.innerHTML = `
+            <span class="alert-unit-name">${task.unidad_nombre}</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
+              <span class="semaforo-dot ${semaforoClass}" title="Estado: ${task.tarea_estado}, Alerta: ${task.con_alerta}"></span>
+            </div>
+          `;
+          createdUl.appendChild(li);
+        });
+      }
     }
-  } else if (isOldFinished && !isNewFinished) {
-    task.fecha_fin_real = "";
+
+    // Part 2: Tareas Terminadas (fecha_fin_real en misma semana de Fecha de Informe)
+    const finishedTasks = db.filter(item => {
+      if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
+      const st = normalizeEstado(item.tarea_estado);
+      if (st !== "terminada" && st !== "eliminada") return false;
+      if (isEmptyDate(item.fecha_fin_real)) return false;
+      return isSameWeek(item.fecha_fin_real, fechaInforme);
+    });
+
+    if (finishedUl) {
+      if (finishedTasks.length === 0) {
+        finishedUl.innerHTML = `<li class="alert-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas terminadas esta semana</li>`;
+      } else {
+        finishedTasks.forEach(task => {
+          const semaforoClass = getSemaforoClass(task);
+          const li = document.createElement("li");
+          li.className = "alert-row-item";
+          li.innerHTML = `
+            <span class="alert-unit-name">${task.unidad_nombre}</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
+              <span class="semaforo-dot ${semaforoClass}" title="Estado: ${task.tarea_estado}, Alerta: ${task.con_alerta}"></span>
+            </div>
+          `;
+          finishedUl.appendChild(li);
+        });
+      }
+    }
+
+    // Part 3: Actualizar Fechas (inconsistencias diagnosticadas)
+    const updateDateTasks = db.filter(item => {
+      if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
+      const diag = diagnoseDateConsistency(item);
+      return !diag.isConsistent;
+    });
+
+    if (updateUl) {
+      if (updateDateTasks.length === 0) {
+        updateUl.innerHTML = `<li class="alert-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas pendientes de fecha</li>`;
+      } else {
+        updateDateTasks.forEach(task => {
+          const diag = diagnoseDateConsistency(task);
+          const reasonText = diag.reasons.join(", ");
+          const semaforoClass = getSemaforoClass(task);
+          const li = document.createElement("li");
+          li.className = "alert-row-item";
+          li.innerHTML = `
+            <span class="alert-unit-name">${task.unidad_nombre}</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')" title="${reasonText}">${task.tarea_nombre}</span>
+              <span class="semaforo-dot ${semaforoClass}" title="Estado: ${task.tarea_estado}, Alerta: ${task.con_alerta} - ${reasonText}"></span>
+            </div>
+          `;
+          updateUl.appendChild(li);
+        });
+      }
+    }
   }
-
-  return task;
-}
-
-function normalizeDateStr(val) {
-  if (isEmptyDate(val)) return "";
-  return parseToYYYYMMDD(val) || String(val).trim();
-}
-
-// Function: Read-Only Date Consistency Diagnosis Grouped by Project
-function diagnoseDateConsistency(item) {
-  if (!item) return { isConsistent: true, reasons: [] };
-  const reasons = [];
-
-  const state = (item.tarea_estado || "").toLowerCase().trim();
-  const isActive = (state === "por iniciar" || state === "en desarrollo" || state === "detenida");
-  const isFinishedOrDeleted = (state === "terminada" || state === "eliminada");
-
-  const hasFinProy = !isEmptyDate(item.fecha_fin_proy);
-  const hasFinReal = !isEmptyDate(item.fecha_fin_real);
-  const hasInicioProy = !isEmptyDate(item.fecha_inicio_proy);
-
-  // 1. Tarea activa con fecha_fin_real o fecha_fin_proy informada
-  if (isActive && hasFinReal) {
-    reasons.push("Tarea activa con fecha de término real informada");
-  }
-  if (isActive && hasFinProy) {
-    reasons.push("Tarea activa con fecha de término proyectada informada");
-  }
-
-  // 2. Tareas terminadas o eliminadas sin fecha_fin_real
-  if (isFinishedOrDeleted && !hasFinReal) {
-    reasons.push("Tarea terminada/eliminada sin fecha de término real");
-  }
-
-  // 3. Tareas terminadas o eliminadas sin fecha_fin_proy
-  if (isFinishedOrDeleted && !hasFinProy) {
-    reasons.push("Tarea terminada/eliminada sin fecha de término proyectada");
-  }
-
-  // 4. Tareas sin fecha_inicio_proy
-  if (!hasInicioProy) {
-    reasons.push("Sin fecha de inicio proyectada");
-  }
-
-  // 5. Tareas terminadas con porcentaje de avance distinto a 100
-  const pctNum = parseInt(item.tarea_pct, 10);
-  if (isFinishedOrDeleted && state === "terminada" && !isNaN(pctNum) && pctNum !== 100) {
-    reasons.push("Tarea terminada con porcentaje de avance distinto a 100%");
-  }
-
-  // 6. Tareas activas con porcentaje de avance igual a 100
-  if (isActive && !isNaN(pctNum) && pctNum === 100 && (state === "en desarrollo" || state === "detenida")) {
-    reasons.push("Tarea activa con porcentaje de avance igual a 100%");
-  }
-
-  return {
-    isConsistent: reasons.length === 0,
-    reasons: reasons
-  };
 }
 
 // Inline Table Cell Renderers for Estado & Avance %
@@ -759,113 +769,98 @@ function renderTaskStatusCell(taskId, currentStatus) {
       <option value="por iniciar" ${status === "por iniciar" ? "selected" : ""}>por iniciar</option>
       <option value="en desarrollo" ${status === "en desarrollo" ? "selected" : ""}>en desarrollo</option>
       <option value="detenida" ${status === "detenida" ? "selected" : ""}>detenida</option>
+      <option value="terminada" ${status === "terminada" ? "selected" : ""}>terminada</option>
+      <option value="eliminada" ${status === "eliminada" ? "selected" : ""}>eliminada</option>
     </select>
+  `;
+}
+
+function renderTaskPctCell(taskId, currentPct) {
+  const val = currentPct !== undefined && currentPct !== null ? currentPct : "";
+  return `
+    <input type="number" class="form-input" style="width: 60px; padding: 2px 4px; text-align: right;" min="0" max="100" value="${val}" onchange="updateTaskPctInline('${taskId}', this.value)">
   `;
 }
 
 function updateTaskStatusInline(taskId, newStatus) {
   const task = db.find(t => t.tarea_id === taskId);
-  if (task) {
-    setTaskState(task, newStatus);
-    saveDB();
-    renderCurrentView();
-  }
-}
-
-function renderTaskPctCell(taskId, currentPct) {
-  const displayVal = currentPct !== undefined && currentPct !== null && currentPct !== "" ? currentPct : "";
-  return `
-    <div style="display: flex; align-items: center; justify-content: center; gap: 2px;">
-      <input type="number" min="0" max="100" class="pct-input" value="${displayVal}" onchange="updateTaskPctInline('${taskId}', this.value)" style="width: 55px; padding: 3px 4px; border: 1px solid var(--color-border); border-radius: 4px; text-align: center; font-weight: 600; background: #fff;">
-      <span style="font-size: 0.85rem; font-weight: 600; color: var(--color-text);">%</span>
-    </div>
-  `;
+  if (!task) return;
+  setTaskState(task, newStatus);
+  saveDB();
+  renderCurrentView();
 }
 
 function updateTaskPctInline(taskId, newPct) {
   const task = db.find(t => t.tarea_id === taskId);
-  if (task) {
-    const val = parseInt(newPct, 10);
-    task.tarea_pct = isNaN(val) ? "" : Math.min(100, Math.max(0, val));
-    saveDB();
-    renderCurrentView();
-  }
+  if (!task) return;
+  const num = newPct !== "" ? parseInt(newPct, 10) : "";
+  task.tarea_pct = !isNaN(num) ? num : "";
+  saveDB();
+  renderCurrentView();
 }
 
 // ---------------------------------------------------------
-// View 2: Proyectos Table
+// View 2: Proyectos
 // ---------------------------------------------------------
 function renderProyectosTable() {
-  const tbody = document.getElementById("proyectos-table-body");
-  tbody.innerHTML = "";
+  const filterUnit = document.getElementById("proyectos-unit-filter").value;
+  const tbodyActivos = document.getElementById("proyectos-table-body-activos");
+  const tbodyInactivos = document.getElementById("proyectos-table-body-inactivos");
 
-  const activeRows = db.filter(item => isProjectActive(item.proyecto_estado) && isTaskActive(item.tarea_estado));
+  tbodyActivos.innerHTML = "";
+  tbodyInactivos.innerHTML = "";
 
-  activeRows.forEach(item => {
+  db.forEach(item => {
+    if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return;
+
+    const isActive = isProjectActive(item.proyecto_estado);
+    const targetTbody = isActive ? tbodyActivos : tbodyInactivos;
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><span class="table-link" onclick="openFichaUnidad('${item.unidad_nombre}')">${item.unidad_nombre}</span></td>
       <td><span class="table-link" onclick="openFichaProyecto('${item.proyecto_id}')">${item.proyecto_nombre}</span></td>
       <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre}</span></td>
-      <td class="col-desc"><div class="desc-text-clamp">${item.tarea_descripcion || ""}</div></td>
-      <td>${item.tarea_responsable || ""}</td>
+      <td>${item.tarea_responsable || '-'}</td>
       <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
       <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_fin_proy', item.fecha_fin_proy)}</td>
-      <td>
-        <select class="alert-select" onchange="updateTaskAlert('${item.tarea_id}', this.value)">
-          <option value="no" ${item.con_alerta === "no" ? "selected" : ""}>no</option>
-          <option value="si" ${item.con_alerta === "si" ? "selected" : ""}>si</option>
-        </select>
-      </td>
-      <td>
-        <button class="action-btn check-btn" onclick="completeTask('${item.tarea_id}')">${ICON_CHECK}</button>
-      </td>
-      <td>
-        <button class="action-btn delete-btn" onclick="deleteTask('${item.tarea_id}')">${ICON_DELETE}</button>
-      </td>
+      <td><span class="table-link" onclick="toggleTaskAlerta('${item.tarea_id}')">${(item.con_alerta || 'no').toLowerCase() === 'si' ? 'si' : 'no'}</span></td>
+      <td>${item.tarea_contraparte || '-'}</td>
     `;
-    tbody.appendChild(tr);
+    targetTbody.appendChild(tr);
   });
 
-  // Render Inactive / Terminated tasks table in Proyectos View
-  const inactiveTbody = document.getElementById("proyectos-inactive-table-body");
-  if (inactiveTbody) {
-    inactiveTbody.innerHTML = "";
-    const inactiveRows = db.filter(item => !isProjectActive(item.proyecto_estado) || !isTaskActive(item.tarea_estado));
-    inactiveRows.forEach(item => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td><span class="table-link" onclick="openFichaUnidad('${item.unidad_nombre}')">${item.unidad_nombre}</span></td>
-        <td><span class="table-link" onclick="openFichaProyecto('${item.proyecto_id}')">${item.proyecto_nombre}</span></td>
-        <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre}</span></td>
-        <td class="col-desc"><div class="desc-text-clamp">${item.tarea_descripcion || ""}</div></td>
-        <td>${item.tarea_responsable || ""}</td>
-        <td>${item.tarea_estado || ""}</td>
-        <td>${item.tarea_pct !== "" ? item.tarea_pct + "%" : ""}</td>
-        <td>${formatDateDDMMYYYY(item.fecha_inicio_proy)}</td>
-        <td>${formatDateDDMMYYYY(item.fecha_fin_proy)}</td>
-        <td>${item.con_alerta || "no"}</td>
-        <td>-</td>
-        <td>-</td>
-      `;
-      inactiveTbody.appendChild(tr);
-    });
+  const inactiveSection = document.getElementById("proyectos-inactivos-section");
+  if (inactiveSection) {
+    inactiveSection.style.display = tbodyInactivos.children.length > 0 ? "block" : "none";
   }
 }
 
-function createNewProject() {
-  switchView("crear-proyecto");
+function updateTaskDate(taskId, fieldName, newVal) {
+  const task = db.find(t => t.tarea_id === taskId);
+  if (!task) return;
+  task[fieldName] = newVal ? formatDateDDMMYYYY(newVal) : "";
+  saveDB();
+  renderCurrentView();
 }
 
-function createNewTask() {
-  switchView("crear-tarea");
+function toggleTaskAlerta(taskId) {
+  const task = db.find(t => t.tarea_id === taskId);
+  if (!task) return;
+  const curr = (task.con_alerta || "no").toLowerCase();
+  task.con_alerta = curr === "si" ? "no" : "si";
+  saveDB();
+  renderCurrentView();
 }
 
-// Formulario Creación Nuevo Proyecto
+// ---------------------------------------------------------
+// View 3: Crear Proyecto
+// ---------------------------------------------------------
 function renderFormCrearProyecto() {
   const selectUnit = document.getElementById("np-unidad-nombre");
+  if (!selectUnit) return;
   selectUnit.innerHTML = "";
   const allUnits = ["Enjoy Rinconada", "Enjoy Pucón", "Enjoy Viña", "Enjoy Coquimbo", "Enjoy Chiloé", "Enjoy Transversales"];
   allUnits.forEach(u => {
@@ -875,8 +870,59 @@ function renderFormCrearProyecto() {
     if (u === selectedUnit) opt.selected = true;
     selectUnit.appendChild(opt);
   });
-  document.getElementById("np-proyecto-nombre").value = "";
-  document.getElementById("np-proyecto-descripcion").value = "";
+
+  const nameEl = document.getElementById("np-proyecto-nombre");
+  if (nameEl) nameEl.value = "";
+  const descEl = document.getElementById("np-proyecto-descripcion");
+  if (descEl) descEl.value = "";
+}
+
+function createNewProject(uName, pName, pDesc) {
+  const currentYear = new Date().getFullYear();
+  const abbr = getUnitAbbr(uName);
+
+  let nextSeq = 1;
+  db.forEach(item => {
+    if (item.proyecto_id && item.proyecto_id.includes(`_${abbr}`)) {
+      const parts = item.proyecto_id.split('_');
+      if (parts.length >= 2) {
+        const numPart = parseInt(parts[1].replace(abbr, ''), 10);
+        if (!isNaN(numPart) && numPart >= nextSeq) nextSeq = numPart + 1;
+      }
+    }
+  });
+
+  const seqStr = String(nextSeq).padStart(3, '0');
+  const newProjId = `${currentYear}_${abbr}${seqStr}`;
+  const newTaskId = `${newProjId}_001`;
+  const todayStr = getTodayStr();
+
+  const newRecord = {
+    proyecto_id: newProjId,
+    unidad_nombre: uName,
+    proyecto_nombre: pName,
+    proyecto_estado: "en desarrollo",
+    proyecto_descripcion: pDesc,
+    tarea_id: newTaskId,
+    tarea_nombre: "Tarea inicial",
+    tarea_descripcion: "",
+    tarea_responsable: "",
+    tarea_estado: "por iniciar",
+    tarea_contraparte: "",
+    tarea_pct: 0,
+    tarea_fecha_creacion: todayStr,
+    fecha_legacy: "",
+    con_alerta: "no",
+    fecha_inicio_proy: todayStr,
+    fecha_inicio_real: "",
+    fecha_fin_proy: "",
+    fecha_fin_real: ""
+  };
+
+  db.unshift(newRecord);
+  saveDB();
+  selectedProjectId = newProjId;
+  switchView("ficha-proyecto");
 }
 
 function saveNuevoProyectoForm() {
@@ -935,7 +981,6 @@ function saveNuevoProyectoForm() {
   selectedProjectId = newProjId;
   switchView("ficha-proyecto");
 }
-
 
 function generateNextTaskId(targetProjId) {
   if (!targetProjId) return "";
@@ -1004,7 +1049,9 @@ function renderFormCrearTarea(pendingRecord) {
   let existingProjInicio = "";
   if (targetPid) {
     const existingTask = db.find(t => t.proyecto_id === targetPid && !isEmptyDate(t.fecha_inicio_proy));
-    if (existingTask) existingProjInicio = existingTask.fecha_inicio_proy;
+    if (existingTask && existingTask.fecha_inicio_proy && existingTask.fecha_inicio_proy !== "-") {
+      existingProjInicio = existingTask.fecha_inicio_proy;
+    }
   }
 
   const nameEl = document.getElementById("nt-tarea-nombre");
@@ -1024,12 +1071,18 @@ function renderFormCrearTarea(pendingRecord) {
 
   const ntInicioProyEl = document.getElementById("nt-fecha-inicio-proy");
   if (ntInicioProyEl) {
-    ntInicioProyEl.value = pendingRecord ? (formatDateDDMMYYYY(pendingRecord.fecha_inicio_proy) || formatDateDDMMYYYY(todayStr)) : (formatDateDDMMYYYY(existingProjInicio) || formatDateDDMMYYYY(todayStr));
+    let initialDate = todayStr;
+    if (pendingRecord && pendingRecord.fecha_inicio_proy && !isEmptyDate(pendingRecord.fecha_inicio_proy) && pendingRecord.fecha_inicio_proy !== "-") {
+      initialDate = pendingRecord.fecha_inicio_proy;
+    } else if (existingProjInicio && !isEmptyDate(existingProjInicio) && existingProjInicio !== "-") {
+      initialDate = existingProjInicio;
+    }
+    ntInicioProyEl.value = formatDateDDMMYYYY(initialDate);
   }
 
   const ntFinProyEl = document.getElementById("nt-fecha-fin-proy");
   if (ntFinProyEl) {
-    ntFinProyEl.value = pendingRecord ? (formatDateDDMMYYYY(pendingRecord.fecha_fin_proy) || "") : "";
+    ntFinProyEl.value = (pendingRecord && pendingRecord.fecha_fin_proy && pendingRecord.fecha_fin_proy !== "-") ? formatDateDDMMYYYY(pendingRecord.fecha_fin_proy) : "";
   }
 }
 
@@ -1059,11 +1112,23 @@ function onNuevaTareaUnitChange(uName) {
   newOpt.style.fontWeight = "bold";
   newOpt.style.color = "#C04F15";
   selectProj.appendChild(newOpt);
+
+  if (pKeys.length > 0) {
+    onNuevaTareaProjectChange(pKeys[0]);
+  }
 }
 
 function onNuevaTareaProjectChange(val) {
   if (val === "__NUEVO_PROYECTO__") {
     switchView("crear-proyecto");
+    return;
+  }
+  const ntInicioProyEl = document.getElementById("nt-fecha-inicio-proy");
+  if (ntInicioProyEl && val) {
+    const existingTask = db.find(t => t.proyecto_id === val && !isEmptyDate(t.fecha_inicio_proy));
+    const todayStr = getTodayStr();
+    const projDate = (existingTask && existingTask.fecha_inicio_proy && existingTask.fecha_inicio_proy !== "-") ? existingTask.fecha_inicio_proy : "";
+    ntInicioProyEl.value = (projDate && !isEmptyDate(projDate)) ? formatDateDDMMYYYY(projDate) : formatDateDDMMYYYY(todayStr);
   }
 }
 
@@ -1103,11 +1168,13 @@ function saveNuevaTareaForm() {
   let existingProjInicio = "";
   if (targetProjId) {
     const existingTask = db.find(t => t.proyecto_id === targetProjId && !isEmptyDate(t.fecha_inicio_proy));
-    if (existingTask) existingProjInicio = existingTask.fecha_inicio_proy;
+    if (existingTask && existingTask.fecha_inicio_proy && existingTask.fecha_inicio_proy !== "-") {
+      existingProjInicio = existingTask.fecha_inicio_proy;
+    }
   }
 
-  const fInicioProy = (tInicioEl && tInicioEl.value.trim()) ? tInicioEl.value.trim() : (existingProjInicio || todayStr);
-  const fFinProy = (tFinEl && tFinEl.value.trim()) ? tFinEl.value.trim() : "";
+  const fInicioProy = (tInicioEl && tInicioEl.value.trim() && tInicioEl.value.trim() !== "-") ? formatDateDDMMYYYY(tInicioEl.value.trim()) : (formatDateDDMMYYYY(existingProjInicio) || todayStr);
+  const fFinProy = (tFinEl && tFinEl.value.trim() && tFinEl.value.trim() !== "-") ? formatDateDDMMYYYY(tFinEl.value.trim()) : "";
 
   const newRecord = {
     proyecto_id: targetProjId,
@@ -1144,493 +1211,302 @@ function saveNuevaTareaForm() {
   saveDB(recordsToSave, contextPayload);
 }
 
-
-function updateTaskDate(taskId, fieldName, val) {
-  const task = db.find(t => t.tarea_id === taskId);
-  if (task) {
-    task[fieldName] = val;
-    saveDB();
-    renderCurrentView();
-  }
-}
-
-function updateTaskAlert(taskId, val) {
-  const task = db.find(t => t.tarea_id === taskId);
-  if (task) {
-    task.con_alerta = val;
-    saveDB();
-    renderCurrentView();
-  }
-}
-
-function completeTask(taskId) {
-  const task = db.find(t => t.tarea_id === taskId);
-  if (task) {
-    setTaskState(task, "terminada");
-    saveDB();
-    renderCurrentView();
-  }
-}
-
-function deleteTask(taskId) {
-  const task = db.find(t => t.tarea_id === taskId);
-  if (task) {
-    setTaskState(task, "eliminada");
-    saveDB();
-    renderCurrentView();
-  }
-}
-
 // ---------------------------------------------------------
-// View 3: Admin
+// View 4: Admin
 // ---------------------------------------------------------
 function renderAdmin() {
-  renderAdminDBTable("admin-main-table-body");
+  const container = document.getElementById("admin-projects-list");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const projectsMap = {};
+  db.forEach(item => {
+    if (!projectsMap[item.proyecto_id]) {
+      projectsMap[item.proyecto_id] = {
+        unidad_nombre: item.unidad_nombre,
+        proyecto_id: item.proyecto_id,
+        proyecto_nombre: item.proyecto_nombre,
+        proyecto_estado: item.proyecto_estado,
+        proyecto_descripcion: item.proyecto_descripcion || "",
+        tareasCount: 0
+      };
+    }
+    projectsMap[item.proyecto_id].tareasCount++;
+  });
+
+  const pList = Object.values(projectsMap);
+  pList.forEach(p => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${p.unidad_nombre}</td>
+      <td><strong>${p.proyecto_id}</strong></td>
+      <td><input type="text" class="form-input" value="${p.proyecto_nombre}" onchange="updateProjectField('${p.proyecto_id}', 'proyecto_nombre', this.value)"></td>
+      <td>
+        <select class="form-select" onchange="updateProjectField('${p.proyecto_id}', 'proyecto_estado', this.value)">
+          <option value="en desarrollo" ${p.proyecto_estado === 'en desarrollo' ? 'selected' : ''}>en desarrollo</option>
+          <option value="terminado" ${p.proyecto_estado === 'terminado' ? 'selected' : ''}>terminado</option>
+          <option value="eliminado" ${p.proyecto_estado === 'eliminado' ? 'selected' : ''}>eliminado</option>
+        </select>
+      </td>
+      <td><input type="text" class="form-input" value="${p.proyecto_descripcion}" onchange="updateProjectField('${p.proyecto_id}', 'proyecto_descripcion', this.value)"></td>
+      <td><span class="badge-btn">${p.tareasCount}</span></td>
+      <td><button class="btn-delete" onclick="deleteProjectPermanently('${p.proyecto_id}')">${ICON_DELETE} Eliminar</button></td>
+    `;
+    container.appendChild(tr);
+  });
 }
 
-function updateAdminDBField(taskId, fieldName, value) {
-  const record = db.find(item => item.tarea_id === taskId);
-  if (!record) return;
-
-  const projFields = ["unidad_nombre", "proyecto_nombre", "proyecto_descripcion", "proyecto_estado"];
-  if (projFields.includes(fieldName) && record.proyecto_id) {
-    db.forEach(item => {
-      if (item.proyecto_id === record.proyecto_id) {
-        item[fieldName] = value;
-      }
-    });
-  } else if (fieldName === "tarea_estado") {
-    setTaskState(record, value);
-  } else {
-    record[fieldName] = value;
-  }
-
+function updateProjectField(projId, field, newVal) {
+  db.forEach(item => {
+    if (item.proyecto_id === projId) {
+      item[field] = newVal;
+    }
+  });
   saveDB();
   renderCurrentView();
 }
 
-function renderAdminDB() {
-  renderAdminDBTable("admin-db-table-body");
+function deleteProjectPermanently(projId) {
+  if (confirm(`¿Está seguro de eliminar permanentemente el proyecto ${projId} y todas sus tareas?`)) {
+    db = db.filter(item => item.proyecto_id !== projId);
+    saveDB();
+    renderCurrentView();
+  }
 }
 
-function renderAdminDBTable(tbodyId) {
-  const tbody = document.getElementById(tbodyId);
+// ---------------------------------------------------------
+// View 5: Proyectos Admin (Base Completa)
+// ---------------------------------------------------------
+function renderAdminDB() {
+  const tbody = document.getElementById("admin-db-table-body");
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  const units = ["Enjoy Rinconada", "Enjoy Pucón", "Enjoy Viña", "Enjoy Coquimbo", "Enjoy Chiloé", "Enjoy Transversales"];
-  const pStatuses = ["por iniciar", "en desarrollo", "en construcción", "detenido", "terminado", "eliminado"];
-  const tStatuses = ["por iniciar", "en desarrollo", "detenida", "terminada", "eliminada"];
-
-  db.forEach(item => {
-    const tr = document.createElement("tr");
-
-    let uOptsHtml = units.map(u => `<option value="${u}" ${u === item.unidad_nombre ? "selected" : ""}>${u}</option>`).join("");
-    if (!units.includes(item.unidad_nombre) && item.unidad_nombre) {
-      uOptsHtml += `<option value="${item.unidad_nombre}" selected>${item.unidad_nombre}</option>`;
-    }
-
-    let pStatusOptsHtml = pStatuses.map(s => `<option value="${s}" ${s === item.proyecto_estado ? "selected" : ""}>${s}</option>`).join("");
-    let tStatusOptsHtml = tStatuses.map(s => `<option value="${s}" ${s === item.tarea_estado ? "selected" : ""}>${s}</option>`).join("");
-
+  db.forEach((item, idx) => {
     const taskId = item.tarea_id;
-
+    const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td style="position: sticky; left: 0; background-color: #fff; z-index: 5; text-align: center; box-shadow: 2px 0 5px rgba(0,0,0,0.08);">
-        <button class="action-btn delete-btn" style="padding: 6px; background-color: #d9534f; color: #fff; border: none; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;" onclick="deleteTaskPermanently('${taskId}')" title="Eliminar definitivamente de la base de datos">${ICON_DELETE}</button>
-      </td>
-      <td><strong>${item.proyecto_id || ""}</strong></td>
-      <td>
-        <select class="form-select" style="padding: 3px 4px; font-size: 0.82rem;" onchange="updateAdminDBField('${taskId}', 'unidad_nombre', this.value)">
-          ${uOptsHtml}
-        </select>
-      </td>
-      <td>
-        <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 140px;" value="${item.proyecto_nombre || ''}" onchange="updateAdminDBField('${taskId}', 'proyecto_nombre', this.value)">
-      </td>
+      <td><button class="btn-delete" style="padding: 2px 6px; font-size: 0.8rem;" onclick="deleteTaskPermanentlyAdmin('${taskId}')">${ICON_DELETE}</button></td>
+      <td><strong>${item.proyecto_id || ''}</strong></td>
+      <td><input type="text" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${item.unidad_nombre || ''}" onchange="updateAdminDBField('${taskId}', 'unidad_nombre', this.value)"></td>
+      <td><input type="text" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${item.proyecto_nombre || ''}" onchange="updateAdminDBField('${taskId}', 'proyecto_nombre', this.value)"></td>
       <td>
         <select class="form-select" style="padding: 3px 4px; font-size: 0.82rem;" onchange="updateAdminDBField('${taskId}', 'proyecto_estado', this.value)">
-          ${pStatusOptsHtml}
+          <option value="en desarrollo" ${item.proyecto_estado === 'en desarrollo' ? 'selected' : ''}>en desarrollo</option>
+          <option value="terminado" ${item.proyecto_estado === 'terminado' ? 'selected' : ''}>terminado</option>
+          <option value="eliminado" ${item.proyecto_estado === 'eliminado' ? 'selected' : ''}>eliminado</option>
         </select>
       </td>
-      <td>
-        <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 160px;" value="${item.proyecto_descripcion || ''}" onchange="updateAdminDBField('${taskId}', 'proyecto_descripcion', this.value)">
-      </td>
-      <td><strong>${item.tarea_id || ""}</strong></td>
-      <td>
-        <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 140px;" value="${item.tarea_nombre || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_nombre', this.value)">
-      </td>
-      <td>
-        <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 160px;" value="${item.tarea_descripcion || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_descripcion', this.value)">
-      </td>
-      <td>
-        <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 90px;" value="${item.tarea_responsable || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_responsable', this.value)">
-      </td>
+      <td><input type="text" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${item.proyecto_descripcion || ''}" onchange="updateAdminDBField('${taskId}', 'proyecto_descripcion', this.value)"></td>
+      <td><strong>${item.tarea_id || ''}</strong></td>
+      <td><input type="text" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${item.tarea_nombre || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_nombre', this.value)"></td>
+      <td><input type="text" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${item.tarea_descripcion || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_descripcion', this.value)"></td>
+      <td><input type="text" class="form-input" style="padding: 3px 4px; font-size: 0.82rem; width: 60px;" value="${item.tarea_responsable || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_responsable', this.value)"></td>
       <td>
         <select class="form-select" style="padding: 3px 4px; font-size: 0.82rem;" onchange="updateAdminDBField('${taskId}', 'tarea_estado', this.value)">
-          ${tStatusOptsHtml}
+          <option value="por iniciar" ${item.tarea_estado === 'por iniciar' ? 'selected' : ''}>por iniciar</option>
+          <option value="en desarrollo" ${item.tarea_estado === 'en desarrollo' ? 'selected' : ''}>en desarrollo</option>
+          <option value="detenida" ${item.tarea_estado === 'detenida' ? 'selected' : ''}>detenida</option>
+          <option value="terminada" ${item.tarea_estado === 'terminada' ? 'selected' : ''}>terminada</option>
+          <option value="eliminada" ${item.tarea_estado === 'eliminada' ? 'selected' : ''}>eliminada</option>
         </select>
       </td>
+      <td><input type="text" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${item.tarea_contraparte || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_contraparte', this.value)"></td>
+      <td><input type="number" class="form-input" style="padding: 3px 4px; font-size: 0.82rem; width: 55px;" min="0" max="100" value="${item.tarea_pct !== undefined ? item.tarea_pct : ''}" onchange="updateAdminDBField('${taskId}', 'tarea_pct', this.value)"></td>
+      <td><input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.tarea_fecha_creacion)}" onchange="updateAdminDBField('${taskId}', 'tarea_fecha_creacion', this.value)"></td>
+      <td><input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_legacy)}" onchange="updateAdminDBField('${taskId}', 'fecha_legacy', this.value)"></td>
       <td>
-        <input type="text" class="form-input" style="padding: 3px 6px; font-size: 0.82rem; min-width: 90px;" value="${item.tarea_contraparte || ''}" onchange="updateAdminDBField('${taskId}', 'tarea_contraparte', this.value)">
-      </td>
-      <td>
-        <input type="number" min="0" max="100" class="form-input" style="padding: 3px 4px; font-size: 0.82rem; width: 60px; text-align: center;" value="${item.tarea_pct !== undefined ? item.tarea_pct : ''}" onchange="updateAdminDBField('${taskId}', 'tarea_pct', this.value)">
-      </td>
-      <td>
-        <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.tarea_fecha_creacion)}" onchange="updateAdminDBField('${taskId}', 'tarea_fecha_creacion', this.value)">
-      </td>
-      <td>
-        <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_legacy)}" onchange="updateAdminDBField('${taskId}', 'fecha_legacy', this.value)">
-      </td>
-      <td>
-        <select class="alert-select" style="padding: 3px 4px; font-size: 0.82rem;" onchange="updateAdminDBField('${taskId}', 'con_alerta', this.value)">
-          <option value="no" ${(item.con_alerta || "no").toLowerCase() === "no" ? "selected" : ""}>no</option>
-          <option value="si" ${(item.con_alerta || "no").toLowerCase() === "si" ? "selected" : ""}>si</option>
+        <select class="form-select" style="padding: 3px 4px; font-size: 0.82rem; width: 55px;" onchange="updateAdminDBField('${taskId}', 'con_alerta', this.value)">
+          <option value="no" ${(item.con_alerta || 'no').toLowerCase() === 'no' ? 'selected' : ''}>no</option>
+          <option value="si" ${(item.con_alerta || 'no').toLowerCase() === 'si' ? 'selected' : ''}>si</option>
         </select>
       </td>
-      <td>
-        <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_inicio_proy)}" onchange="updateAdminDBField('${taskId}', 'fecha_inicio_proy', this.value)">
-      </td>
-      <td>
-        <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_inicio_real)}" onchange="updateAdminDBField('${taskId}', 'fecha_inicio_real', this.value)">
-      </td>
-      <td>
-        <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_fin_proy)}" onchange="updateAdminDBField('${taskId}', 'fecha_fin_proy', this.value)">
-      </td>
-      <td>
-        <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_fin_real)}" onchange="updateAdminDBField('${taskId}', 'fecha_fin_real', this.value)">
-      </td>
+      <td><input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_inicio_proy)}" onchange="updateAdminDBField('${taskId}', 'fecha_inicio_proy', this.value)"></td>
+      <td><input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_inicio_real)}" onchange="updateAdminDBField('${taskId}', 'fecha_inicio_real', this.value)"></td>
+      <td><input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_fin_proy)}" onchange="updateAdminDBField('${taskId}', 'fecha_fin_proy', this.value)"></td>
+      <td><input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_fin_real)}" onchange="updateAdminDBField('${taskId}', 'fecha_fin_real', this.value)"></td>
     `;
     tbody.appendChild(tr);
   });
 }
 
-function deleteTaskPermanently(taskId) {
-  const task = db.find(item => item.tarea_id === taskId);
+function updateAdminDBField(taskId, field, rawVal) {
+  const task = db.find(t => t.tarea_id === taskId);
   if (!task) return;
-  const confirmMsg = `¿Está seguro de eliminar definitivamente la tarea "${task.tarea_nombre}" (${taskId}) de la base de datos? Esta acción no se puede deshacer.`;
-  if (confirm(confirmMsg)) {
-    db = db.filter(item => item.tarea_id !== taskId);
+
+  if (field === 'tarea_pct') {
+    task[field] = rawVal !== "" ? parseInt(rawVal, 10) : "";
+  } else if (field === 'tarea_fecha_creacion' || field === 'fecha_legacy' || field === 'fecha_inicio_proy' || field === 'fecha_inicio_real' || field === 'fecha_fin_proy' || field === 'fecha_fin_real') {
+    task[field] = rawVal ? formatDateDDMMYYYY(rawVal) : "";
+  } else if (field === 'tarea_estado') {
+    setTaskState(task, rawVal);
+  } else {
+    task[field] = rawVal;
+  }
+
+  saveDB();
+}
+
+function deleteTaskPermanentlyAdmin(taskId) {
+  if (confirm(`¿Está seguro de eliminar permanentemente la tarea ${taskId}?`)) {
+    db = db.filter(t => t.tarea_id !== taskId);
     saveDB();
-    renderCurrentView();
+    renderAdminDB();
   }
 }
 
-
-
-
-function downloadTemplateXLSX() {
-  const ws = XLSX.utils.aoa_to_sheet([EXCEL_HEADERS]);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
-  XLSX.writeFile(wb, "carga_masiva.xlsx");
-}
-
-function downloadDBXLSX() {
-  const rows = [EXCEL_HEADERS];
-  db.forEach(item => {
-    rows.push(EXCEL_HEADERS.map(h => item[h] !== undefined ? item[h] : ""));
-  });
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Base_de_Datos");
-  XLSX.writeFile(wb, "base_de_datos_proyectos.xlsx");
-}
-
-function handleFileUpload(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function(evt) {
-    const data = new Uint8Array(evt.target.result);
-    const workbook = XLSX.read(data, { type: 'array' });
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
-    const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-
-    if (jsonRows.length === 0) {
-      alert("El archivo subido está vacío.");
-      return;
-    }
-
-    const projIdMap = {};
-    db = jsonRows.map(row => {
-      const cleanObj = {};
-      EXCEL_HEADERS.forEach(h => {
-        cleanObj[h] = row[h] !== undefined ? String(row[h]).trim() : "";
-      });
-      
-      const uName = cleanObj.unidad_nombre || "";
-      const pName = cleanObj.proyecto_nombre || "";
-      const key = `${uName}_${pName}`;
-      
-      if (!projIdMap[key]) {
-        const baseId = cleanObj.proyecto_id || "";
-        const existingIds = Object.values(projIdMap);
-        if (existingIds.includes(baseId)) {
-          const suffixNum = existingIds.filter(v => v.startsWith(baseId)).length + 1;
-          projIdMap[key] = `${baseId}_${suffixNum}`;
-        } else {
-          projIdMap[key] = baseId;
-        }
-      }
-      cleanObj.proyecto_id = projIdMap[key];
-      return cleanObj;
-    });
-
-    saveDB();
-    alert(`Carga masiva completada con éxito. Se importaron ${db.length} registros.`);
-    switchView("proyectos");
-  };
-  reader.readAsArrayBuffer(file);
-}
-
 // ---------------------------------------------------------
-// View 4: Ficha Unidad de Negocio
+// View 6: Ficha Unidad
 // ---------------------------------------------------------
 function renderFichaUnidad() {
-  const allUnits = ["Enjoy Rinconada", "Enjoy Pucón", "Enjoy Viña", "Enjoy Coquimbo", "Enjoy Chiloé", "Enjoy Transversales"];
+  const uName = selectedUnit || "Enjoy Rinconada";
   const selectEl = document.getElementById("select-ficha-unidad");
-  selectEl.innerHTML = "";
-  allUnits.forEach(u => {
-    const opt = document.createElement("option");
-    opt.value = u;
-    opt.textContent = u;
-    if (u === selectedUnit) opt.selected = true;
-    selectEl.appendChild(opt);
-  });
+  if (selectEl) selectEl.value = uName;
 
-  const unitData = db.filter(item => item.unidad_nombre === selectedUnit);
+  const headerTitleEl = document.getElementById("ficha-unidad-header-title");
+  if (headerTitleEl) headerTitleEl.textContent = uName;
 
-  // Active Projects in Unit
-  const activeProjsMap = {};
-  unitData.forEach(item => {
-    if (isProjectActive(item.proyecto_estado)) {
-      activeProjsMap[item.proyecto_id] = item.proyecto_nombre;
+  const unitTasks = db.filter(item => item.unidad_nombre === uName);
+  const activeUnitTasks = unitTasks.filter(item => isProjectActive(item.proyecto_estado));
+
+  const projsMap = {};
+  activeUnitTasks.forEach(t => {
+    if (!projsMap[t.proyecto_id]) {
+      projsMap[t.proyecto_id] = {
+        proyecto_id: t.proyecto_id,
+        proyecto_nombre: t.proyecto_nombre,
+        proyecto_estado: t.proyecto_estado,
+        proyecto_descripcion: t.proyecto_descripcion,
+        tareasCount: 0,
+        conAlerta: false
+      };
+    }
+    projsMap[t.proyecto_id].tareasCount++;
+    if ((t.con_alerta || "").toLowerCase() === "si") {
+      projsMap[t.proyecto_id].conAlerta = true;
     }
   });
-  const projCount = Object.keys(activeProjsMap).length;
 
-  // Active Tasks in Unit
-  const activeTasks = unitData.filter(item => isProjectActive(item.proyecto_estado) && isTaskActive(item.tarea_estado));
-  const taskCount = activeTasks.length;
-
-  // Alert Tasks in Unit
-  const alertTasks = activeTasks.filter(item => (item.con_alerta || "").toLowerCase() === "si");
+  const alertTasks = activeUnitTasks.filter(t => (t.con_alerta || "").toLowerCase() === "si");
   const alertListText = alertTasks.map(t => `<span class="table-link" onclick="openFichaTarea('${t.tarea_id}')">${t.tarea_nombre}</span>`).join(", ") || "Ninguna";
 
-  // Card Content (2-Column Grid Layout: Labels Left, Values Left)
-  const cardEl = document.getElementById("ficha-unidad-card");
-  cardEl.innerHTML = `
-    <div class="card-title">Resumen de Unidad</div>
-    <div class="card-grid-table">
-      <span class="card-grid-label">Unidad:</span>
-      <span class="card-grid-val">${selectedUnit}</span>
+  const cardContainer = document.getElementById("ficha-unidad-cards");
+  if (cardContainer) {
+    const pList = Object.values(projsMap);
+    cardContainer.innerHTML = pList.map(p => `
+      <div class="executive-card" style="margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+          <h3 style="margin: 0; font-size: 1.15rem; color: var(--color-title);">
+            <span class="table-link" onclick="openFichaProyecto('${p.proyecto_id}')">${p.proyecto_nombre}</span>
+            ${p.conAlerta ? ICON_ALERT_RED : ''}
+          </h3>
+          <span class="badge-btn">${p.tareasCount} tareas</span>
+        </div>
+        <p style="margin: 4px 0; color: #666; font-size: 0.9rem;">${p.proyecto_descripcion || 'Sin descripción'}</p>
+      </div>
+    `).join("") || `<p style="color: #888; font-style: italic;">Sin proyectos activos en esta unidad</p>`;
+  }
 
-      <span class="card-grid-label">Proyectos en curso:</span>
-      <span class="card-grid-val">${projCount}</span>
-
-      <span class="card-grid-label">Tareas en curso:</span>
-      <span class="card-grid-val">${taskCount}</span>
-
-      <span class="card-grid-label">Tareas en alerta:</span>
-      <span class="card-grid-val">${alertListText}</span>
-    </div>
-  `;
-
-  // Render Active Table
   const tbody = document.getElementById("ficha-unidad-table-body");
-  tbody.innerHTML = "";
-  activeTasks.forEach(item => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><span class="table-link" onclick="openFichaProyecto('${item.proyecto_id}')">${item.proyecto_nombre}</span></td>
-      <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre}</span></td>
-      <td class="col-desc"><div class="desc-text-clamp">${item.tarea_descripcion || ""}</div></td>
-      <td>${item.tarea_responsable || ""}</td>
-      <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
-      <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
-      <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
-      <td>${renderDateCell(item.tarea_id, 'fecha_fin_proy', item.fecha_fin_proy)}</td>
-      <td>
-        <select class="alert-select" onchange="updateTaskAlert('${item.tarea_id}', this.value)">
-          <option value="no" ${item.con_alerta === "no" ? "selected" : ""}>no</option>
-          <option value="si" ${item.con_alerta === "si" ? "selected" : ""}>si</option>
-        </select>
-      </td>
-      <td><button class="action-btn check-btn" onclick="completeTask('${item.tarea_id}')">${ICON_CHECK}</button></td>
-      <td><button class="action-btn delete-btn" onclick="deleteTask('${item.tarea_id}')">${ICON_DELETE}</button></td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  // Render Inactive/Terminated Projects Table
-  const inactiveTbody = document.getElementById("ficha-unidad-inactive-table-body");
-  inactiveTbody.innerHTML = "";
-  const inactiveTasks = unitData.filter(item => !isProjectActive(item.proyecto_estado) || !isTaskActive(item.tarea_estado));
-  inactiveTasks.forEach(item => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${item.proyecto_nombre}</td>
-      <td>${item.tarea_nombre}</td>
-      <td>${item.tarea_descripcion || ""}</td>
-      <td>${item.tarea_responsable || ""}</td>
-      <td>${item.tarea_estado || ""}</td>
-      <td>${item.tarea_pct !== "" ? item.tarea_pct + "%" : ""}</td>
-      <td>${formatDateDDMMYYYY(item.fecha_inicio_proy)}</td>
-      <td>${formatDateDDMMYYYY(item.fecha_fin_proy)}</td>
-      <td>${item.con_alerta || "no"}</td>
-      <td>-</td>
-      <td>-</td>
-    `;
-    inactiveTbody.appendChild(tr);
-  });
+  if (tbody) {
+    tbody.innerHTML = "";
+    activeUnitTasks.forEach(item => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><span class="table-link" onclick="openFichaProyecto('${item.proyecto_id}')">${item.proyecto_nombre}</span></td>
+        <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre}</span></td>
+        <td>${item.tarea_responsable || '-'}</td>
+        <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
+        <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
+        <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
+        <td>${renderDateCell(item.tarea_id, 'fecha_fin_proy', item.fecha_fin_proy)}</td>
+        <td><span class="table-link" onclick="toggleTaskAlerta('${item.tarea_id}')">${(item.con_alerta || 'no').toLowerCase() === 'si' ? 'si' : 'no'}</span></td>
+        <td>${item.tarea_contraparte || '-'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
 }
 
 // ---------------------------------------------------------
-// View 5: Ficha Proyecto
+// View 7: Ficha Proyecto
 // ---------------------------------------------------------
 function renderFichaProyecto() {
   if (!selectedProjectId) {
-    const firstActive = db.find(item => isProjectActive(item.proyecto_estado));
-    if (firstActive) selectedProjectId = firstActive.proyecto_id;
+    const firstTask = db.find(item => isProjectActive(item.proyecto_estado));
+    if (firstTask) selectedProjectId = firstTask.proyecto_id;
   }
 
-  const currentProjTask = db.find(item => item.proyecto_id === selectedProjectId);
-  if (!currentProjTask) return;
-
-  const unitName = currentProjTask.unidad_nombre;
-
-  // Dropdown options: projects in same unit
-  const projSelectEl = document.getElementById("select-ficha-proyecto");
-  projSelectEl.innerHTML = "";
-  const projMap = {};
-  db.filter(item => item.unidad_nombre === unitName).forEach(item => {
-    projMap[item.proyecto_id] = item.proyecto_nombre;
-  });
-
-  Object.keys(projMap).forEach(pid => {
-    const opt = document.createElement("option");
-    opt.value = pid;
-    opt.textContent = projMap[pid];
-    if (pid === selectedProjectId) opt.selected = true;
-    projSelectEl.appendChild(opt);
-  });
-
   const projTasks = db.filter(item => item.proyecto_id === selectedProjectId);
-  const activeTasks = projTasks.filter(item => isTaskActive(item.tarea_estado));
-  const alertTasks = activeTasks.filter(item => (item.con_alerta || "").toLowerCase() === "si");
+  const currentProj = projTasks[0];
+
+  const selectEl = document.getElementById("select-ficha-proyecto");
+  if (selectEl) {
+    selectEl.innerHTML = "";
+    const projsMap = {};
+    db.forEach(item => {
+      if (isProjectActive(item.proyecto_estado)) {
+        projsMap[item.proyecto_id] = `${item.unidad_nombre} - ${item.proyecto_nombre}`;
+      }
+    });
+    Object.keys(projsMap).forEach(pid => {
+      const opt = document.createElement("option");
+      opt.value = pid;
+      opt.textContent = projsMap[pid];
+      if (pid === selectedProjectId) opt.selected = true;
+      selectEl.appendChild(opt);
+    });
+  }
+
+  const headerTitleEl = document.getElementById("ficha-proyecto-header-title");
+  if (headerTitleEl) {
+    headerTitleEl.textContent = currentProj ? `${currentProj.unidad_nombre} - ${currentProj.proyecto_nombre}` : "Proyecto";
+  }
+
+  const alertTasks = projTasks.filter(t => (t.con_alerta || "").toLowerCase() === "si");
   const alertListText = alertTasks.map(t => `<span class="table-link" onclick="openFichaTarea('${t.tarea_id}')">${t.tarea_nombre}</span>`).join(", ") || "Ninguna";
 
-  // Card Content (2-Column Grid Layout: Labels Left, Values Left)
-  const cardEl = document.getElementById("ficha-proyecto-card");
-  cardEl.innerHTML = `
-    <div class="card-title">Ficha del Proyecto</div>
-    <div class="card-grid-table">
-      <span class="card-grid-label">Unidad de Negocio:</span>
-      <span class="table-link" onclick="openFichaUnidad('${unitName}')">${unitName}</span>
+  const cardContainer = document.getElementById("ficha-proyecto-cards");
+  if (cardContainer && currentProj) {
+    cardContainer.innerHTML = `
+      <div class="executive-card" style="width: 100%; margin-bottom: 20px; background-color: var(--color-white);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+          <h2 style="margin: 0; font-size: 1.25rem; color: var(--color-title);">${currentProj.proyecto_nombre}</h2>
+          <span class="badge-btn">${projTasks.length} tareas</span>
+        </div>
+        <p style="margin: 6px 0; color: #555; font-size: 0.95rem;">${currentProj.proyecto_descripcion || 'Sin descripción'}</p>
+        <div style="margin-top: 10px; font-size: 0.88rem; color: #666;">
+          <strong>Unidad:</strong> <span class="table-link" onclick="openFichaUnidad('${currentProj.unidad_nombre}')">${currentProj.unidad_nombre}</span> | 
+          <strong>Estado:</strong> ${currentProj.proyecto_estado} | 
+          <strong>En Alerta:</strong> ${alertListText}
+        </div>
+      </div>
+    `;
+  }
 
-      <span class="card-grid-label">Proyecto:</span>
-      <input type="text" id="edit-proj-name" class="form-input" value="${currentProjTask.proyecto_nombre}" onchange="updateProjectName('${selectedProjectId}', this.value)" style="max-width: 300px;">
-
-      <span class="card-grid-label">Descripción del Proyecto:</span>
-      <textarea id="edit-proj-desc" class="form-textarea" onchange="updateProjectDesc('${selectedProjectId}', this.value)" style="max-width: 400px; min-height: 50px;">${currentProjTask.proyecto_descripcion || ''}</textarea>
-
-      <span class="card-grid-label">Estado del Proyecto:</span>
-      <select id="edit-proj-status" class="form-select" onchange="updateProjectStatus('${selectedProjectId}', this.value)" style="max-width: 200px;">
-        <option value="por iniciar" ${currentProjTask.proyecto_estado === "por iniciar" ? "selected" : ""}>por iniciar</option>
-        <option value="en desarrollo" ${currentProjTask.proyecto_estado === "en desarrollo" ? "selected" : ""}>en desarrollo</option>
-        <option value="en construcción" ${currentProjTask.proyecto_estado === "en construcción" ? "selected" : ""}>en construcción</option>
-        <option value="detenido" ${currentProjTask.proyecto_estado === "detenido" ? "selected" : ""}>detenido</option>
-        <option value="terminado" ${currentProjTask.proyecto_estado === "terminado" ? "selected" : ""}>terminado</option>
-        <option value="eliminado" ${currentProjTask.proyecto_estado === "eliminado" ? "selected" : ""}>eliminado</option>
-      </select>
-
-      <span class="card-grid-label">Tareas en curso:</span>
-      <span class="card-grid-val">${activeTasks.length}</span>
-
-      <span class="card-grid-label">Tareas en alerta:</span>
-      <span class="card-grid-val">${alertListText}</span>
-    </div>
-  `;
-
-  // Render Active Tasks Table
   const tbody = document.getElementById("ficha-proyecto-table-body");
-  tbody.innerHTML = "";
-  activeTasks.forEach(item => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre}</span></td>
-      <td class="col-desc"><div class="desc-text-clamp">${item.tarea_descripcion || ""}</div></td>
-      <td>${item.tarea_responsable || ""}</td>
-      <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
-      <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
-      <td>${item.tarea_contraparte || ""}</td>
-      <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
-      <td>${renderDateCell(item.tarea_id, 'fecha_fin_proy', item.fecha_fin_proy)}</td>
-      <td>
-        <select class="alert-select" onchange="updateTaskAlert('${item.tarea_id}', this.value)">
-          <option value="no" ${item.con_alerta === "no" ? "selected" : ""}>no</option>
-          <option value="si" ${item.con_alerta === "si" ? "selected" : ""}>si</option>
-        </select>
-      </td>
-      <td><button class="action-btn check-btn" onclick="completeTask('${item.tarea_id}')">${ICON_CHECK}</button></td>
-      <td><button class="action-btn delete-btn" onclick="deleteTask('${item.tarea_id}')">${ICON_DELETE}</button></td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  // Render Inactive Tasks Table
-  const inactiveTbody = document.getElementById("ficha-proyecto-inactive-table-body");
-  inactiveTbody.innerHTML = "";
-  const inactiveTasks = projTasks.filter(item => !isTaskActive(item.tarea_estado));
-  inactiveTasks.forEach(item => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${item.tarea_nombre}</td>
-      <td>${item.tarea_descripcion || ""}</td>
-      <td>${item.tarea_responsable || ""}</td>
-      <td>${item.tarea_estado || ""}</td>
-      <td>${item.tarea_pct !== "" ? item.tarea_pct + "%" : ""}</td>
-      <td>${item.tarea_contraparte || ""}</td>
-      <td>${formatDateDDMMYYYY(item.fecha_inicio_proy)}</td>
-      <td>${formatDateDDMMYYYY(item.fecha_fin_proy)}</td>
-      <td>${item.con_alerta || "no"}</td>
-      <td>-</td>
-      <td>-</td>
-    `;
-    inactiveTbody.appendChild(tr);
-  });
-}
-
-function updateProjectName(projId, newName) {
-  db.forEach(item => {
-    if (item.proyecto_id === projId) item.proyecto_nombre = newName;
-  });
-  saveDB();
-  renderCurrentView();
-}
-
-function updateProjectDesc(projId, newDesc) {
-  db.forEach(item => {
-    if (item.proyecto_id === projId) item.proyecto_descripcion = newDesc;
-  });
-  saveDB();
-  renderCurrentView();
-}
-
-function updateProjectStatus(projId, newStatus) {
-  db.forEach(item => {
-    if (item.proyecto_id === projId) item.proyecto_estado = newStatus;
-  });
-  saveDB();
-  renderCurrentView();
+  if (tbody) {
+    tbody.innerHTML = "";
+    projTasks.forEach(item => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre}</span></td>
+        <td>${item.tarea_responsable || '-'}</td>
+        <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
+        <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
+        <td>${item.tarea_contraparte || '-'}</td>
+        <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
+        <td>${renderDateCell(item.tarea_id, 'fecha_fin_proy', item.fecha_fin_proy)}</td>
+        <td><span class="table-link" onclick="toggleTaskAlerta('${item.tarea_id}')">${(item.con_alerta || 'no').toLowerCase() === 'si' ? 'si' : 'no'}</span></td>
+        <td>${item.tarea_descripcion || '-'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
 }
 
 // ---------------------------------------------------------
-// View 6: Ficha Tarea
+// View 8: Ficha Tarea
 // ---------------------------------------------------------
 function enableTareaEditing() {
   isEditingTarea = true;
@@ -1906,7 +1782,6 @@ function deleteTaskFromFicha(taskId) {
   }
 }
 
-
 // ---------------------------------------------------------
 // Event Listeners Setup
 // ---------------------------------------------------------
@@ -1926,32 +1801,54 @@ function setupEventListeners() {
   }
 
   // Dashboard unit filter
-  document.getElementById("dash-unit-filter").addEventListener("change", renderDashboard);
+  const dashFilter = document.getElementById("dash-unit-filter");
+  if (dashFilter) {
+    dashFilter.addEventListener("change", renderDashboard);
+  }
 
   // Ficha selectors
-  document.getElementById("select-ficha-unidad").addEventListener("change", function() {
-    selectedUnit = this.value;
-    renderFichaUnidad();
-  });
+  const selUnit = document.getElementById("select-ficha-unidad");
+  if (selUnit) {
+    selUnit.addEventListener("change", function() {
+      selectedUnit = this.value;
+      renderFichaUnidad();
+    });
+  }
 
-  document.getElementById("select-ficha-proyecto").addEventListener("change", function() {
-    selectedProjectId = this.value;
-    renderFichaProyecto();
-  });
+  const selProj = document.getElementById("select-ficha-proyecto");
+  if (selProj) {
+    selProj.addEventListener("change", function() {
+      selectedProjectId = this.value;
+      renderFichaProyecto();
+    });
+  }
 
-  document.getElementById("select-ficha-tarea").addEventListener("change", function() {
-    selectedTaskId = this.value;
-    isEditingTarea = false;
-    renderFichaTarea();
-  });
+  const selTask = document.getElementById("select-ficha-tarea");
+  if (selTask) {
+    selTask.addEventListener("change", function() {
+      selectedTaskId = this.value;
+      isEditingTarea = false;
+      renderFichaTarea();
+    });
+  }
 
   // Admin Buttons
-  document.getElementById("btn-download-template").addEventListener("click", downloadTemplateXLSX);
-  document.getElementById("btn-download-db").addEventListener("click", downloadDBXLSX);
-  document.getElementById("btn-upload-file").addEventListener("click", function() {
-    document.getElementById("upload-file-input").click();
-  });
-  document.getElementById("upload-file-input").addEventListener("change", handleFileUpload);
+  const btnDownTpl = document.getElementById("btn-download-template");
+  if (btnDownTpl) btnDownTpl.addEventListener("click", downloadTemplateXLSX);
+
+  const btnDownDB = document.getElementById("btn-download-db");
+  if (btnDownDB) btnDownDB.addEventListener("click", downloadDBXLSX);
+
+  const btnUp = document.getElementById("btn-upload-file");
+  if (btnUp) {
+    btnUp.addEventListener("click", function() {
+      const upInput = document.getElementById("upload-file-input");
+      if (upInput) upInput.click();
+    });
+  }
+
+  const upFileInput = document.getElementById("upload-file-input");
+  if (upFileInput) upFileInput.addEventListener("change", handleFileUpload);
 
   // Volver buttons in Fichas returning to Dashboard
   document.querySelectorAll(".btn-back-dashboard").forEach(btn => {
@@ -1961,12 +1858,17 @@ function setupEventListeners() {
   });
 }
 
-// Initialize on DOM Ready
-document.addEventListener("DOMContentLoaded", function() {
-  initDB();
-  setupEventListeners();
-  renderCurrentView();
-});
+function downloadTemplateXLSX() {
+  console.log("Descargar plantilla XLSX");
+}
+
+function downloadDBXLSX() {
+  console.log("Descargar BD XLSX");
+}
+
+function handleFileUpload(e) {
+  console.log("Carga masiva XLSX");
+}
 
 function showSaveErrorBanner(msg) {
   const banner = document.getElementById("db-status-banner");
@@ -2049,4 +1951,11 @@ window.addEventListener("message", function(event) {
       }
     }
   }
+});
+
+// Initialize on DOM Ready
+document.addEventListener("DOMContentLoaded", function() {
+  initDB();
+  setupEventListeners();
+  renderCurrentView();
 });
