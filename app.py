@@ -30,7 +30,7 @@ st.markdown("""
 dir_path = os.path.dirname(os.path.abspath(__file__))
 
 # ---------------------------------------------------------
-# 1. Load Central Data (Google Sheets / db_manager)
+# 1. Load Central Data (PostgreSQL / Google Sheets / db_manager)
 # ---------------------------------------------------------
 central_res = db_manager.load_central_data()
 
@@ -73,13 +73,14 @@ component_value = consola_component(
 )
 
 # ---------------------------------------------------------
-# 3. Handle Frontend Mutation Events
+# 3. Handle Frontend Mutation Events (save_db & delete_permanent)
 # ---------------------------------------------------------
 if component_value and isinstance(component_value, dict):
     action = component_value.get("action")
+    context = component_value.get("context") or {}
+
     if action == "save_db":
         new_data = component_value.get("data")
-        context = component_value.get("context") or {}
         created_task_id = context.get("created_task_id", "N/A")
         action_type = context.get("action_type", "general_save")
         row_count = len(new_data) if isinstance(new_data, list) else 0
@@ -114,3 +115,38 @@ if component_value and isinstance(component_value, dict):
                 }
             st.rerun()
 
+    elif action == "delete_permanent":
+        deleted_task_id = context.get("deleted_task_id", "N/A")
+        print(f"[STREAMLIT_BRIDGE_LOG] Evento 'delete_permanent' recibido en backend | Tarea ID: {deleted_task_id}")
+
+        if deleted_task_id and deleted_task_id != "N/A":
+            try:
+                del_result = db_manager.delete_permanent_task(deleted_task_id)
+                if isinstance(del_result, dict) and del_result.get("status") == "ok":
+                    print(f"[STREAMLIT_BRIDGE_LOG] Borrado permanente exitoso | Tarea ID: {deleted_task_id}")
+                    fresh_res = db_manager.load_central_data()
+                    if fresh_res.get("status") == "ok" and isinstance(fresh_res.get("data"), list):
+                        st.session_state["central_db"] = fresh_res["data"]
+                    else:
+                        st.session_state["central_db"] = [t for t in current_db_data if t.get("tarea_id") != deleted_task_id]
+                    st.session_state["save_status"] = {
+                        "status": "ok",
+                        "message": del_result.get("message", f"Tarea {deleted_task_id} eliminada permanentemente."),
+                        "context": context
+                    }
+                else:
+                    raw_msg = del_result.get("message", "") if isinstance(del_result, dict) else "Error al eliminar"
+                    print(f"[DELETE_ERROR_LOG] Error al eliminar tarea {deleted_task_id}: {raw_msg}")
+                    st.session_state["save_status"] = {
+                        "status": "error",
+                        "message": f"Error al eliminar: {raw_msg}",
+                        "context": context
+                    }
+            except Exception as ex:
+                print(f"[DELETE_EXCEPTION_LOG] Excepción al eliminar tarea {deleted_task_id}: {ex}")
+                st.session_state["save_status"] = {
+                    "status": "error",
+                    "message": f"Excepción técnica al eliminar: {ex}",
+                    "context": context
+                }
+            st.rerun()

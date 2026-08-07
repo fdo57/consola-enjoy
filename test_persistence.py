@@ -22,7 +22,6 @@ class MockPgCursor:
         q_upper = query.upper().strip()
 
         if q_upper.startswith("SELECT POSITION, TAREA_ID, RECORD, UPDATED_AT FROM ENJOY_RECORDS"):
-            # Return all rows ordered by position
             sorted_storage = sorted(self.storage, key=lambda x: (x[0], str(x[3])))
             self._results = list(sorted_storage)
             return
@@ -44,8 +43,13 @@ class MockPgCursor:
             self.storage.append((pos, tid, rec_json, "2026-08-07 18:00:00"))
             return
 
+        if q_upper.startswith("DELETE FROM ENJOY_RECORDS WHERE TAREA_ID = %S;"):
+            tid = params[0]
+            self.storage[:] = [row for row in self.storage if row[1] != tid]
+            return
+
         if "DELETE FROM ENJOY_RECORDS" in q_upper:
-            raise AssertionError("DELETE FROM enjoy_records no debe ser ejecutado!")
+            raise AssertionError("DELETE FROM enjoy_records global no debe ser ejecutado!")
 
     def fetchall(self):
         return getattr(self, "_results", [])
@@ -161,7 +165,6 @@ class TestConsolaEnjoyPersistence(unittest.TestCase):
 
     def test_03_preservation_of_unincluded_records(self):
         """3. Comprueba que registros existentes no incluidos en el payload se conservan intactos."""
-        # Only update 2026_RI020_001. 2026_RI020_002 is NOT in the payload.
         partial_payload = [
             {
                 "proyecto_id": "2026_RI020",
@@ -234,7 +237,7 @@ class TestConsolaEnjoyPersistence(unittest.TestCase):
 
         db_manager._save_to_postgresql(multi_payload, custom_conn=self.mock_conn)
         positions = [r[0] for r in self.mock_conn.storage]
-        self.assertEqual(len(positions), len(set(positions)))  # All positions unique
+        self.assertEqual(len(positions), len(set(positions)))
 
     def test_08_connection_error_handling(self):
         """8. Manejo controlado de fallos de conexión."""
@@ -243,6 +246,14 @@ class TestConsolaEnjoyPersistence(unittest.TestCase):
                 res = db_manager.load_central_data()
                 self.assertEqual(res["status"], "error")
                 self.assertEqual(res["source"], "postgresql_vps")
+
+    def test_09_delete_permanent_task(self):
+        """9. Verifica el borrado permanente exacto de una tarea sin afectar otras."""
+        del_res = db_manager.delete_permanent_task("2026_RI020_001", custom_conn=self.mock_conn)
+        self.assertEqual(del_res["status"], "ok")
+        self.assertEqual(len(self.mock_conn.storage), 1)
+        remaining = self.mock_conn.storage[0]
+        self.assertEqual(remaining[1], "2026_RI020_002")
 
 if __name__ == "__main__":
     print("==================================================")

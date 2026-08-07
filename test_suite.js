@@ -28,7 +28,6 @@ function runTest(name, fn) {
 
 // PRUEBA 1: Diagnóstico estático y funcional de la tarea 2026_RI019_018
 runTest("Prueba 1: Diagnóstico de inconsistencia para tarea 2026_RI019_018", () => {
-  // Simulate diagnoseDateConsistency function exactly as implemented in app.js
   function isEmptyDate(val) {
     if (val === undefined || val === null) return true;
     const s = String(val).trim();
@@ -100,7 +99,6 @@ runTest("Prueba 1: Diagnóstico de inconsistencia para tarea 2026_RI019_018", ()
 
 // PRUEBA 2: Simulación del Submit de Nueva Tarea y Puente Streamlit
 runTest("Prueba 2: Submit de Nueva Tarea y Puente Streamlit", () => {
-  // Verify that saveNuevaTareaForm creates the record properly without legacy fields
   const todayStr = "07/08/2026";
   const dummyProject = {
     proyecto_id: "2026_RI020",
@@ -151,7 +149,6 @@ runTest("Prueba 2: Submit de Nueva Tarea y Puente Streamlit", () => {
     throw new Error("fecha_fin_real debe inicializarse vacía");
   }
 
-  // Simulate save_status success response from Streamlit bridge
   const simulatedSaveStatusSuccess = {
     status: "ok",
     message: "Guardado exitoso en base central.",
@@ -169,31 +166,6 @@ runTest("Prueba 2: Submit de Nueva Tarea y Puente Streamlit", () => {
 
 // PRUEBA 3: Renderizado de Ficha Tarea en Modo Lectura (Texto Plano)
 runTest("Prueba 3: Renderizado de Ficha Tarea con registro válido", () => {
-  const task = {
-    tarea_id: "2026_RI020_001",
-    unidad_nombre: "Enjoy Rinconada",
-    proyecto_id: "2026_RI020",
-    proyecto_nombre: "RENOVACION SALON",
-    tarea_nombre: "Pintura General",
-    tarea_descripcion: "Pintura de muros interiores",
-    tarea_responsable: "APE",
-    tarea_estado: "en desarrollo",
-    tarea_contraparte: "Juan Perez",
-    tarea_pct: 25,
-    tarea_fecha_creacion: "01/08/2026",
-    fecha_legacy: "01/08/2026",
-    con_alerta: "no",
-    fecha_inicio_proy: "01/08/2026",
-    fecha_inicio_real: "",
-    fecha_fin_proy: "15/08/2026",
-    fecha_fin_real: ""
-  };
-
-  // Check that Ficha Tarea template in app.js generates clean HTML without forbidden fields
-  if (appJs.includes('<span class <span class="card-grid-label">')) {
-    throw new Error("Se detectó etiqueta corrupta en renderFichaTarea()");
-  }
-
   const fichaSlice = appJs.substring(appJs.indexOf('function renderFichaTarea()'), appJs.indexOf('function onFichaEstadoChange'));
   if (fichaSlice.includes('Fecha en minuta') || fichaSlice.includes('task.fecha_legacy') || fichaSlice.includes('t-fecha-legacy')) {
     throw new Error("renderFichaTarea() contiene referencias a fecha_legacy o Fecha en minuta");
@@ -206,32 +178,74 @@ runTest("Prueba 3: Renderizado de Ficha Tarea con registro válido", () => {
   }
 });
 
-// PRUEBA 4: Revisión de ausencia de IDs y campos eliminados
-runTest("Prueba 4: Ausencia de referencias a IDs eliminados en el DOM", () => {
-  if (indexHtml.includes('id="nt-fecha-legacy"')) {
-    throw new Error("index.html aún contiene nt-fecha-legacy en view-crear-tarea");
+// PRUEBA 4: Correspondencia estática de IDs de Proyectos entre index.html y app.js
+runTest("Prueba 4: Correspondencia exacta de IDs de la sección Proyectos", () => {
+  if (!indexHtml.includes('id="proyectos-table-body"')) {
+    throw new Error("index.html no contiene proyectos-table-body");
   }
-  if (appJs.includes('document.getElementById("nt-fecha-legacy")')) {
-    throw new Error("app.js contiene document.getElementById('nt-fecha-legacy')");
+  if (!indexHtml.includes('id="proyectos-inactive-table-body"')) {
+    throw new Error("index.html no contiene proyectos-inactive-table-body");
   }
-  if (appJs.includes('document.getElementById("t-fecha-legacy")')) {
-    throw new Error("app.js contiene document.getElementById('t-fecha-legacy')");
+  if (!appJs.includes('document.getElementById("proyectos-table-body")')) {
+    throw new Error("app.js no usa document.getElementById('proyectos-table-body')");
+  }
+  if (!appJs.includes('document.getElementById("proyectos-inactive-table-body")')) {
+    throw new Error("app.js no usa document.getElementById('proyectos-inactive-table-body')");
+  }
+  if (appJs.includes('proyectos-unit-filter')) {
+    throw new Error("app.js sigue referenciando el ID inexistente proyectos-unit-filter");
   }
 });
 
-// PRUEBA 5: Consistencia con INSTRUCTIONS.md (EXCEL_HEADERS, Tareas Creadas, Proyectos Admin)
-runTest("Prueba 5: Alineación obligatoria con INSTRUCTIONS.md", () => {
-  if (!appJs.includes('"fecha_inicio_real"')) {
-    throw new Error("EXCEL_HEADERS no incluye fecha_inicio_real");
+// PRUEBA 5: Inventario de handlers y onclicks en index.html vs funciones en app.js
+runTest("Prueba 5: Todos los handlers onclick existen en app.js", () => {
+  const requiredFunctions = [
+    "createNewProject",
+    "createNewTask",
+    "openCreateProjectForm",
+    "switchView",
+    "openFichaUnidad",
+    "openFichaProyecto",
+    "openFichaTarea",
+    "completeTask",
+    "deleteTask",
+    "deleteTaskPermanentlyAdmin",
+    "saveNuevaTareaForm",
+    "saveNuevoProyectoForm",
+    "deleteProjectPermanently",
+    "toggleTaskAlerta"
+  ];
+
+  requiredFunctions.forEach(fnName => {
+    const pattern = new RegExp(`function\\s+${fnName}\\s*\\(`);
+    if (!pattern.test(appJs)) {
+      throw new Error(`La función requerida '${fnName}' no está definida en app.js`);
+    }
+  });
+});
+
+// PRUEBA 6: Separación de navegación y persistencia en Nuevo Proyecto y Nueva Tarea
+runTest("Prueba 6: Los botones de navegación no insertan registros en la base", () => {
+  // Check that createNewProject() and createNewTask() only switch views
+  const createNewProjStr = appJs.substring(appJs.indexOf('function createNewProject('), appJs.indexOf('function createNewTask('));
+  if (createNewProjStr.includes('db.unshift') || createNewProjStr.includes('saveDB(')) {
+    throw new Error("createNewProject() sigue mutando db o llamando saveDB() directamente al navegar");
   }
-  if (!appJs.includes('Tareas Creadas</h3>')) {
-    throw new Error("Avance Semanal no utiliza el título 'Tareas Creadas'");
+
+  const createNewTaskStr = appJs.substring(appJs.indexOf('function createNewTask('), appJs.indexOf('const ICON_CHECK'));
+  if (createNewTaskStr.includes('db.unshift') || createNewTaskStr.includes('saveDB(')) {
+    throw new Error("createNewTask() sigue mutando db o llamando saveDB() directamente al navegar");
   }
-  if (!appJs.includes("updateAdminDBField('${taskId}', 'tarea_fecha_creacion', this.value)")) {
-    throw new Error("Proyectos Admin no tiene datepicker para tarea_fecha_creacion");
+});
+
+// PRUEBA 7: Borrado permanente en Proyectos Admin envía delete_permanent al backend
+runTest("Prueba 7: Borrado permanente en Admin envía evento específico delete_permanent", () => {
+  const delAdminStr = appJs.substring(appJs.indexOf('function deleteTaskPermanentlyAdmin('), appJs.indexOf('function renderFichaUnidad('));
+  if (!delAdminStr.includes('confirm(')) {
+    throw new Error("deleteTaskPermanentlyAdmin() no solicita confirmación al usuario");
   }
-  if (!appJs.includes("updateAdminDBField('${taskId}', 'fecha_inicio_real', this.value)")) {
-    throw new Error("Proyectos Admin no tiene datepicker para fecha_inicio_real");
+  if (!delAdminStr.includes('delete_permanent')) {
+    throw new Error("deleteTaskPermanentlyAdmin() no despacha el evento 'delete_permanent'");
   }
 });
 

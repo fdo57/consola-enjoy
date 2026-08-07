@@ -674,3 +674,96 @@ def save_central_data(records):
             "source": "sqlite_local_dev",
             "data": []
         }
+
+def delete_permanent_task(task_id, custom_conn=None):
+    """
+    Permanently deletes a single specific task_id from central storage.
+    - PostgreSQL enjoy_records
+    - Google Sheets
+    - SQLite dev
+    Does not delete or alter any other records.
+    """
+    tid = str(task_id).strip()
+    if not tid or tid.lower() in ("none", "null", "undefined"):
+        return {
+            "status": "error",
+            "message": "Rechazado: tarea_id vacío o inválido para borrado permanente.",
+            "source": "validacion"
+        }
+
+    # 1. PostgreSQL (ENJOY_DB_DSN)
+    pg_dsn = get_pg_dsn()
+    if pg_dsn or custom_conn:
+        conn = custom_conn
+        should_close = False
+        if conn is None:
+            conn, _ = _get_pg_connection()
+            should_close = True
+            if conn is None:
+                return {
+                    "status": "error",
+                    "message": "No se pudo conectar a PostgreSQL para borrado permanente.",
+                    "source": "postgresql_vps"
+                }
+        try:
+            with conn:
+                with conn.cursor() as cur:
+                    cur.execute("DELETE FROM enjoy_records WHERE tarea_id = %s;", (tid,))
+            return {
+                "status": "ok",
+                "message": f"Tarea {tid} eliminada permanentemente de PostgreSQL.",
+                "source": "postgresql_vps",
+                "deleted_task_id": tid
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Error al eliminar tarea {tid} de PostgreSQL: {e}",
+                "source": "postgresql_vps"
+            }
+        finally:
+            if should_close and conn:
+                conn.close()
+
+    # 2. Google Sheets
+    config_type, config_data = get_gsheets_config()
+    sheet_id = config_data.get("spreadsheet_id", OFFICIAL_SPREADSHEET_ID) if isinstance(config_data, dict) else OFFICIAL_SPREADSHEET_ID
+
+    if config_type == "service_account":
+        try:
+            records, _ = _load_from_gsheets_sa(config_data)
+            filtered = [r for r in records if r.get("tarea_id") != tid]
+            _save_to_gsheets_sa(config_data, filtered)
+            return {
+                "status": "ok",
+                "message": f"Tarea {tid} eliminada permanentemente de Google Sheets.",
+                "source": "google_sheets_service_account",
+                "spreadsheet_id": sheet_id,
+                "deleted_task_id": tid
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Error al eliminar de Google Sheets: {e}",
+                "source": "google_sheets_service_account"
+            }
+
+    # 3. SQLite dev
+    try:
+        conn = sqlite3.connect(SQLITE_DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM proyectos_tareas WHERE tarea_id = ?", (tid,))
+        conn.commit()
+        conn.close()
+        return {
+            "status": "ok",
+            "message": f"Tarea {tid} eliminada permanentemente de SQLite.",
+            "source": "sqlite_local_dev",
+            "deleted_task_id": tid
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Error al eliminar de SQLite: {e}",
+            "source": "sqlite_local_dev"
+        }

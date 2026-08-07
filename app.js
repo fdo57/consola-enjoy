@@ -279,6 +279,43 @@ function diagnoseDateConsistency(item) {
   };
 }
 
+// Global Actions for Table Rows
+function completeTask(taskId) {
+  const task = db.find(t => t.tarea_id === taskId);
+  if (!task) return;
+  setTaskState(task, "terminada");
+  task.tarea_pct = 100;
+  saveDB();
+  renderCurrentView();
+}
+
+function deleteTask(taskId) {
+  const task = db.find(t => t.tarea_id === taskId);
+  if (!task) return;
+  setTaskState(task, "eliminada");
+  saveDB();
+  renderCurrentView();
+}
+
+// Navigation helpers
+function openCreateProjectForm() {
+  switchView("crear-proyecto");
+}
+
+function createNewProject(uName, pName, pDesc) {
+  if (!uName && !pName) {
+    openCreateProjectForm();
+    return;
+  }
+}
+
+function createNewTask(optProjectId) {
+  if (optProjectId) {
+    selectedProjectId = optProjectId;
+  }
+  switchView("crear-tarea");
+}
+
 // SVG Icons permitted by INSTRUCTIONS.md
 const ICON_CHECK = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
 const ICON_DELETE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`;
@@ -323,7 +360,7 @@ function sendToStreamlit(action, data, context) {
     _ts: Date.now()
   };
 
-  const taskInfo = context && context.created_task_id ? context.created_task_id : "N/A";
+  const taskInfo = context && context.created_task_id ? context.created_task_id : (context && context.deleted_task_id ? context.deleted_task_id : "N/A");
   console.log(`[PUENTE_STREAMLIT] 3. Despachando mensaje '${action}' a Streamlit | Filas: ${data ? data.length : 0} | Tarea ID: ${taskInfo}`);
 
   try {
@@ -358,11 +395,11 @@ function notifyStreamlitReady() {
   } catch (e) {}
 }
 
-function showSaveToast(isSuccess) {
+function showSaveToast(isSuccess, optMsg) {
   const toast = document.getElementById("save-toast");
   if (!toast) return;
   toast.className = "save-toast-banner " + (isSuccess ? "save-toast-success" : "save-toast-error");
-  toast.textContent = isSuccess ? "Guardado" : "Error: no se pudo guardar";
+  toast.textContent = optMsg || (isSuccess ? "Guardado" : "Error: no se pudo guardar");
   toast.style.display = "block";
   toast.style.opacity = "1";
 
@@ -431,7 +468,7 @@ function initDB() {
 
 function saveDB(recordsToSave, contextPayload) {
   const dataToSave = recordsToSave || db;
-  const taskInfo = contextPayload && contextPayload.created_task_id ? contextPayload.created_task_id : "N/A";
+  const taskInfo = contextPayload && contextPayload.created_task_id ? contextPayload.created_task_id : (contextPayload && contextPayload.deleted_task_id ? contextPayload.deleted_task_id : "N/A");
 
   console.log(`[PUENTE_STREAMLIT] 2. saveDB() invocado | isStreamlitConnected: ${isStreamlitConnected} | Filas: ${dataToSave ? dataToSave.length : 0} | Tarea ID: ${taskInfo}`);
 
@@ -447,8 +484,9 @@ function saveDB(recordsToSave, contextPayload) {
   if (isStreamlitConnected && isCentralSourceActive) {
     sendToStreamlit("save_db", dataToSave, contextPayload);
   } else {
-    console.warn(`[PUENTE_STREAMLIT] saveDB() abortado | isStreamlitConnected: ${isStreamlitConnected} | DB_STATUS.status: ${window.DB_STATUS ? window.DB_STATUS.status : 'undefined'} | DB_STATUS.source: ${window.DB_STATUS ? window.DB_STATUS.source : 'undefined'}`);
-    showSaveToast(false);
+    console.warn(`[PUENTE_STREAMLIT] saveDB() abortado: sin conexión a Streamlit o base central no disponible | isStreamlitConnected: ${isStreamlitConnected}`);
+    const errMsg = isStreamlitConnected ? "Error: Base de datos central no disponible." : "Advertencia: Sin conexión a Streamlit / BD central.";
+    showSaveToast(false, errMsg);
     renderStatusBanner();
   }
 }
@@ -554,14 +592,6 @@ function renderDashboard() {
         if (!unitsMap[item.unidad_nombre]) unitsMap[item.unidad_nombre] = {};
         unitsMap[item.unidad_nombre][item.proyecto_id] = item.proyecto_nombre;
       }
-    }
-  });
-
-  // Find all active project IDs in unit list order
-  const activeProjIds = [];
-  allUnits.forEach(uName => {
-    if (unitsMap[uName]) {
-      Object.keys(unitsMap[uName]).forEach(pid => activeProjIds.push(pid));
     }
   });
 
@@ -800,42 +830,40 @@ function updateTaskPctInline(taskId, newPct) {
 }
 
 // ---------------------------------------------------------
-// View 2: Proyectos
+// View 2: Proyectos (Corregida con IDs reales de index.html)
 // ---------------------------------------------------------
 function renderProyectosTable() {
-  const filterUnit = document.getElementById("proyectos-unit-filter").value;
-  const tbodyActivos = document.getElementById("proyectos-table-body-activos");
-  const tbodyInactivos = document.getElementById("proyectos-table-body-inactivos");
+  const tbodyActivos = document.getElementById("proyectos-table-body");
+  const tbodyInactivos = document.getElementById("proyectos-inactive-table-body");
 
-  tbodyActivos.innerHTML = "";
-  tbodyInactivos.innerHTML = "";
+  if (tbodyActivos) tbodyActivos.innerHTML = "";
+  if (tbodyInactivos) tbodyInactivos.innerHTML = "";
 
   db.forEach(item => {
-    if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return;
+    const isProjAct = isProjectActive(item.proyecto_estado);
+    const isTskAct = isTaskActive(item.tarea_estado);
+    const isRowActive = isProjAct && isTskAct;
 
-    const isActive = isProjectActive(item.proyecto_estado);
-    const targetTbody = isActive ? tbodyActivos : tbodyInactivos;
+    const targetTbody = isRowActive ? tbodyActivos : tbodyInactivos;
+    if (!targetTbody) return;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td><span class="table-link" onclick="openFichaUnidad('${item.unidad_nombre}')">${item.unidad_nombre}</span></td>
-      <td><span class="table-link" onclick="openFichaProyecto('${item.proyecto_id}')">${item.proyecto_nombre}</span></td>
-      <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre}</span></td>
+      <td><span class="table-link" onclick="openFichaUnidad('${item.unidad_nombre}')">${item.unidad_nombre || '-'}</span></td>
+      <td><span class="table-link" onclick="openFichaProyecto('${item.proyecto_id}')">${item.proyecto_nombre || '-'}</span></td>
+      <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre || '-'}</span></td>
+      <td class="col-desc">${item.tarea_descripcion || '-'}</td>
       <td>${item.tarea_responsable || '-'}</td>
       <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
       <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_fin_proy', item.fecha_fin_proy)}</td>
       <td><span class="table-link" onclick="toggleTaskAlerta('${item.tarea_id}')">${(item.con_alerta || 'no').toLowerCase() === 'si' ? 'si' : 'no'}</span></td>
-      <td>${item.tarea_contraparte || '-'}</td>
+      <td><button class="action-btn check-btn" onclick="completeTask('${item.tarea_id}')">${ICON_CHECK}</button></td>
+      <td><button class="action-btn delete-btn" onclick="deleteTask('${item.tarea_id}')">${ICON_DELETE}</button></td>
     `;
     targetTbody.appendChild(tr);
   });
-
-  const inactiveSection = document.getElementById("proyectos-inactivos-section");
-  if (inactiveSection) {
-    inactiveSection.style.display = tbodyInactivos.children.length > 0 ? "block" : "none";
-  }
 }
 
 function updateTaskDate(taskId, fieldName, newVal) {
@@ -877,58 +905,14 @@ function renderFormCrearProyecto() {
   if (descEl) descEl.value = "";
 }
 
-function createNewProject(uName, pName, pDesc) {
-  const currentYear = new Date().getFullYear();
-  const abbr = getUnitAbbr(uName);
-
-  let nextSeq = 1;
-  db.forEach(item => {
-    if (item.proyecto_id && item.proyecto_id.includes(`_${abbr}`)) {
-      const parts = item.proyecto_id.split('_');
-      if (parts.length >= 2) {
-        const numPart = parseInt(parts[1].replace(abbr, ''), 10);
-        if (!isNaN(numPart) && numPart >= nextSeq) nextSeq = numPart + 1;
-      }
-    }
-  });
-
-  const seqStr = String(nextSeq).padStart(3, '0');
-  const newProjId = `${currentYear}_${abbr}${seqStr}`;
-  const newTaskId = `${newProjId}_001`;
-  const todayStr = getTodayStr();
-
-  const newRecord = {
-    proyecto_id: newProjId,
-    unidad_nombre: uName,
-    proyecto_nombre: pName,
-    proyecto_estado: "en desarrollo",
-    proyecto_descripcion: pDesc,
-    tarea_id: newTaskId,
-    tarea_nombre: "Tarea inicial",
-    tarea_descripcion: "",
-    tarea_responsable: "",
-    tarea_estado: "por iniciar",
-    tarea_contraparte: "",
-    tarea_pct: 0,
-    tarea_fecha_creacion: todayStr,
-    fecha_legacy: "",
-    con_alerta: "no",
-    fecha_inicio_proy: todayStr,
-    fecha_inicio_real: "",
-    fecha_fin_proy: "",
-    fecha_fin_real: ""
-  };
-
-  db.unshift(newRecord);
-  saveDB();
-  selectedProjectId = newProjId;
-  switchView("ficha-proyecto");
-}
-
 function saveNuevoProyectoForm() {
-  const uName = document.getElementById("np-unidad-nombre").value;
-  const pName = document.getElementById("np-proyecto-nombre").value.trim();
-  const pDesc = document.getElementById("np-proyecto-descripcion").value.trim();
+  const uNameEl = document.getElementById("np-unidad-nombre");
+  const pNameEl = document.getElementById("np-proyecto-nombre");
+  const pDescEl = document.getElementById("np-proyecto-descripcion");
+
+  const uName = uNameEl ? uNameEl.value : "Enjoy Rinconada";
+  const pName = pNameEl ? pNameEl.value.trim() : "";
+  const pDesc = pDescEl ? pDescEl.value.trim() : "";
 
   if (!pName) {
     alert("Por favor ingrese el nombre del proyecto.");
@@ -976,9 +960,16 @@ function saveNuevoProyectoForm() {
     fecha_fin_real: ""
   };
 
-  db.unshift(newRecord);
-  saveDB();
+  const recordsToSave = [newRecord, ...db];
+  const contextPayload = {
+    action_type: "create_project",
+    created_project_id: newProjId,
+    created_task_id: newTaskId,
+    pending_record: newRecord
+  };
+
   selectedProjectId = newProjId;
+  saveDB(recordsToSave, contextPayload);
   switchView("ficha-proyecto");
 }
 
@@ -1267,10 +1258,17 @@ function updateProjectField(projId, field, newVal) {
 }
 
 function deleteProjectPermanently(projId) {
-  if (confirm(`¿Está seguro de eliminar permanentemente el proyecto ${projId} y todas sus tareas?`)) {
-    db = db.filter(item => item.proyecto_id !== projId);
-    saveDB();
-    renderCurrentView();
+  if (confirm(`¿Está seguro de eliminar permanentemente el proyecto ${projId} y todas sus tareas de la base de datos central?`)) {
+    const tasksToDelete = db.filter(item => item.proyecto_id === projId);
+    if (tasksToDelete.length === 0) return;
+    
+    // Dispatched via Streamlit bridge for permanent elimination
+    tasksToDelete.forEach(t => {
+      sendToStreamlit("delete_permanent", null, {
+        action_type: "delete_permanent",
+        deleted_task_id: t.tarea_id
+      });
+    });
   }
 }
 
@@ -1282,7 +1280,7 @@ function renderAdminDB() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  db.forEach((item, idx) => {
+  db.forEach((item) => {
     const taskId = item.tarea_id;
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -1348,10 +1346,29 @@ function updateAdminDBField(taskId, field, rawVal) {
 }
 
 function deleteTaskPermanentlyAdmin(taskId) {
-  if (confirm(`¿Está seguro de eliminar permanentemente la tarea ${taskId}?`)) {
-    db = db.filter(t => t.tarea_id !== taskId);
-    saveDB();
-    renderAdminDB();
+  if (!taskId) return;
+  if (!confirm(`¿Está seguro de eliminar permanentemente la tarea ${taskId} de la base de datos central? Esta acción es irreversible.`)) {
+    return;
+  }
+
+  const contextPayload = {
+    action_type: "delete_permanent",
+    deleted_task_id: taskId
+  };
+
+  const isCentralActive = window.DB_STATUS && window.DB_STATUS.status === "ok" && 
+    (
+      window.DB_STATUS.source === "postgresql_vps" || 
+      window.DB_STATUS.source === "google_sheets_service_account" || 
+      window.DB_STATUS.source === "google_sheets_web_app"
+    );
+
+  if (isStreamlitConnected && isCentralActive) {
+    sendToStreamlit("delete_permanent", null, contextPayload);
+  } else {
+    console.warn(`[PUENTE_STREAMLIT] delete_permanent falló: sin conexión central.`);
+    showSaveToast(false, "Error: Sin conexión a base central para borrado permanente.");
+    renderStatusBanner();
   }
 }
 
@@ -1386,9 +1403,6 @@ function renderFichaUnidad() {
       projsMap[t.proyecto_id].conAlerta = true;
     }
   });
-
-  const alertTasks = activeUnitTasks.filter(t => (t.con_alerta || "").toLowerCase() === "si");
-  const alertListText = alertTasks.map(t => `<span class="table-link" onclick="openFichaTarea('${t.tarea_id}')">${t.tarea_nombre}</span>`).join(", ") || "Ninguna";
 
   const cardContainer = document.getElementById("ficha-unidad-cards");
   if (cardContainer) {
@@ -1879,7 +1893,7 @@ function showSaveErrorBanner(msg) {
   banner.style.border = "1px solid #f5c6cb";
   banner.textContent = "";
   const errSpan = document.createElement("span");
-  errSpan.textContent = `❌ Error al guardar: ${msg || 'No se pudo guardar la información en la base de datos central.'}`;
+  errSpan.textContent = `❌ Error: ${msg || 'No se pudo completar la operación en la base de datos central.'}`;
   banner.appendChild(errSpan);
 }
 
@@ -1905,9 +1919,10 @@ window.addEventListener("message", function(event) {
       let pendingRecordToRestore = null;
 
       if (args.save_status && typeof args.save_status === "object") {
-        const ctx = args.save_status.context;
-        const isCreateTaskAction = ctx && ctx.action_type === "create_task";
-        const taskInfo = ctx && ctx.created_task_id ? ctx.created_task_id : "N/A";
+        const ctx = args.save_status.context || {};
+        const isCreateTaskAction = ctx.action_type === "create_task";
+        const isDeleteAction = ctx.action_type === "delete_permanent";
+        const taskInfo = ctx.created_task_id || ctx.deleted_task_id || "N/A";
 
         console.log(`[PUENTE_STREAMLIT] 4. Respuesta save_status recibida: ${args.save_status.status} | Tarea ID: ${taskInfo} | Mensaje: ${args.save_status.message}`);
 
@@ -1916,7 +1931,7 @@ window.addEventListener("message", function(event) {
             localStorage.setItem("ENJOY_PROJECTS_DB_V3", JSON.stringify(db));
           } catch (e) {}
 
-          showSaveToast(true);
+          showSaveToast(true, isDeleteAction ? `Tarea ${taskInfo} eliminada` : "Guardado");
 
           if (isCreateTaskAction && ctx.created_task_id) {
             console.log(`[PUENTE_STREAMLIT] 5. Tarea ${ctx.created_task_id} creada exitosamente. Redirigiendo a vista 'ficha-tarea'.`);
@@ -1926,8 +1941,8 @@ window.addEventListener("message", function(event) {
             return;
           }
         } else if (args.save_status.status === "error") {
-          console.warn(`[PUENTE_STREAMLIT] Error al guardar tarea ${taskInfo}: ${args.save_status.message}`);
-          showSaveToast(false);
+          console.warn(`[PUENTE_STREAMLIT] Error al procesar ${taskInfo}: ${args.save_status.message}`);
+          showSaveToast(false, args.save_status.message || "Error al guardar en base central");
           showSaveErrorBanner(args.save_status.message);
 
           if (isCreateTaskAction) {
