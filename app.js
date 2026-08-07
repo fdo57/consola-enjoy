@@ -1851,6 +1851,19 @@ document.addEventListener("DOMContentLoaded", function() {
   renderCurrentView();
 });
 
+function showSaveErrorBanner(msg) {
+  const banner = document.getElementById("db-status-banner");
+  if (!banner) return;
+  banner.style.display = "block";
+  banner.style.backgroundColor = "#f8d7da";
+  banner.style.color = "#721c24";
+  banner.style.border = "1px solid #f5c6cb";
+  banner.textContent = "";
+  const errSpan = document.createElement("span");
+  errSpan.textContent = `❌ Error al guardar: ${msg || 'No se pudo guardar la información en la base de datos central.'}`;
+  banner.appendChild(errSpan);
+}
+
 // Listen for incoming Streamlit render & state updates
 window.addEventListener("message", function(event) {
   if (event.data && event.data.type === "streamlit:render") {
@@ -1864,6 +1877,8 @@ window.addEventListener("message", function(event) {
         // Prevalencia obligatoria de la BD central recibida desde Streamlit
         db = args.initial_data;
       }
+
+      renderStatusBanner();
 
       let isTaskCreationError = false;
       let pendingRecordToRestore = null;
@@ -1887,17 +1902,7 @@ window.addEventListener("message", function(event) {
           }
         } else if (args.save_status.status === "error") {
           showSaveToast(false);
-          const banner = document.getElementById("db-status-banner");
-          if (banner) {
-            banner.style.display = "block";
-            banner.style.backgroundColor = "#f8d7da";
-            banner.style.color = "#721c24";
-            banner.style.border = "1px solid #f5c6cb";
-            banner.textContent = "";
-            const errSpan = document.createElement("span");
-            errSpan.textContent = `❌ Error al guardar: ${args.save_status.message || 'No se pudo guardar la información en la base de datos central.'}`;
-            banner.appendChild(errSpan);
-          }
+          showSaveErrorBanner(args.save_status.message);
 
           if (isCreateTaskAction) {
             isTaskCreationError = true;
@@ -1905,8 +1910,6 @@ window.addEventListener("message", function(event) {
           }
         }
       }
-
-      renderStatusBanner();
 
       if (isTaskCreationError) {
         currentView = "crear-tarea";
