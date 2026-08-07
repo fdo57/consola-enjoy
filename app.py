@@ -79,30 +79,38 @@ if component_value and isinstance(component_value, dict):
     action = component_value.get("action")
     if action == "save_db":
         new_data = component_value.get("data")
-        context = component_value.get("context")
+        context = component_value.get("context") or {}
+        created_task_id = context.get("created_task_id", "N/A")
+        action_type = context.get("action_type", "general_save")
+        row_count = len(new_data) if isinstance(new_data, list) else 0
+
+        print(f"[STREAMLIT_BRIDGE_LOG] Evento 'save_db' recibido en backend | Filas: {row_count} | Tarea ID: {created_task_id} | Acción: {action_type}")
+
         if isinstance(new_data, list):
             try:
                 save_result = db_manager.save_central_data(new_data)
                 if isinstance(save_result, dict) and save_result.get("status") == "ok":
+                    print(f"[STREAMLIT_BRIDGE_LOG] Guardado exitoso en base central | Tarea ID: {created_task_id} | Filas: {row_count}")
                     st.session_state["central_db"] = new_data
                     st.session_state["save_status"] = {
                         "status": "ok",
-                        "message": "Guardado exitoso en base central.",
+                        "message": save_result.get("message", "Guardado exitoso en base central."),
                         "context": context
                     }
                 else:
                     raw_msg = save_result.get("message", "") if isinstance(save_result, dict) else "Error desconocido"
-                    print(f"[SAVE_ERROR_LOG] Technical detail: {raw_msg}")
+                    print(f"[SAVE_ERROR_LOG] Detalle técnico de guardado: {raw_msg} | Tarea ID: {created_task_id}")
                     st.session_state["save_status"] = {
                         "status": "error",
-                        "message": "No se pudo guardar la información en la base de datos central. Por favor intente nuevamente.",
+                        "message": f"Error en base central: {raw_msg}",
                         "context": context
                     }
             except Exception as ex:
-                print(f"[SAVE_EXCEPTION_LOG] Exception detail: {ex}")
+                print(f"[SAVE_EXCEPTION_LOG] Excepción técnica al guardar: {ex} | Tarea ID: {created_task_id}")
                 st.session_state["save_status"] = {
                     "status": "error",
-                    "message": "No se pudo guardar la información en la base de datos central. Por favor intente nuevamente.",
+                    "message": f"Excepción técnica en servidor: {ex}",
                     "context": context
                 }
             st.rerun()
+

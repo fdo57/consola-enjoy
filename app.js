@@ -8,7 +8,7 @@ const EXCEL_HEADERS = [
   "proyecto_id", "unidad_nombre", "proyecto_nombre", "proyecto_estado", "proyecto_descripcion",
   "tarea_id", "tarea_nombre", "tarea_descripcion", "tarea_responsable",
   "tarea_estado", "tarea_contraparte", "tarea_pct", "tarea_fecha_creacion", "fecha_legacy",
-  "con_alerta", "fecha_inicio_proy", "fecha_fin_proy", "fecha_fin_real"
+  "con_alerta", "fecha_inicio_proy", "fecha_inicio_real", "fecha_fin_proy", "fecha_fin_real"
 ];
 
 // Unit abbreviation mapping
@@ -140,6 +140,9 @@ function sendToStreamlit(action, data, context) {
     _ts: Date.now()
   };
 
+  const taskInfo = context && context.created_task_id ? context.created_task_id : "N/A";
+  console.log(`[PUENTE_STREAMLIT] 3. Despachando mensaje '${action}' a Streamlit | Filas: ${data ? data.length : 0} | Tarea ID: ${taskInfo}`);
+
   try {
     if (window.Streamlit && typeof window.Streamlit.setComponentValue === "function") {
       window.Streamlit.setComponentValue(payload);
@@ -151,7 +154,7 @@ function sendToStreamlit(action, data, context) {
       }, "*");
     }
   } catch (e) {
-    console.warn("sendToStreamlit postMessage failed:", e);
+    console.warn("[PUENTE_STREAMLIT] sendToStreamlit postMessage falló:", e);
   }
 }
 
@@ -245,6 +248,9 @@ function initDB() {
 
 function saveDB(recordsToSave, contextPayload) {
   const dataToSave = recordsToSave || db;
+  const taskInfo = contextPayload && contextPayload.created_task_id ? contextPayload.created_task_id : "N/A";
+
+  console.log(`[PUENTE_STREAMLIT] 2. saveDB() invocado | isStreamlitConnected: ${isStreamlitConnected} | Filas: ${dataToSave ? dataToSave.length : 0} | Tarea ID: ${taskInfo}`);
 
   // Verify connection to Streamlit and central database
   const isCentralSourceActive = window.DB_STATUS && window.DB_STATUS.status === "ok" && 
@@ -258,7 +264,7 @@ function saveDB(recordsToSave, contextPayload) {
   if (isStreamlitConnected && isCentralSourceActive) {
     sendToStreamlit("save_db", dataToSave, contextPayload);
   } else {
-    // If source is not a valid central database or connection is offline, do not simulate success
+    console.warn(`[PUENTE_STREAMLIT] saveDB() abortado | isStreamlitConnected: ${isStreamlitConnected} | DB_STATUS.status: ${window.DB_STATUS ? window.DB_STATUS.status : 'undefined'} | DB_STATUS.source: ${window.DB_STATUS ? window.DB_STATUS.source : 'undefined'}`);
     showSaveToast(false);
     renderStatusBanner();
   }
@@ -558,8 +564,7 @@ function isSameWeek(dateStr1, dateStr2) {
   alertListEl.innerHTML = `
     <div style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
       <div class="avance-section">
-      <div class="avance-section">
-        <h3 class="avance-sub-header" style="font-size: 0.95rem; font-weight: 700; color: var(--color-title); margin-bottom: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">Tareas Iniciadas</h3>
+        <h3 class="avance-sub-header" style="font-size: 0.95rem; font-weight: 700; color: var(--color-title); margin-bottom: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">Tareas Creadas</h3>
         <ul id="avance-created-ul" class="item-list" style="margin: 0; padding: 0;"></ul>
       </div>
 
@@ -579,20 +584,19 @@ function isSameWeek(dateStr1, dateStr2) {
   const finishedUl = document.getElementById("avance-finished-ul");
   const updateUl = document.getElementById("avance-update-ul");
 
-  // Part 1: Tareas Iniciadas (fecha_legacy en misma semana de Fecha de Informe, sin fecha fin)
+  // Part 1: Tareas Creadas (fecha_inicio_proy en misma semana de Fecha de Informe)
   const createdTasks = db.filter(item => {
     if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
     const st = normalizeEstado(item.tarea_estado);
     if (st !== "en desarrollo" && st !== "detenida") return false;
-    if (isEmptyDate(item.fecha_legacy)) return false;
-    if (!isSameWeek(item.fecha_legacy, fechaInforme)) return false;
-    if (!isEmptyDate(item.fecha_fin_proy)) return false;
+    if (isEmptyDate(item.fecha_inicio_proy)) return false;
+    if (!isSameWeek(item.fecha_inicio_proy, fechaInforme)) return false;
     if (!isEmptyDate(item.fecha_fin_real)) return false;
     return true;
   });
 
   if (createdTasks.length === 0) {
-    createdUl.innerHTML = `<li class="alert-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas iniciadas esta semana</li>`;
+    createdUl.innerHTML = `<li class="alert-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas creadas esta semana</li>`;
   } else {
     createdTasks.forEach(task => {
       const semaforoClass = getSemaforoClass(task);
@@ -639,21 +643,24 @@ function isSameWeek(dateStr1, dateStr2) {
   // Part 3: Actualizar Fechas (inconsistencias diagnosticadas)
   const updateDateTasks = db.filter(item => {
     if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
-    return !diagnoseDateConsistency(item).isConsistent;
+    const diag = diagnoseDateConsistency(item);
+    return !diag.isConsistent;
   });
 
   if (updateDateTasks.length === 0) {
     updateUl.innerHTML = `<li class="alert-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas pendientes de fecha</li>`;
   } else {
     updateDateTasks.forEach(task => {
+      const diag = diagnoseDateConsistency(task);
+      const reasonText = diag.reasons.join(", ");
       const semaforoClass = getSemaforoClass(task);
       const li = document.createElement("li");
       li.className = "alert-row-item";
       li.innerHTML = `
         <span class="alert-unit-name">${task.unidad_nombre}</span>
         <div style="display: flex; align-items: center; gap: 8px;">
-          <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')">${task.tarea_nombre}</span>
-          <span class="semaforo-dot ${semaforoClass}" title="Estado: ${task.tarea_estado}, Alerta: ${task.con_alerta}"></span>
+          <span class="item-link" onclick="openFichaTarea('${task.tarea_id}')" title="${reasonText}">${task.tarea_nombre}</span>
+          <span class="semaforo-dot ${semaforoClass}" title="Estado: ${task.tarea_estado}, Alerta: ${task.con_alerta} - ${reasonText}"></span>
         </div>
       `;
       updateUl.appendChild(li);
@@ -702,24 +709,14 @@ function diagnoseDateConsistency(item) {
 
   const hasFinProy = !isEmptyDate(item.fecha_fin_proy);
   const hasFinReal = !isEmptyDate(item.fecha_fin_real);
+  const hasInicioProy = !isEmptyDate(item.fecha_inicio_proy);
 
-  // Consolidated project start date
-  let projInicioProy = "";
-  if (item.proyecto_id) {
-    const projTaskWithInicio = db.find(t => t.proyecto_id === item.proyecto_id && !isEmptyDate(t.fecha_inicio_proy));
-    if (projTaskWithInicio) {
-      projInicioProy = normalizeDateStr(projTaskWithInicio.fecha_inicio_proy);
-    }
+  // 1. Tarea activa con fecha_fin_real o fecha_fin_proy informada
+  if (isActive && hasFinReal) {
+    reasons.push("Tarea activa con fecha de término real informada");
   }
-  if (!projInicioProy) {
-    projInicioProy = normalizeDateStr(item.fecha_inicio_proy);
-  }
-
-  const hasInicioProy = !isEmptyDate(projInicioProy);
-
-  // 1. Tareas activas con fecha_fin_proy o fecha_fin_real informada
-  if (isActive && (hasFinProy || hasFinReal)) {
-    reasons.push("Tarea activa con fecha de término informada");
+  if (isActive && hasFinProy) {
+    reasons.push("Tarea activa con fecha de término proyectada informada");
   }
 
   // 2. Tareas terminadas o eliminadas sin fecha_fin_real
@@ -734,27 +731,18 @@ function diagnoseDateConsistency(item) {
 
   // 4. Tareas sin fecha_inicio_proy
   if (!hasInicioProy) {
-    reasons.push("Sin fecha de inicio proyectada del proyecto");
+    reasons.push("Sin fecha de inicio proyectada");
   }
 
-  // 5. Evaluación a nivel de proyecto (agrupada por proyecto_id con fechas normalizadas)
-  if (item.proyecto_id) {
-    const projTasks = db.filter(t => t.proyecto_id === item.proyecto_id);
-    const legacySet = new Set();
-    projTasks.forEach(t => {
-      if (!isEmptyDate(t.fecha_legacy)) {
-        legacySet.add(normalizeDateStr(t.fecha_legacy));
-      }
-    });
+  // 5. Tareas terminadas con porcentaje de avance distinto a 100
+  const pctNum = parseInt(item.tarea_pct, 10);
+  if (isFinishedOrDeleted && state === "terminada" && !isNaN(pctNum) && pctNum !== 100) {
+    reasons.push("Tarea terminada con porcentaje de avance distinto a 100%");
+  }
 
-    if (legacySet.size > 1) {
-      reasons.push("El proyecto tiene múltiples fechas en minuta (fecha_legacy) diferentes entre sus tareas");
-    } else if (legacySet.size === 1 && hasInicioProy) {
-      const singleLegacyNormalized = Array.from(legacySet)[0];
-      if (singleLegacyNormalized !== projInicioProy) {
-        reasons.push("Fecha en minuta difiere de la fecha de inicio proyectada del proyecto");
-      }
-    }
+  // 6. Tareas activas con porcentaje de avance igual a 100
+  if (isActive && !isNaN(pctNum) && pctNum === 100 && (state === "en desarrollo" || state === "detenida")) {
+    reasons.push("Tarea activa con porcentaje de avance igual a 100%");
   }
 
   return {
@@ -823,7 +811,6 @@ function renderProyectosTable() {
       <td>${item.tarea_responsable || ""}</td>
       <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
       <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
-      <td>${renderDateCell(item.tarea_id, 'fecha_legacy', item.fecha_legacy)}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_fin_proy', item.fecha_fin_proy)}</td>
       <td>
@@ -857,7 +844,6 @@ function renderProyectosTable() {
         <td>${item.tarea_responsable || ""}</td>
         <td>${item.tarea_estado || ""}</td>
         <td>${item.tarea_pct !== "" ? item.tarea_pct + "%" : ""}</td>
-        <td>${formatDateDDMMYYYY(item.fecha_legacy)}</td>
         <td>${formatDateDDMMYYYY(item.fecha_inicio_proy)}</td>
         <td>${formatDateDDMMYYYY(item.fecha_fin_proy)}</td>
         <td>${item.con_alerta || "no"}</td>
@@ -920,7 +906,7 @@ function saveNuevoProyectoForm() {
   const seqStr = String(nextSeq).padStart(3, '0');
   const newProjId = `${currentYear}_${abbr}${seqStr}`;
   const newTaskId = `${newProjId}_001`;
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getTodayStr();
 
   const newRecord = {
     proyecto_id: newProjId,
@@ -936,9 +922,10 @@ function saveNuevoProyectoForm() {
     tarea_contraparte: "",
     tarea_pct: 0,
     tarea_fecha_creacion: todayStr,
-    fecha_legacy: todayStr,
+    fecha_legacy: "",
     con_alerta: "no",
     fecha_inicio_proy: todayStr,
+    fecha_inicio_real: "",
     fecha_fin_proy: "",
     fecha_fin_real: ""
   };
@@ -982,6 +969,7 @@ function generateNextTaskId(targetProjId) {
 // Formulario Creación Nueva Tarea
 function renderFormCrearTarea(pendingRecord) {
   const selectUnit = document.getElementById("nt-unidad-nombre");
+  if (!selectUnit) return;
   selectUnit.innerHTML = "";
   const allUnits = ["Enjoy Rinconada", "Enjoy Pucón", "Enjoy Viña", "Enjoy Coquimbo", "Enjoy Chiloé", "Enjoy Transversales"];
   
@@ -1013,37 +1001,41 @@ function renderFormCrearTarea(pendingRecord) {
 
   const todayStr = getTodayStr();
 
-  // Inherit existing project start date if available
   let existingProjInicio = "";
   if (targetPid) {
     const existingTask = db.find(t => t.proyecto_id === targetPid && !isEmptyDate(t.fecha_inicio_proy));
     if (existingTask) existingProjInicio = existingTask.fecha_inicio_proy;
   }
 
-  document.getElementById("nt-tarea-nombre").value = pendingRecord ? (pendingRecord.tarea_nombre || "") : "";
-  document.getElementById("nt-tarea-descripcion").value = pendingRecord ? (pendingRecord.tarea_descripcion || "") : "";
-  document.getElementById("nt-tarea-responsable").value = pendingRecord ? (pendingRecord.tarea_responsable || "") : "";
-  document.getElementById("nt-tarea-contraparte").value = pendingRecord ? (pendingRecord.tarea_contraparte || "") : "";
-  document.getElementById("nt-con-alerta").value = pendingRecord ? (pendingRecord.con_alerta || "no") : "no";
+  const nameEl = document.getElementById("nt-tarea-nombre");
+  if (nameEl) nameEl.value = pendingRecord ? (pendingRecord.tarea_nombre || "") : "";
 
-  const ntLegacyEl = document.getElementById("nt-fecha-legacy");
-  if (ntLegacyEl) {
-    ntLegacyEl.value = pendingRecord ? (parseToYYYYMMDD(pendingRecord.fecha_legacy) || todayStr) : todayStr;
-  }
+  const descEl = document.getElementById("nt-tarea-descripcion");
+  if (descEl) descEl.value = pendingRecord ? (pendingRecord.tarea_descripcion || "") : "";
+
+  const respEl = document.getElementById("nt-tarea-responsable");
+  if (respEl) respEl.value = pendingRecord ? (pendingRecord.tarea_responsable || "") : "";
+
+  const contraEl = document.getElementById("nt-tarea-contraparte");
+  if (contraEl) contraEl.value = pendingRecord ? (pendingRecord.tarea_contraparte || "") : "";
+
+  const alertaEl = document.getElementById("nt-con-alerta");
+  if (alertaEl) alertaEl.value = pendingRecord ? (pendingRecord.con_alerta || "no") : "no";
 
   const ntInicioProyEl = document.getElementById("nt-fecha-inicio-proy");
   if (ntInicioProyEl) {
-    ntInicioProyEl.value = pendingRecord ? (parseToYYYYMMDD(pendingRecord.fecha_inicio_proy) || todayStr) : (parseToYYYYMMDD(existingProjInicio) || todayStr);
+    ntInicioProyEl.value = pendingRecord ? (formatDateDDMMYYYY(pendingRecord.fecha_inicio_proy) || formatDateDDMMYYYY(todayStr)) : (formatDateDDMMYYYY(existingProjInicio) || formatDateDDMMYYYY(todayStr));
   }
 
   const ntFinProyEl = document.getElementById("nt-fecha-fin-proy");
   if (ntFinProyEl) {
-    ntFinProyEl.value = pendingRecord ? parseToYYYYMMDD(pendingRecord.fecha_fin_proy) : "";
+    ntFinProyEl.value = pendingRecord ? (formatDateDDMMYYYY(pendingRecord.fecha_fin_proy) || "") : "";
   }
 }
 
 function onNuevaTareaUnitChange(uName) {
   const selectProj = document.getElementById("nt-proyecto-nombre");
+  if (!selectProj) return;
   selectProj.innerHTML = "";
 
   const projsMap = {};
@@ -1076,15 +1068,25 @@ function onNuevaTareaProjectChange(val) {
 }
 
 function saveNuevaTareaForm() {
-  const uName = document.getElementById("nt-unidad-nombre").value;
-  const targetProjId = document.getElementById("nt-proyecto-nombre").value;
+  const uNameEl = document.getElementById("nt-unidad-nombre");
+  const pNameEl = document.getElementById("nt-proyecto-nombre");
+  const tNameEl = document.getElementById("nt-tarea-nombre");
+  const tDescEl = document.getElementById("nt-tarea-descripcion");
+  const tRespEl = document.getElementById("nt-tarea-responsable");
+  const tContraEl = document.getElementById("nt-tarea-contraparte");
+  const tAlertaEl = document.getElementById("nt-con-alerta");
+  const tInicioEl = document.getElementById("nt-fecha-inicio-proy");
+  const tFinEl = document.getElementById("nt-fecha-fin-proy");
+
+  const uName = uNameEl ? uNameEl.value : "Enjoy Rinconada";
+  const targetProjId = pNameEl ? pNameEl.value : "";
 
   if (targetProjId === "__NUEVO_PROYECTO__" || !targetProjId) {
     switchView("crear-proyecto");
     return;
   }
 
-  const tName = document.getElementById("nt-tarea-nombre").value.trim();
+  const tName = tNameEl ? tNameEl.value.trim() : "";
   if (!tName) {
     alert("Por favor ingrese el nombre de la tarea.");
     return;
@@ -1104,14 +1106,8 @@ function saveNuevaTareaForm() {
     if (existingTask) existingProjInicio = existingTask.fecha_inicio_proy;
   }
 
-  const ntLegacyEl = document.getElementById("nt-fecha-legacy");
-  const fLegacy = (ntLegacyEl && ntLegacyEl.value) ? ntLegacyEl.value : todayStr;
-
-  const ntInicioProyEl = document.getElementById("nt-fecha-inicio-proy");
-  const fInicioProy = (ntInicioProyEl && ntInicioProyEl.value) ? ntInicioProyEl.value : (existingProjInicio || todayStr);
-
-  const ntFinProyEl = document.getElementById("nt-fecha-fin-proy");
-  const fFinProy = (ntFinProyEl && ntFinProyEl.value) ? ntFinProyEl.value : "";
+  const fInicioProy = (tInicioEl && tInicioEl.value.trim()) ? tInicioEl.value.trim() : (existingProjInicio || todayStr);
+  const fFinProy = (tFinEl && tFinEl.value.trim()) ? tFinEl.value.trim() : "";
 
   const newRecord = {
     proyecto_id: targetProjId,
@@ -1121,15 +1117,16 @@ function saveNuevaTareaForm() {
     proyecto_descripcion: pDesc,
     tarea_id: newTaskId,
     tarea_nombre: tName,
-    tarea_descripcion: document.getElementById("nt-tarea-descripcion").value.trim(),
-    tarea_responsable: document.getElementById("nt-tarea-responsable").value.trim(),
+    tarea_descripcion: tDescEl ? tDescEl.value.trim() : "",
+    tarea_responsable: tRespEl ? tRespEl.value.trim() : "",
     tarea_estado: "en desarrollo",
-    tarea_contraparte: document.getElementById("nt-tarea-contraparte").value.trim(),
+    tarea_contraparte: tContraEl ? tContraEl.value.trim() : "",
     tarea_pct: 0,
     tarea_fecha_creacion: todayStr,
-    fecha_legacy: fLegacy,
-    con_alerta: document.getElementById("nt-con-alerta").value,
+    fecha_legacy: "",
+    con_alerta: tAlertaEl ? tAlertaEl.value : "no",
     fecha_inicio_proy: fInicioProy,
+    fecha_inicio_real: "",
     fecha_fin_proy: fFinProy,
     fecha_fin_real: ""
   };
@@ -1141,6 +1138,8 @@ function saveNuevaTareaForm() {
   };
 
   const recordsToSave = [newRecord, ...db];
+
+  console.log(`[PUENTE_STREAMLIT] 1. Botón Guardar presionado -> saveNuevaTareaForm() | Tarea ID nueva: ${newTaskId} | Total filas enviadas: ${recordsToSave.length}`);
 
   saveDB(recordsToSave, contextPayload);
 }
@@ -1193,7 +1192,7 @@ function updateAdminDBField(taskId, fieldName, value) {
   const record = db.find(item => item.tarea_id === taskId);
   if (!record) return;
 
-  const projFields = ["unidad_nombre", "proyecto_nombre", "proyecto_descripcion", "proyecto_estado", "fecha_inicio_proy", "fecha_fin_proy"];
+  const projFields = ["unidad_nombre", "proyecto_nombre", "proyecto_descripcion", "proyecto_estado"];
   if (projFields.includes(fieldName) && record.proyecto_id) {
     db.forEach(item => {
       if (item.proyecto_id === record.proyecto_id) {
@@ -1279,7 +1278,7 @@ function renderAdminDBTable(tbodyId) {
         <input type="number" min="0" max="100" class="form-input" style="padding: 3px 4px; font-size: 0.82rem; width: 60px; text-align: center;" value="${item.tarea_pct !== undefined ? item.tarea_pct : ''}" onchange="updateAdminDBField('${taskId}', 'tarea_pct', this.value)">
       </td>
       <td>
-        <strong>${formatDateDDMMYYYY(item.tarea_fecha_creacion)}</strong>
+        <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.tarea_fecha_creacion)}" onchange="updateAdminDBField('${taskId}', 'tarea_fecha_creacion', this.value)">
       </td>
       <td>
         <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_legacy)}" onchange="updateAdminDBField('${taskId}', 'fecha_legacy', this.value)">
@@ -1292,6 +1291,9 @@ function renderAdminDBTable(tbodyId) {
       </td>
       <td>
         <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_inicio_proy)}" onchange="updateAdminDBField('${taskId}', 'fecha_inicio_proy', this.value)">
+      </td>
+      <td>
+        <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_inicio_real)}" onchange="updateAdminDBField('${taskId}', 'fecha_inicio_real', this.value)">
       </td>
       <td>
         <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_fin_proy)}" onchange="updateAdminDBField('${taskId}', 'fecha_fin_proy', this.value)">
@@ -1450,7 +1452,6 @@ function renderFichaUnidad() {
       <td>${item.tarea_responsable || ""}</td>
       <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
       <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
-      <td>${renderDateCell(item.tarea_id, 'fecha_legacy', item.fecha_legacy)}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_fin_proy', item.fecha_fin_proy)}</td>
       <td>
@@ -1478,10 +1479,9 @@ function renderFichaUnidad() {
       <td>${item.tarea_responsable || ""}</td>
       <td>${item.tarea_estado || ""}</td>
       <td>${item.tarea_pct !== "" ? item.tarea_pct + "%" : ""}</td>
-      <td>${formatDateDDMMYYYY(item.fecha_legacy)}</td>
       <td>${formatDateDDMMYYYY(item.fecha_inicio_proy)}</td>
       <td>${formatDateDDMMYYYY(item.fecha_fin_proy)}</td>
-      <td>${item.con_alerta}</td>
+      <td>${item.con_alerta || "no"}</td>
       <td>-</td>
       <td>-</td>
     `;
@@ -1568,7 +1568,6 @@ function renderFichaProyecto() {
       <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
       <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
       <td>${item.tarea_contraparte || ""}</td>
-      <td>${renderDateCell(item.tarea_id, 'fecha_legacy', item.fecha_legacy)}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
       <td>${renderDateCell(item.tarea_id, 'fecha_fin_proy', item.fecha_fin_proy)}</td>
       <td>
@@ -1596,10 +1595,9 @@ function renderFichaProyecto() {
       <td>${item.tarea_estado || ""}</td>
       <td>${item.tarea_pct !== "" ? item.tarea_pct + "%" : ""}</td>
       <td>${item.tarea_contraparte || ""}</td>
-      <td>${formatDateDDMMYYYY(item.fecha_legacy)}</td>
       <td>${formatDateDDMMYYYY(item.fecha_inicio_proy)}</td>
       <td>${formatDateDDMMYYYY(item.fecha_fin_proy)}</td>
-      <td>${item.con_alerta}</td>
+      <td>${item.con_alerta || "no"}</td>
       <td>-</td>
       <td>-</td>
     `;
@@ -1652,23 +1650,31 @@ function renderFichaTarea() {
 
   // Task Selector for Project
   const taskSelectEl = document.getElementById("select-ficha-tarea");
-  taskSelectEl.innerHTML = "";
-  const projTasks = db.filter(item => item.proyecto_id === projId);
-  projTasks.forEach(t => {
-    const opt = document.createElement("option");
-    opt.value = t.tarea_id;
-    opt.textContent = t.tarea_nombre;
-    if (t.tarea_id === selectedTaskId) opt.selected = true;
-    taskSelectEl.appendChild(opt);
-  });
+  if (taskSelectEl) {
+    taskSelectEl.innerHTML = "";
+    const projTasks = db.filter(item => item.proyecto_id === projId);
+    projTasks.forEach(t => {
+      const opt = document.createElement("option");
+      opt.value = t.tarea_id;
+      opt.textContent = t.tarea_nombre;
+      if (t.tarea_id === selectedTaskId) opt.selected = true;
+      taskSelectEl.appendChild(opt);
+    });
+  }
 
   // Title Case Header Title: unidad_nombre tarea_nombre
   const headerTitleText = `${toTitleCase(task.unidad_nombre)} ${toTitleCase(task.tarea_nombre)}`;
   const headerTitleEl = document.getElementById("ficha-tarea-header-title");
   if (headerTitleEl) headerTitleEl.textContent = headerTitleText;
 
-  // Render 2 Cards without titles
+  // Render 2 Cards without titles on white background
   const containerEl = document.getElementById("ficha-tarea-container");
+  if (!containerEl) return;
+
+  const displayFechaInicio = formatDateDDMMYYYY(task.fecha_inicio_proy || task.tarea_fecha_creacion);
+  const displayFechaFin = formatDateDDMMYYYY(task.fecha_fin_proy);
+  const currentProj = db.find(item => item.proyecto_id === task.proyecto_id);
+  const isProjActive = currentProj ? isProjectActive(currentProj.proyecto_estado) : true;
 
   if (!isEditingTarea) {
     // READ MODE: Plain Text Display
@@ -1676,7 +1682,7 @@ function renderFichaTarea() {
       <!-- Card 1: Descripción -->
       <div class="executive-card" style="width: 100%; margin-bottom: 20px; background-color: var(--color-white);">
         <div class="form-group full-width">
-          <label class="form-label" style="font-size: 1.1rem; margin-bottom: 8px;">Descripción:</label>
+          <label class="form-label" style="font-size: 1.1rem; margin-bottom: 8px; font-weight: bold;">Descripción:</label>
           <p class="plain-text-val">${task.tarea_descripcion || '-'}</p>
         </div>
       </div>
@@ -1684,8 +1690,14 @@ function renderFichaTarea() {
       <!-- Card 2: Campos de la Tarea en Texto Plano -->
       <div class="executive-card" style="width: 100%; margin-bottom: 20px; background-color: var(--color-white);">
         <div class="card-grid-table">
-          <span class="card-grid-label">Nombre de la tarea:</span>
-          <span class="plain-text-val">${task.tarea_nombre || '-'}</span>
+          <span class="card-grid-label">Unidad de Negocio:</span>
+          <span class="plain-text-val"><span class="table-link" onclick="openFichaUnidad('${task.unidad_nombre}')">${task.unidad_nombre || '-'}</span></span>
+
+          <span class="card-grid-label">Proyecto:</span>
+          <span class="plain-text-val">${isProjActive ? `<span class="table-link" onclick="openFichaProyecto('${task.proyecto_id}')">${task.proyecto_nombre || '-'}</span>` : (task.proyecto_nombre || '-')}</span>
+
+          <span class="card-grid-label">Descripción:</span>
+          <span class="plain-text-val" style="font-weight: bold;">${task.tarea_descripcion || '-'}</span>
 
           <span class="card-grid-label">Estado de la tarea:</span>
           <span class="plain-text-val">${task.tarea_estado || '-'}</span>
@@ -1694,22 +1706,16 @@ function renderFichaTarea() {
           <span class="plain-text-val">${task.tarea_responsable || '-'}</span>
 
           <span class="card-grid-label">Contraparte:</span>
-          <span class          <span class="card-grid-label">Fecha en minuta:</span>
-          <span class="plain-text-val">${formatDateDDMMYYYY(task.fecha_legacy)}</span>
+          <span class="plain-text-val">${task.tarea_contraparte || '-'}</span>
 
-          <span class="card-grid-label">Inicio proyectado del proyecto:</span>
-          <span class="plain-text-val">${formatDateDDMMYYYY(task.fecha_inicio_proy)}</span>
+          <span class="card-grid-label">Fecha inicio:</span>
+          <span class="plain-text-val">${displayFechaInicio}</span>
 
-          <span class="card-grid-label">Término proyectado:</span>
-          <span class="plain-text-val">${formatDateDDMMYYYY(task.fecha_fin_proy)}</span>
-
-          ${!isEmptyDate(task.fecha_fin_real) ? `
-          <span class="card-grid-label">Término real:</span>
-          <span class="plain-text-val">${formatDateDDMMYYYY(task.fecha_fin_real)}</span>
-          ` : ''}
+          <span class="card-grid-label">Fecha término:</span>
+          <span class="plain-text-val">${displayFechaFin}</span>
 
           <span class="card-grid-label">Porcentaje de avance:</span>
-          <span class="plain-text-val">${task.tarea_pct !== '' ? task.tarea_pct + '%' : '-'}</span>
+          <span class="plain-text-val">${task.tarea_pct !== undefined && task.tarea_pct !== '' ? task.tarea_pct + '%' : '-'}</span>
 
           <span class="card-grid-label">Alerta:</span>
           <span class="plain-text-val">${(task.con_alerta || 'no').toLowerCase() === 'si' ? 'si' : 'no'}</span>
@@ -1717,17 +1723,21 @@ function renderFichaTarea() {
 
         <div class="task-buttons-stack">
           <button type="button" class="btn-edit" onclick="enableTareaEditing()">${ICON_EDIT} Editar</button>
+          <button type="button" class="btn-save" onclick="handleSaveButtonClick()">${ICON_SAVE} Guardado</button>
           <button type="button" class="btn-delete" onclick="deleteTaskFromFicha('${task.tarea_id}')">${ICON_DELETE} Eliminar</button>
         </div>
       </div>
     `;
   } else {
-    // EDIT MODE: Form Controls Enabled (including tarea_nombre edit & con_alerta edit)
+    // EDIT MODE: Form Controls Enabled
+    const tStatuses = ["por iniciar", "en desarrollo", "detenida", "terminada", "eliminada"];
+    const isFinished = task.tarea_estado === "terminada" || task.tarea_estado === "eliminada";
+
     containerEl.innerHTML = `
       <!-- Card 1: Descripción Editable -->
       <div class="executive-card" style="width: 100%; margin-bottom: 20px; background-color: var(--color-white);">
         <div class="form-group full-width">
-          <label class="form-label" style="font-size: 1.1rem; margin-bottom: 8px;">Descripción:</label>
+          <label class="form-label" style="font-size: 1.1rem; margin-bottom: 8px; font-weight: bold;">Descripción:</label>
           <textarea id="t-descripcion" class="form-textarea">${task.tarea_descripcion || ''}</textarea>
         </div>
       </div>
@@ -1744,11 +1754,7 @@ function renderFichaTarea() {
             <div class="form-group">
               <label class="form-label">Estado de la tarea:</label>
               <select id="t-estado" class="form-select" onchange="onFichaEstadoChange(this.value)">
-                <option value="por iniciar" ${task.tarea_estado === "por iniciar" ? "selected" : ""}>por iniciar</option>
-                <option value="en desarrollo" ${task.tarea_estado === "en desarrollo" ? "selected" : ""}>en desarrollo</option>
-                <option value="detenida" ${task.tarea_estado === "detenida" ? "selected" : ""}>detenida</option>
-                <option value="terminada" ${task.tarea_estado === "terminada" ? "selected" : ""}>terminada</option>
-                <option value="eliminada" ${task.tarea_estado === "eliminada" ? "selected" : ""}>eliminada</option>
+                ${tStatuses.map(s => `<option value="${s}" ${task.tarea_estado === s ? "selected" : ""}>${s}</option>`).join("")}
               </select>
             </div>
 
@@ -1771,29 +1777,24 @@ function renderFichaTarea() {
             </div>
 
             <div class="form-group">
-              <label class="form-label">Fecha en minuta:</label>
-              <input type="date" id="t-fecha-legacy" class="form-input" value="${parseToYYYYMMDD(task.fecha_legacy)}">
+              <label class="form-label">Fecha inicio:</label>
+              <input type="date" id="t-fecha-inicio" class="form-input" value="${parseToYYYYMMDD(task.fecha_inicio_proy || task.tarea_fecha_creacion)}">
             </div>
 
             <div class="form-group">
-              <label class="form-label">Inicio proyectado del proyecto:</label>
-              <input type="date" id="t-fecha-inicio" class="form-input" value="${parseToYYYYMMDD(task.fecha_inicio_proy)}">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Término proyectado:</label>
-              <input type="date" id="t-fecha-fin" class="form-input" value="${parseToYYYYMMDD(task.fecha_fin_proy)}" ${(task.tarea_estado === "terminada" || task.tarea_estado === "eliminada") ? "disabled" : ""}>
+              <label class="form-label">Fecha término:</label>
+              <input type="date" id="t-fecha-fin" class="form-input" value="${parseToYYYYMMDD(task.fecha_fin_proy)}" ${isFinished ? "disabled" : ""}>
             </div>
 
             <div class="form-group">
               <label class="form-label">Porcentaje de avance (%):</label>
-              <input type="number" id="t-pct" class="form-input" min="0" max="100" value="${task.tarea_pct !== '' ? task.tarea_pct : ''}">
+              <input type="number" id="t-pct" class="form-input" min="0" max="100" value="${task.tarea_pct !== undefined && task.tarea_pct !== '' ? task.tarea_pct : ''}">
             </div>
           </div>
 
           <div class="task-buttons-stack">
             <button type="button" class="btn-edit" onclick="enableTareaEditing()">${ICON_EDIT} Editar</button>
-            <button type="submit" class="btn-save">${ICON_SAVE} Guardar</button>
+            <button type="submit" class="btn-save">${ICON_SAVE} Guardado</button>
             <button type="button" class="btn-delete" onclick="deleteTaskFromFicha('${task.tarea_id}')">${ICON_DELETE} Eliminar</button>
           </div>
         </form>
@@ -1801,9 +1802,12 @@ function renderFichaTarea() {
     `;
   }
 
-  document.getElementById("btn-back-to-project").onclick = function() {
-    switchView("dashboard");
-  };
+  const backBtn = document.getElementById("btn-back-to-project");
+  if (backBtn) {
+    backBtn.onclick = function() {
+      switchView("dashboard");
+    };
+  }
 }
 
 function onFichaEstadoChange(newVal) {
@@ -1829,33 +1833,45 @@ function saveTareaForm() {
   const task = db.find(item => item.tarea_id === selectedTaskId);
   if (!task) return;
 
-  const newState = document.getElementById("t-estado").value;
-  setTaskState(task, newState);
-
-  const newName = document.getElementById("t-nombre") ? document.getElementById("t-nombre").value.trim() : "";
-  if (newName) task.tarea_nombre = newName;
-
-  if (document.getElementById("t-con-alerta")) {
-    task.con_alerta = document.getElementById("t-con-alerta").value;
-  }
-  task.tarea_responsable = document.getElementById("t-responsable").value;
-  task.tarea_contraparte = document.getElementById("t-contraparte").value;
-  task.tarea_descripcion = document.getElementById("t-descripcion").value;
-  task.fecha_legacy = document.getElementById("t-fecha-legacy").value;
-
-  const newInicioProy = document.getElementById("t-fecha-inicio").value;
-  if (newInicioProy !== task.fecha_inicio_proy && task.proyecto_id) {
-    db.forEach(item => {
-      if (item.proyecto_id === task.proyecto_id) {
-        item.fecha_inicio_proy = newInicioProy;
-      }
-    });
-  } else {
-    task.fecha_inicio_proy = newInicioProy;
+  const estadoEl = document.getElementById("t-estado");
+  if (estadoEl) {
+    const newState = estadoEl.value;
+    setTaskState(task, newState);
   }
 
-  task.fecha_fin_proy = document.getElementById("t-fecha-fin").value;
-  task.tarea_pct = document.getElementById("t-pct").value;
+  const nombreEl = document.getElementById("t-nombre");
+  if (nombreEl && nombreEl.value.trim()) {
+    task.tarea_nombre = nombreEl.value.trim();
+  }
+
+  const alertaEl = document.getElementById("t-con-alerta");
+  if (alertaEl) {
+    task.con_alerta = alertaEl.value;
+  }
+
+  const respEl = document.getElementById("t-responsable");
+  if (respEl) task.tarea_responsable = respEl.value.trim();
+
+  const contraEl = document.getElementById("t-contraparte");
+  if (contraEl) task.tarea_contraparte = contraEl.value.trim();
+
+  const descEl = document.getElementById("t-descripcion");
+  if (descEl) task.tarea_descripcion = descEl.value.trim();
+
+  const inicioEl = document.getElementById("t-fecha-inicio");
+  if (inicioEl && inicioEl.value) {
+    task.fecha_inicio_proy = inicioEl.value;
+  }
+
+  const finEl = document.getElementById("t-fecha-fin");
+  if (finEl) {
+    task.fecha_fin_proy = finEl.value;
+  }
+
+  const pctEl = document.getElementById("t-pct");
+  if (pctEl) {
+    task.tarea_pct = pctEl.value !== "" ? parseInt(pctEl.value, 10) : "";
+  }
 
   isEditingTarea = false;
   saveDB();
@@ -1889,6 +1905,7 @@ function deleteTaskFromFicha(taskId) {
     openFichaProyecto(currentTask.proyecto_id);
   }
 }
+
 
 // ---------------------------------------------------------
 // Event Listeners Setup
@@ -1978,6 +1995,8 @@ window.addEventListener("message", function(event) {
         db = args.initial_data;
       }
 
+      console.log(`[PUENTE_STREAMLIT] 1. Handshake confirmado: evento 'streamlit:render' recibido | isStreamlitConnected = true | Filas cargadas: ${db ? db.length : 0} | DB Source: ${window.DB_STATUS ? window.DB_STATUS.source : 'N/A'}`);
+
       renderStatusBanner();
 
       let isTaskCreationError = false;
@@ -1986,6 +2005,9 @@ window.addEventListener("message", function(event) {
       if (args.save_status && typeof args.save_status === "object") {
         const ctx = args.save_status.context;
         const isCreateTaskAction = ctx && ctx.action_type === "create_task";
+        const taskInfo = ctx && ctx.created_task_id ? ctx.created_task_id : "N/A";
+
+        console.log(`[PUENTE_STREAMLIT] 4. Respuesta save_status recibida: ${args.save_status.status} | Tarea ID: ${taskInfo} | Mensaje: ${args.save_status.message}`);
 
         if (args.save_status.status === "ok") {
           try {
@@ -1995,12 +2017,14 @@ window.addEventListener("message", function(event) {
           showSaveToast(true);
 
           if (isCreateTaskAction && ctx.created_task_id) {
+            console.log(`[PUENTE_STREAMLIT] 5. Tarea ${ctx.created_task_id} creada exitosamente. Redirigiendo a vista 'ficha-tarea'.`);
             selectedTaskId = ctx.created_task_id;
             isEditingTarea = false;
             switchView("ficha-tarea");
             return;
           }
         } else if (args.save_status.status === "error") {
+          console.warn(`[PUENTE_STREAMLIT] Error al guardar tarea ${taskInfo}: ${args.save_status.message}`);
           showSaveToast(false);
           showSaveErrorBanner(args.save_status.message);
 
@@ -2026,4 +2050,3 @@ window.addEventListener("message", function(event) {
     }
   }
 });
-

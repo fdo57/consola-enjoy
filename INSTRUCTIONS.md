@@ -1,5 +1,9 @@
 # Nombre: "Gestión de Proyectos Casinos de Chile"
 
+# Actores
+* Agente de asistencia conceptual para el desarrollo. Para esta versión es un agente openclaw llamado Perico
+* Agente de desarrollo de código. Para esta versión es Antigravity
+
 # Requerimiento
 
 Preparar una app tipo HTML para usar con cualquier buscador para monitorear el avance en los distintos proyectos del área de proyectos de la empresa Casinos de Chile SpA.
@@ -8,48 +12,75 @@ Preparar una app tipo HTML para usar con cualquier buscador para monitorear el a
 
 ## Persistencia de datos, uso multiusuario y despliegue
 
-La app será publicada y usada principalmente desde **Streamlit Cloud**, conectada al repositorio GitHub:
+### Fuentes de código y responsabilidades
 
-`https://github.com/fdo57/consola-enjoy`
+La carpeta de Google Drive de la aplicación es el área de trabajo compartida de Antigravity y Perico.
+GitHub es donde se guarda el repositorio y el código final aprobado
+la VPS es el entorno de producción
 
-El flujo correcto de desarrollo y publicación es:
+El flujo obligatorio es:
 
-**Antigravity / entorno local → commit → push a GitHub → redeploy en Streamlit Cloud**
+**Antigravity modifica Drive → Perico revisa Drive → Antigravity hace commit/push → Perico hace verificación final en github → Perico actualiza la VPS → verificación en producción**
 
-Los cambios hechos en archivos locales o en Google Drive no llegan automáticamente a la app publicada si no son subidos al repositorio GitHub conectado a Streamlit.
+Roles:
 
-### Base de datos central
+* **Antigravity:** modifica los archivos de trabajo en Drive y prepara el commit/push.
+* **Perico:** revisa directamente los archivos actuales de Drive antes del push, actualiza la VPS después de la aprobación y verifica la producción.
+* **GitHub:** repositorio versionado; no implica que el cambio esté desplegado.
+* **VPS:** entorno real de producción.
 
-La app debe contar con una **base de datos central única y compartida**, actualmente definida como Google Sheets:
+Los cambios hechos en Drive, en un workspace local o en GitHub no se consideran desplegados hasta que Perico confirme el contenido dentro del contenedor Docker de producción.
 
-`BD Consola Enjoy - central`
+### Producción actual
+
+La aplicación productiva funciona en la VPS con:
+
+* Ruta de trabajo: `/home/perico/enjoy`
+* Contenedor de aplicación: `enjoy-app-1`
+* Servicio: Streamlit
+* Base runtime: PostgreSQL
+* Variable de conexión: `ENJOY_DB_DSN`
+* Tabla: `enjoy_records` con registros JSONB
+
+El despliegue requiere copiar o actualizar los archivos aprobados en `/home/perico/enjoy`, ejecutar `docker compose up -d --build app` y verificar hashes, logs, estado del contenedor y comportamiento funcional.
+
+### Google Sheets de trabajo
+
+La planilla `BD Consola Enjoy - central` de Google Sheets se utiliza para desarrollo, validación controlada o respaldo, pero no como base de producción. Es una fuente de trabajo e intercambio manual de datos:
 
 ID:
 
 `1dpA2Nnk9dZ_NVkhJD1HHRBN4CH6Ry8bzm2Iuf_oXV8Y`
 
+No es la base runtime de la VPS. Si se editan tareas en Google Sheets, la sincronización hacia PostgreSQL debe ejecutarse explícitamente y validarse antes de usar esos datos en producción.
+Las pruebas locales conectadas a Google Sheets deben limitarse, porque las lecturas y recargas pueden consumir rápidamente el rate limit.
+
 Reglas obligatorias:
 
+* Las pruebas que modifiquen datos deben realizarse en la VPS, después de respaldar PostgreSQL y autorizar explícitamente la prueba.
+* Un push de código no debe modificar ni reemplazar la base de datos.
+* Nunca se debe sobrescribir el adaptador PostgreSQL de la VPS con el adaptador de Google Sheets.
+* PostgreSQL `enjoy_records` es la fuente runtime de producción.
 * `localStorage` no debe ser la fuente principal de datos.
 * `localStorage` sólo puede usarse como caché temporal del navegador.
 * Al iniciar o refrescar la app, siempre debe cargar información desde la base central.
-* Al crear, editar, terminar o eliminar una tarea o proyecto, el cambio debe guardarse inmediatamente en Google Sheets.
+* Al crear, editar, terminar o eliminar una tarea o proyecto en producción, el cambio debe guardarse inmediatamente en PostgreSQL `enjoy_records`.
 * Los cambios hechos por un usuario deben quedar disponibles para otros usuarios al abrir o refrescar la app.
 * `data.js` puede usarse únicamente como semilla inicial si la base central está vacía.
 * `data.js` no debe considerarse base viva de trabajo.
 * `carga_masiva.xlsx` debe usarse sólo como plantilla o mecanismo de importación manual.
-* La descarga/exportación de base de datos debe exportar la información vigente desde Google Sheets.
+* La descarga/exportación de base de datos debe exportar la información vigente desde PostgreSQL `enjoy_records`.
 
 ### Credenciales y secrets
 
-La conexión a Google Sheets debe hacerse desde Streamlit mediante `st.secrets`.
+En producción VPS, la conexión a PostgreSQL se realiza mediante `ENJOY_DB_DSN` inyectada por Docker.
 
 Importante:
 
 * El archivo `.streamlit/secrets.toml` local sirve sólo para desarrollo local.
 * El archivo `secrets.toml` no debe subirse a GitHub.
-* En producción, los secrets deben configurarse directamente en **Streamlit Cloud → App settings → Secrets**.
-* La service account usada por Streamlit debe tener permiso de **Editor** sobre la Google Sheet central.
+* No se debe asumir que Streamlit Cloud es el entorno productivo actual.
+* La cuenta usada por `gog` puede leer y actualizar la Google Sheet de trabajo, pero esa hoja no reemplaza la base runtime PostgreSQL.
 
 ### Arranque correcto de la app
 
@@ -58,8 +89,8 @@ La app no debe abrirse directamente como `index.html` para uso real, porque en e
 * no corre Streamlit,
 * no se ejecuta `app.py`,
 * no se ejecuta `db_manager.py`,
-* no se lee `st.secrets`,
-* no se conecta a Google Sheets,
+* no se lee la configuración de producción,
+* no se conecta a PostgreSQL,
 * los cambios pueden quedar sólo en `localStorage`.
 
 Para desarrollo local, el arranque correcto debe ser:
@@ -83,7 +114,7 @@ Si la app se abre sin conexión a Streamlit o sin conexión efectiva a la base c
 ## Formatos y unidades
 
 Reglas de fomatos y unidades
-* Todas las fechas que se muestren o en los campos a rellenar deben ser en formato DD/MM/AAAA
+* Todas las fechas que aparezcan en la interfaz de usuario deben aparecer en formato DD/MM/AAAA.
 
 
 ## Empresa
@@ -138,19 +169,23 @@ tarea\_contraparte: Nombre del responsable por parte de la unidad
 
 tarea\_pct: porcentaje de avance en la tarea
 
-fecha\_legacy: Corresponde a fechas legacy de las minutas en word utilizadas hasta implementación de la app, que serán traspasadas desde  un archivo de carga masiva. Son sólo fechas referenciales que pueden representar fechas de inicio, fechas de fin real o fechas de fin programadas.
+fecha\_legacy: Corresponde a fechas legacy de las minutas en word utilizadas hasta implementación de la app, que serán traspasadas desde  un archivo de carga masiva o ajustadas manualmente en la tabla de "Proyectos Admin". Son sólo fechas referenciales que representan el inicio de la tarea constatada en reportes anteriores.
 
 con\_alerta: La tarea debe ser considerada prioritaria y requiere atención especial
 
-tarea\_fecha\_creacion: Se establece al momento de crear una tarea.
+tarea\_fecha\_creacion: Se establece al momento de crear una tarea. Su fin es sólo estadístico y no participa de informes, fichas o formulario. Sólo se puede editar en "Proyectos Admin" 
 
 fecha\_inicio\_proy: Corresponde a la fecha de inicio proyectada de una tarea.
 
-fecha\_inicio\_real: Corresponde a la fecha de inicio real de una tarea.
+fecha\_inicio\_real: Corresponde a la fecha de inicio real de una tarea. Editable sólo en Admin; ignorada en filtros, cálculos, fichas y formularios.
 
 fecha\_fin\_proy: Corresponde a la fecha de fin proyectada de una tarea.
 
-fecha\_fin\_real: Corresponde a la fecha de fin real de una tarea. Si al momento de cambiar de estado de "en desarrollo" a "terminada" o a "eliminada" no tiene valor, se debe establecer la fecha del momento del cambio.
+fecha\_fin\_real: Corresponde a la fecha de fin real de una tarea. automática en operación normal; editable sólo como corrección administrativa en Admin. Si al momento de cambiar de estado de "en desarrollo" a "terminada" o a "eliminada" no tiene valor, se debe establecer la fecha del momento del cambio. Si fecha_fin_real existe, no se debe modificar salvo una acción explícita de corrección administrativa. El usuario no debe ingresar manualmente fecha_fin_real. Si una tarea cambia desde "terminada" o "eliminada" a un estado activo, la aplicación debe limpiar fecha_fin_real, porque la tarea deja de estar cerrada.
+
+### Definiciones de fechas:
+
+
 
 ## Usuarios
 
@@ -236,35 +271,40 @@ Si hay filtro de Unidad de Negocio activo en el Dashboard, el filtro debe aplica
 
 Una tarea debe aparecer en **Tareas Creadas** sólo si cumple todos estos criterios:
 
+* `fecha_inicio_proy` tiene valor.
+* `fecha_inicio_proy` pertenece a la misma semana de la **Fecha de Informe**.
 * `tarea_estado` es `"en desarrollo"` o `"detenida"`.
-* `tarea_fecha_creacion` tiene valor.
-* `tarea_fecha_creacion` pertenece a la misma semana de la **Fecha de Informe**.
-*  fecha_fin_proy no tiene valor
-*  fecha_fin_real no tiene valor
+* `fecha_fin_real` no tiene valor
 
-No deben usarse `fecha_legacy`, `fecha_inicio_proy` ni `fecha_inicio_real` para determinar si una tarea fue creada en la semana. La variable oficial para esta subsección es `tarea_fecha_creacion`.
+`tarea_fecha_creacion` no debe utilizarse para esta clasificación.
+
 
 #### Tareas Terminadas
 
 Una tarea debe aparecer en **Tareas Terminadas** sólo si cumple todos estos criterios:
 
 * `tarea_estado` es `"terminada"` o `"eliminada"`.
-* `fecha_fin_proy` tiene valor.
-* `fecha_fin_proy` pertenece a la misma semana de la **Fecha de Informe**.
+* `fecha_fin_real` tiene valor.
+* `fecha_fin_real` pertenece a la misma semana de la **Fecha de Informe**.
 
-La variable oficial para determinar cierre semanal es `fecha_fin_proy`.
+La clasificación semanal debe basarse en `fecha_fin_real`, no en `fecha_fin_proy`.
 
 #### Actualizar Fechas
-
-Agregar una tercera subsección dentro de **Avance Semanal** llamada **Actualizar Fechas**.
 
 Esta subsección debe mostrar tareas que tengan inconsistencias o fechas incompletas que puedan afectar la lectura del avance semanal.
 
 Deben aparecer en **Actualizar Fechas** las tareas que cumplan cualquiera de estos criterios:
 
-* Tareas con `tarea_estado` `"terminada"` o `"eliminada"` y sin valor en `fecha_fin_real` o sin valor en `fecha_fin_proy`.
-* Tareas sin valor en `fecha_inicio_proy` o sin valor en `fecha_inicio_real`.
-* Tareas con `tarea_fecha_creacion` dentro de la misma semana de la **Fecha de Informe** y sin valor en `fecha_inicio_proy` o sin valor en `fecha_inicio_real`.
+- Tarea activa (`"por iniciar"`, `"en desarrollo"` o `"detenida"`) con `fecha_fin_proy` o `fecha_fin_real` informada.
+- Tarea `"terminada"` o `"eliminada"` sin `fecha_fin_proy`.
+- Tarea `"terminada"` o `"eliminada"` sin `fecha_fin_real`.
+- Tarea activa o terminada sin `fecha_inicio_proy`.
+- Tareas con `tarea_estado` `"terminada"` y `tarea_pct` con un valor distinto a 100.
+- Tareas con `tarea_estado` `"en desarrollo"` o `"detenida"` y `tarea_pct` con un valor igual a 100.
+- Fechas incompatibles con el estado actual de la tarea.
+
+`fecha_inicio_real` debe ser ignorada en filtros, cálculos, fichas y formularios.
+
 
 La subsección **Actualizar Fechas** es una alerta de calidad de datos. Su objetivo es indicar qué tareas requieren completar o corregir fechas antes de interpretar el avance semanal.
 
@@ -278,7 +318,17 @@ A la derecha del nombre de la tarea, agregar una columna con ícono de semáforo
 
 ## 2\. Fecha de Informe
 
-Fecha de generación de información en Dashboard. Por definición viene en el día en curso, con un calendario desplegable en el mismo panel lateral para consultar otras fechas. Afecta zona "Avance Semanal". Al hacer click en cualquier botón del panel lateral, "Fecha de informe" debe cambiar al día en curso.
+La Fecha de Informe determina la semana calendario utilizada por “Avance Semanal”.
+
+- La fecha debe mostrarse al usuario como DD/MM/AAAA.
+- Internamente debe normalizarse como YYYY-MM-DD.
+- Al iniciar completamente la aplicación debe establecerse en la fecha actual.
+- Debe conservarse al navegar entre dashboards, proyectos, tareas y subsecciones.
+- switchView() y los botones de navegación no deben modificarla.
+- Debe existir un botón compacto, sólo con el ícono de recarga, que restablezca la Fecha de Informe al día actual.
+- El botón debe tener tooltip y etiqueta accesible: “Restablecer fecha al día actual”.
+- La fecha sólo debe cambiar al día actual al recargar completamente la aplicación o al presionar dicho botón.
+- El campo de ingreso de fecha debe tener un ancho compacto, suficiente para DD/MM/AAAA.
 
 
 
@@ -295,12 +345,11 @@ Columna 4: Descripción tarea (tarea\_descripcion), los textos en esta columna n
 Columna 5: Responsable (tarea\_responsable)
 Columna 6: Estado (tarea\_estado), debe ser editable
 Columna 7: Avance % (tarea\_pct), debe ser editable
-Columna 8: Fecha base (fecha\_legacy), debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
-Columna 9: Fecha inicio (proy) (fecha\_inicio\_proy),  debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
-Columna 10: Fecha fin (proy) (fecha\_fin\_proy),  debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
-Columna 11: En Alerta (selector "si/no" para definir con\_alerta)
-Columna 12: Terminar (botón de check)
-Columna 13: Borrar (botón de borrado, cambia el estado a "eliminada", con ícono)
+Columna 8: Fecha inicio (proy) (fecha\_inicio\_proy),  debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
+Columna 9: Fecha fin (proy) (fecha\_fin\_proy),  debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
+Columna 10: En Alerta (selector "si/no" para definir con\_alerta)
+Columna 11: Terminar (botón de check)
+Columna 12: Borrar (botón de borrado, cambia el estado a "eliminada", con ícono)
 
 
 
@@ -334,29 +383,27 @@ Una tarjeta con los siguientes campos para llenar:
 * tarea\_descripcion
 * tarea\_responsable
 * tarea\_contraparte
-
-\- con\_alerta
-
+* tarea\_estado
+* con\_alerta
 * fecha\_inicio\_proy
-* fecha\_inicio\_real
 * fecha\_fin\_proy
-* fecha\_fin\_real
 
+No debe incluir:
+
+- fecha_inicio_real
+- fecha_fin_real
+- tarea_fecha_creacion, no se utiliza
 
 
 Campos que se llenan automáticamente:
 
 \- tarea\_id se crea automáticamente con las reglas establecidas antes
 
-\- tarea\_estado se crea automáticamente en "en desarrollo"
+\- tarea\_estado se crea automáticamente en "en desarrollo", se debe poder editar en la ficha y en el formulario
 
-\- fecha\_inicio\_proy se crea automáticamente con la fecha del día de la creación de la tarea
+\- fecha\_inicio\_proy se crea automáticamente con la fecha del día de la creación de la tarea, se debe poder editar en la ficha y en el formulario.
 
-\- fecha\_inicio\_real se crea automáticamente con la fecha del día de la creación de la tarea
-
-\- fecha\_legacy se crea automáticamente con la fecha del día de la creación de la tarea
-
-\- tarea\_pct se crea automáticamente en 0
+\- tarea\_pct se crea automáticamente en 0, se debe poder editar en la ficha y en el formulario
 
 Al final, botón "Guardar" y "Descartar", uno al lado del otro.
 
@@ -448,7 +495,7 @@ Debe mostrarse como una tabla editable con una fila por registro/tarea. La tabla
 - `fecha_legacy`: editable. Debe incluir un botón para desplegar un calendario.
 - `con_alerta`: editable. Debe usar un selector con las opciones `"si"` y `"no"`.
 - `fecha_inicio_proy`: editable. Debe incluir un botón para desplegar un calendario.
-- `fecha_inicio_real`: editable. Debe incluir un botón para desplegar un calendario.
+- `fecha_inicio_real`: editable sólo en Admin; ignorada en filtros, cálculos, fichas y formularios. Debe incluir un botón para desplegar un calendario.
 - `fecha_fin_proy`: editable. Debe incluir un botón para desplegar un calendario.
 - `fecha_fin_real`: editable. Debe incluir un botón para desplegar un calendario.
 
@@ -477,14 +524,11 @@ Columna 3: Descripción tarea (tarea\_descripcion)
 Columna 4: Responsable (tarea\_responsable)
 Columna 5: Estado (tarea\_estado)
 Columna 6: Porcentaje de avance (tarea\_pct)
-
-Columna 7: Fecha base (fecha\_legacy), debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
-Columna 8: Fecha inicio (proy) (fecha\_inicio\_proy), debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
-Columna 9: Fecha fin (proy) (fecha\_fin\_proy), debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
-
-Columna 10: En Alerta (selector "si/no" para definir con\_alerta)
-Columna 11: Terminar (botón de check)
-Columna 12: Borrar (botón de borrado, cambia el estado a "eliminada", con ícono)
+Columna 7: Fecha inicio (proy) (fecha\_inicio\_proy), debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
+Columna 8: Fecha fin (proy) (fecha\_fin\_proy), debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
+Columna 9: En Alerta (selector "si/no" para definir con\_alerta)
+Columna 10: Terminar (botón de check)
+Columna 11: Borrar (botón de borrado, cambia el estado a "eliminada", con ícono)
 
 "Unidad Negocios" debe ser un link que abra la ficha de la unidad
 "Proyecto" debe ser un link que abra la ficha del proyecto. No mostrar proyectos que estén en estado "terminado" o "eliminado"
@@ -520,13 +564,11 @@ Columna 3: Responsable (tarea\_responsable)
 Columna 4: Estado (tarea\_estado)
 Columna 5: Porcentaje de avance (tarea\_pct)
 Columna 6: Contraparte (tarea\_contraparte)
-Columna 7: Fecha base (fecha\_legacy), debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
-Columna 8: Fecha inicio (proy) (fecha\_inicio\_proy), debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
-Columna 9: Fecha fin (proy) (fecha\_fin\_proy), debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
-
-Columna 10: En Alerta (selector "si/no" para definir con\_alerta)
-Columna 11: Terminar (botón de check)
-Columna 12: Borrar (botón de borrado, cambia el estado a "eliminada", con ícono)
+Columna 7: Fecha inicio (proy) (fecha\_inicio\_proy), debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
+Columna 8: Fecha fin (proy) (fecha\_fin\_proy), debe ir el texto en negrita y al lado un botón con un calendario desplegable que permita modificarlo.
+Columna 9: En Alerta (selector "si/no" para definir con\_alerta)
+Columna 10: Terminar (botón de check)
+Columna 11: Borrar (botón de borrado, cambia el estado a "eliminada", con ícono)
 
 
 
@@ -553,8 +595,7 @@ La segunda debe ser una tarjeta sin título con fondo blanco con la siguiente in
 * "Estado de la tarea": (tarea\_estado)
 * "Responsable" (tarea\_responsable)
 * "Contraparte" (tarea\_contraparte)
-* "Fecha según Minuta" (fecha\_legacy)
-* "Fecha inicio" (fecha\_inicio\_proy). Si no hay fecha\_inicio\_proy, se debe mostrar tarea\_fecha\_creacion. Cuando tarea\_estado cambia a "en desarrollo", fecha\_inicio\_real toma el valor de la fecha del día del cambio.
+* "Fecha inicio" (fecha\_inicio\_proy). Si no hay fecha\_inicio\_proy, se debe mostrar tarea\_fecha\_creacion.
 * "Fecha término": (Fecha\_fin\_proy). Cuando tarea\_estado cambia a "terminada" o "eliminada, fecha\_fin\_real toma el valor de la fecha del día del cambio. y "fecha_fin_proy" ya no se debe poder editar.
 * "Porcentaje de avance" (tarea\_pct)
 
@@ -569,7 +610,7 @@ El contenido de cada campo debe mostrarse como texto plano, no como campo editab
 Botones:
 Deben haber 3 botones, uno sobre el otro alineados a la izquierda:
 
-* Botón de "Editar" de 100 px de ancho (con ícono), habilita la edición en todos los campos. "Fecha según Minuta", "Fecha inicio", "Fecha término" deben mostrar un calendario desplegable para permitir modificar. "Estado de la tarea" debe mostrar un menú desplegable con los estados disponibles.
+* Botón de "Editar" de 100 px de ancho (con ícono), habilita la edición en todos los campos. "Fecha inicio" y	 "Fecha término" deben mostrar un calendario desplegable para permitir modificar. "Estado de la tarea" debe mostrar un menú desplegable con los estados disponibles.
 * Botón de "Guardado" de 100 px de ancho (con ícono)
 * Botón de "Eliminar" de 100 px de ancho (con ícono), debe cambiar el estado a "eliminada", y cargar la siguiente ficha siguiendo el orden de las Ids. Si es la última tarea del proyecto, debe volver a la 1ra tarea del proyecto.
 

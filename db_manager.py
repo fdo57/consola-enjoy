@@ -59,6 +59,191 @@ def get_spreadsheet_id(config_data=None):
 
     return OFFICIAL_SPREADSHEET_ID
 
+# ---------------------------------------------------------
+# Helper Normalization Functions
+# ---------------------------------------------------------
+def _normalize_value(val):
+    """Normalizes None, 'None', 'null', 'undefined', 'nan' to empty string ''."""
+    if val is None:
+        return ""
+    s = str(val).strip()
+    if s.lower() in ("none", "null", "undefined", "nan"):
+        return ""
+    return s
+
+def _normalize_record_dict(rec_dict):
+    """Normalizes all fields in a record dictionary to ensure no 'None' strings exist."""
+    if not isinstance(rec_dict, dict):
+        return {h: "" for h in HEADERS}
+    obj = {}
+    for h in HEADERS:
+        raw_val = rec_dict.get(h)
+        obj[h] = _normalize_value(raw_val)
+    return obj
+
+# ---------------------------------------------------------
+# 1. PostgreSQL Production Runtime Adapter (ENJOY_DB_DSN)
+# ---------------------------------------------------------
+def get_pg_dsn():
+    """Retrieves PostgreSQL DSN from environment variable ENJOY_DB_DSN or fallback keys."""
+    dsn = os.environ.get("ENJOY_DB_DSN") or os.environ.get("DATABASE_URL")
+    if not dsn:
+        secrets = get_st_secrets_dict()
+        if secrets:
+            dsn = secrets.get("ENJOY_DB_DSN") or secrets.get("DATABASE_URL")
+            if not dsn and isinstance(secrets.get("postgres"), dict):
+                dsn = secrets.get("postgres", {}).get("url") or secrets.get("postgres", {}).get("dsn")
+    return dsn
+
+def _get_pg_connection():
+    """Establishes connection to PostgreSQL using psycopg2, psycopg3, or SQLAlchemy."""
+    dsn = get_pg_dsn()
+    if not dsn:
+        return None, None
+
+    # 1. Try psycopg2
+    try:
+        import psycopg2
+        return psycopg2.connect(dsn), dsn
+    except Exception:
+        pass
+
+    # 2. Try psycopg (psycopg 3)
+    try:
+        import psycopg
+        return psycopg.connect(dsn), dsn
+    except Exception:
+        pass
+
+    # 3. Try sqlalchemy raw connection
+    try:
+        from sqlalchemy import create_engine
+        engine = create_engine(dsn)
+        return engine.raw_connection(), dsn
+    except Exception:
+        pass
+
+    return None, dsn
+
+def _load_from_postgresql(custom_conn=None):
+    """Loads all records from PostgreSQL table enjoy_records preserving JSONB with clean null normalization."""
+    conn = custom_conn
+    should_close = False
+    if conn is None:
+        conn, dsn = _get_pg_connection()
+        should_close = True
+        if conn is None:
+            raise Exception("No se pudo conectar a PostgreSQL: driver no disponible o DSN inválido.")
+
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT position, tarea_id, record, updated_at FROM enjoy_records ORDER BY position ASC, updated_at ASC;")
+        rows = cur.fetchall()
+        records = []
+        for r in rows:
+            rec_val = r[2]
+            if isinstance(rec_val, str):
+                try:
+                    rec_dict = json.loads(rec_val)
+                except Exception:
+                    rec_dict = {"tarea_id": str(r[1]), "tarea_nombre": str(rec_val)}
+            elif isinstance(rec_val, dict):
+                rec_dict = rec_val
+            else:
+                rec_dict = {}
+
+            # Ensure tarea_id from column if missing in JSON
+            if not rec_dict.get("tarea_id"):
+                rec_dict["tarea_id"] = str(r[1]) if r[1] is not None else ""
+
+            normalized_obj = _normalize_record_dict(rec_dict)
+            records.append(normalized_obj)
+        cur.close()
+        return records
+    finally:
+        if should_close and conn:
+            conn.close()
+
+def _save_to_postgresql(records, custom_conn=None):
+    """
+    Saves/upserts records into PostgreSQL enjoy_records in a single transaction.
+    - Preserves existing records not included in the payload.
+    - Matches by tarea_id.
+    - Inserts new tasks with sequential non-conflicting position.
+    - Updates existing tasks without altering their position.
+    - Updates record JSONB and updated_at = NOW().
+    - Never executes DELETE FROM enjoy_records.
+    """
+    # 1. Validation of payload
+    seen_ids = set()
+    for idx, r in enumerate(records):
+        if not isinstance(r, dict):
+            raise Exception(f"El registro en el índice {idx} no es un diccionario válido.")
+        tid = str(r.get("tarea_id", "")).strip()
+        if not tid or tid.lower() in ("none", "null", "undefined"):
+            raise Exception(f"Rechazado: el registro en el índice {idx} tiene 'tarea_id' vacío.")
+        if tid in seen_ids:
+            raise Exception(f"Rechazado: 'tarea_id' duplicado en el payload recibido ('{tid}').")
+        seen_ids.add(tid)
+
+    conn = custom_conn
+    should_close = False
+    if conn is None:
+        conn, dsn = _get_pg_connection()
+        should_close = True
+        if conn is None:
+            raise Exception("No se pudo conectar a PostgreSQL: driver no disponible o DSN inválido.")
+
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                # Read existing rows to map tarea_id -> position and find max_position
+                try:
+                    cur.execute("SELECT position, tarea_id FROM enjoy_records FOR UPDATE;")
+                except Exception:
+                    cur.execute("SELECT position, tarea_id FROM enjoy_records;")
+
+                existing_rows = cur.fetchall()
+                existing_positions = {}
+                max_pos = -1
+                for row in existing_rows:
+                    pos_val = row[0]
+                    tid_val = str(row[1]) if row[1] is not None else ""
+                    if tid_val:
+                        existing_positions[tid_val] = pos_val
+                    if isinstance(pos_val, int) and pos_val > max_pos:
+                        max_pos = pos_val
+
+                # Process all records in the payload
+                for r in records:
+                    tid = str(r.get("tarea_id", "")).strip()
+                    cleaned_record = _normalize_record_dict(r)
+                    record_json = json.dumps(cleaned_record, ensure_ascii=False)
+
+                    if tid in existing_positions:
+                        # Existing task: update record and updated_at, preserving position
+                        cur.execute(
+                            "UPDATE enjoy_records SET record = %s, updated_at = NOW() WHERE tarea_id = %s;",
+                            (record_json, tid)
+                        )
+                    else:
+                        # New task: assign next unique position
+                        max_pos += 1
+                        assigned_pos = max_pos
+                        cur.execute(
+                            "INSERT INTO enjoy_records (position, tarea_id, record, updated_at) VALUES (%s, %s, %s, NOW());",
+                            (assigned_pos, tid, record_json)
+                        )
+                        existing_positions[tid] = assigned_pos
+
+        return len(records)
+    finally:
+        if should_close and conn:
+            conn.close()
+
+# ---------------------------------------------------------
+# 2. Google Sheets Development & Backup Adapter
+# ---------------------------------------------------------
 def get_gsheets_config():
     """Extract Google Sheets configuration from st.secrets.
 
@@ -135,19 +320,14 @@ def _get_gspread_client(sa_config):
     ]
 
     sa_info = dict(sa_config.get("raw_section") or sa_config)
-
-    # Streamlit secrets may contain only the minimal service-account fields.
-    # google.oauth2.service_account.Credentials requires token_uri and type.
     sa_info.setdefault("type", "service_account")
     sa_info.setdefault("token_uri", "https://oauth2.googleapis.com/token")
 
-    # Remove app-only aliases that are not part of Google service account JSON.
     sa_info.pop("spreadsheet_id", None)
     sa_info.pop("spreadsheet", None)
     sa_info.pop("spreadsheet_url", None)
     sa_info.pop("raw_section", None)
     
-    # Process private_key string escaping
     private_key = sa_info.get("private_key", "")
     if isinstance(private_key, str):
         sa_info["private_key"] = private_key.replace("\\n", "\n")
@@ -180,7 +360,7 @@ def _load_from_gsheets_sa(sa_config):
             if h in headers:
                 idx = headers.index(h)
                 val = row[idx] if idx < len(row) else ""
-                obj[h] = "" if val is None else str(val).strip()
+                obj[h] = _normalize_value(val)
             else:
                 obj[h] = ""
         records.append(obj)
@@ -199,7 +379,8 @@ def _save_to_gsheets_sa(sa_config, records):
 
     rows = [HEADERS]
     for r in records:
-        row = [str(r.get(h, "")) for h in HEADERS]
+        cleaned = _normalize_record_dict(r)
+        row = [str(cleaned.get(h, "")) for h in HEADERS]
         rows.append(row)
 
     worksheet.clear()
@@ -220,15 +401,16 @@ def _load_from_gsheets_webapp(url):
         raw_list = data.get("records") or data.get("data") or []
 
     for r in raw_list:
-        obj = {h: str(r.get(h, "")).strip() for h in HEADERS}
-        cleaned.append(obj)
+        cleaned_obj = _normalize_record_dict(r)
+        cleaned.append(cleaned_obj)
 
     return cleaned, sheet_id
 
 def _save_to_gsheets_webapp(url, records):
     import requests
     sheet_id = get_spreadsheet_id()
-    payload = {"records": records}
+    cleaned_records = [_normalize_record_dict(r) for r in records]
+    payload = {"records": cleaned_records}
     headers = {"Content-Type": "application/json"}
     resp = requests.post(url, data=json.dumps(payload), headers=headers, allow_redirects=True, timeout=25)
     resp.raise_for_status()
@@ -251,13 +433,39 @@ def _load_from_sqlite_dev():
         rows = cursor.fetchall()
         records = []
         for r in rows:
-            obj = {h: str(r[h] if r[h] is not None else "").strip() for h in HEADERS if h in r.keys()}
-            records.append(obj)
+            raw_dict = {h: r[h] if h in r.keys() else "" for h in HEADERS}
+            records.append(_normalize_record_dict(raw_dict))
         conn.close()
         return records, OFFICIAL_SPREADSHEET_ID
     except Exception as e:
         print(f"Error loading from sqlite dev: {e}")
         return [], OFFICIAL_SPREADSHEET_ID
+
+def _save_to_sqlite_dev(records):
+    try:
+        conn = sqlite3.connect(SQLITE_DB_PATH)
+        cursor = conn.cursor()
+        for r in records:
+            cleaned = _normalize_record_dict(r)
+            tid = cleaned.get("tarea_id")
+            cols = [h for h in HEADERS if h in cleaned]
+            vals = [cleaned[h] for h in cols]
+            
+            cursor.execute("SELECT COUNT(*) FROM proyectos_tareas WHERE tarea_id = ?", (tid,))
+            exists = cursor.fetchone()[0] > 0
+            if exists:
+                set_clause = ", ".join([f"{h} = ?" for h in cols])
+                cursor.execute(f"UPDATE proyectos_tareas SET {set_clause} WHERE tarea_id = ?", vals + [tid])
+            else:
+                placeholders = ", ".join(["?"] * len(cols))
+                col_names = ", ".join(cols)
+                cursor.execute(f"INSERT INTO proyectos_tareas ({col_names}) VALUES ({placeholders})", vals)
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error saving to sqlite dev: {e}")
+        raise e
 
 # ---------------------------------------------------------
 # Public API
@@ -265,9 +473,33 @@ def _load_from_sqlite_dev():
 def load_central_data():
     """
     Main entrypoint to load data from central DB.
-    Prioritizes Service Account and returns google_sheets_service_account source.
-    Rejects sqlite_local_dev fallback in production.
+    Prioritizes PostgreSQL (ENJOY_DB_DSN) in production runtime.
+    Falls back to Google Sheets (service account / web app) or SQLite in local development.
     """
+    # 1. Check PostgreSQL runtime connection
+    pg_dsn = get_pg_dsn()
+    if pg_dsn:
+        try:
+            records = _load_from_postgresql()
+            return {
+                "status": "ok",
+                "message": "Conexión exitosa a PostgreSQL enjoy_records (VPS).",
+                "source": "postgresql_vps",
+                "spreadsheet_id": "postgresql-vps",
+                "row_count": len(records),
+                "data": records
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Error al conectar con PostgreSQL (ENJOY_DB_DSN): {e}",
+                "source": "postgresql_vps",
+                "spreadsheet_id": "postgresql-vps",
+                "row_count": 0,
+                "data": []
+            }
+
+    # 2. Check Google Sheets configuration (Dev / backup)
     config_type, config_data = get_gsheets_config()
     sheet_id = config_data.get("spreadsheet_id", OFFICIAL_SPREADSHEET_ID) if isinstance(config_data, dict) else OFFICIAL_SPREADSHEET_ID
 
@@ -292,18 +524,6 @@ def load_central_data():
                 "data": []
             }
 
-    elif config_type == "service_account_error":
-        missing_list = config_data.get("missing", [])
-        missing_str = ", ".join(missing_list)
-        return {
-            "status": "error",
-            "message": f"Falta el campo requerido en st.secrets: {missing_str}",
-            "source": "google_sheets_service_account",
-            "spreadsheet_id": sheet_id,
-            "row_count": 0,
-            "data": []
-        }
-
     elif config_type == "web_app":
         try:
             records, active_sheet_id = _load_from_gsheets_webapp(config_data["url"])
@@ -325,66 +545,132 @@ def load_central_data():
                 "data": []
             }
 
-    # Production environment check
-    is_streamlit_env = False
-    try:
-        import streamlit.runtime as st_runtime
-        is_streamlit_env = st_runtime.exists()
-    except Exception:
-        is_streamlit_env = hasattr(st, "secrets")
-
-    # Fallback to local SQLite DB if Google Sheets credentials are not provided
+    # 3. Fallback to local SQLite development DB
     sqlite_records, active_sheet_id = _load_from_sqlite_dev()
-
-    if is_streamlit_env and not sqlite_records:
-        missing_list = config_data.get("missing", ["gsheets.client_email", "gsheets.private_key", "gsheets.spreadsheet_id"]) if isinstance(config_data, dict) else ["gsheets.client_email", "gsheets.private_key", "gsheets.spreadsheet_id"]
-        missing_str = ", ".join(missing_list)
-        return {
-            "status": "error",
-            "message": f"Falta el campo requerido en st.secrets: {missing_str}",
-            "source": "google_sheets_service_account",
-            "spreadsheet_id": OFFICIAL_SPREADSHEET_ID,
-            "row_count": 0,
-            "data": []
-        }
-    else:
-        return {
-            "status": "ok" if sqlite_records else "warning",
-            "message": "Datos cargados desde base local de desarrollo (SQLite).",
-            "source": "sqlite_local_dev",
-            "spreadsheet_id": active_sheet_id,
-            "row_count": len(sqlite_records),
-            "data": sqlite_records
-        }
+    return {
+        "status": "ok" if sqlite_records else "warning",
+        "message": "Datos cargados desde base local de desarrollo (SQLite).",
+        "source": "sqlite_local_dev",
+        "spreadsheet_id": active_sheet_id,
+        "row_count": len(sqlite_records),
+        "data": sqlite_records
+    }
 
 def save_central_data(records):
     """
     Main entrypoint to save data to central DB.
-    Prioritizes Service Account. Rejects saving if active source is not google_sheets_service_account or web_app.
+    Prioritizes PostgreSQL (ENJOY_DB_DSN).
+    Falls back to Google Sheets or SQLite dev.
     """
     if not isinstance(records, list):
-        return {"status": "error", "message": "Los datos deben ser una lista.", "data": []}
+        return {
+            "status": "error",
+            "message": "Los datos deben ser una lista.",
+            "source": "desconocida",
+            "data": []
+        }
 
+    # Validate empty or duplicate tarea_id before dispatching
+    seen_ids = set()
+    for idx, r in enumerate(records):
+        if not isinstance(r, dict):
+            return {
+                "status": "error",
+                "message": f"El registro en el índice {idx} no es un objeto válido.",
+                "source": "validacion",
+                "data": []
+            }
+        tid = str(r.get("tarea_id", "")).strip()
+        if not tid or tid.lower() in ("none", "null", "undefined"):
+            return {
+                "status": "error",
+                "message": f"Rechazado: el registro en el índice {idx} tiene 'tarea_id' vacío.",
+                "source": "validacion",
+                "data": []
+            }
+        if tid in seen_ids:
+            return {
+                "status": "error",
+                "message": f"Rechazado: 'tarea_id' duplicado en el payload recibido ('{tid}').",
+                "source": "validacion",
+                "data": []
+            }
+        seen_ids.add(tid)
+
+    # 1. PostgreSQL (ENJOY_DB_DSN)
+    pg_dsn = get_pg_dsn()
+    if pg_dsn:
+        try:
+            count = _save_to_postgresql(records)
+            return {
+                "status": "ok",
+                "message": f"Guardado exitoso en PostgreSQL enjoy_records ({count} tareas procesadas).",
+                "source": "postgresql_vps",
+                "data": records
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Error al guardar en PostgreSQL enjoy_records: {e}",
+                "source": "postgresql_vps",
+                "data": []
+            }
+
+    # 2. Google Sheets
     config_type, config_data = get_gsheets_config()
     sheet_id = config_data.get("spreadsheet_id", OFFICIAL_SPREADSHEET_ID) if isinstance(config_data, dict) else OFFICIAL_SPREADSHEET_ID
 
     if config_type == "service_account":
         try:
             _save_to_gsheets_sa(config_data, records)
-            return {"status": "ok", "message": "Guardado exitoso en Google Sheets vía Service Account.", "spreadsheet_id": sheet_id, "data": records}
+            return {
+                "status": "ok",
+                "message": "Guardado exitoso en Google Sheets vía Service Account.",
+                "source": "google_sheets_service_account",
+                "spreadsheet_id": sheet_id,
+                "data": records
+            }
         except Exception as e:
-            return {"status": "error", "message": f"Error al guardar en Google Sheets: {e}", "spreadsheet_id": sheet_id, "data": []}
+            return {
+                "status": "error",
+                "message": f"Error al guardar en Google Sheets: {e}",
+                "source": "google_sheets_service_account",
+                "spreadsheet_id": sheet_id,
+                "data": []
+            }
 
     elif config_type == "web_app":
         try:
             _save_to_gsheets_webapp(config_data["url"], records)
-            return {"status": "ok", "message": "Guardado exitoso en Google Sheets (Web App).", "spreadsheet_id": sheet_id, "data": records}
+            return {
+                "status": "ok",
+                "message": "Guardado exitoso en Google Sheets (Web App).",
+                "source": "google_sheets_web_app",
+                "spreadsheet_id": sheet_id,
+                "data": records
+            }
         except Exception as e:
-            return {"status": "error", "message": f"Error al guardar en Web App: {e}", "spreadsheet_id": sheet_id, "data": []}
+            return {
+                "status": "error",
+                "message": f"Error al guardar en Web App: {e}",
+                "source": "google_sheets_web_app",
+                "spreadsheet_id": sheet_id,
+                "data": []
+            }
 
-    return {
-        "status": "error",
-        "message": "Guardado rechazado: No hay conexión activa con Service Account en st.secrets.",
-        "spreadsheet_id": sheet_id,
-        "data": []
-    }
+    # 3. SQLite dev
+    try:
+        _save_to_sqlite_dev(records)
+        return {
+            "status": "ok",
+            "message": "Guardado exitoso en base local de desarrollo (SQLite).",
+            "source": "sqlite_local_dev",
+            "data": records
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Error al guardar en SQLite local: {e}",
+            "source": "sqlite_local_dev",
+            "data": []
+        }
