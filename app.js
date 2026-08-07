@@ -8,7 +8,7 @@ const EXCEL_HEADERS = [
   "proyecto_id", "unidad_nombre", "proyecto_nombre", "proyecto_estado", "proyecto_descripcion",
   "tarea_id", "tarea_nombre", "tarea_descripcion", "tarea_responsable",
   "tarea_estado", "tarea_contraparte", "tarea_pct", "tarea_fecha_creacion", "fecha_legacy",
-  "con_alerta", "fecha_inicio_proy", "fecha_inicio_real", "fecha_fin_proy", "fecha_fin_real"
+  "con_alerta", "fecha_inicio_proy", "fecha_fin_proy", "fecha_fin_real"
 ];
 
 // Unit abbreviation mapping
@@ -274,8 +274,9 @@ function getTodayStr() {
 }
 
 function resetFechaInformeToToday() {
-  fechaInforme = getTodayStr();
+  fechaInforme = formatDateDDMMYYYY(getTodayStr());
   renderFechaInformeDisplay();
+  renderCurrentView();
 }
 
 function renderFechaInformeDisplay() {
@@ -297,8 +298,6 @@ function updateFechaInforme(val) {
 // Navigation & Router
 // ---------------------------------------------------------
 function switchView(viewName) {
-  resetFechaInformeToToday();
-
   currentView = viewName;
   document.querySelectorAll(".view-section").forEach(sec => sec.classList.remove("active"));
   document.querySelectorAll(".nav-btn").forEach(btn => {
@@ -559,7 +558,8 @@ function isSameWeek(dateStr1, dateStr2) {
   alertListEl.innerHTML = `
     <div style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
       <div class="avance-section">
-        <h3 class="avance-sub-header" style="font-size: 0.95rem; font-weight: 700; color: var(--color-title); margin-bottom: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">Tareas Creadas</h3>
+      <div class="avance-section">
+        <h3 class="avance-sub-header" style="font-size: 0.95rem; font-weight: 700; color: var(--color-title); margin-bottom: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">Tareas Iniciadas</h3>
         <ul id="avance-created-ul" class="item-list" style="margin: 0; padding: 0;"></ul>
       </div>
 
@@ -579,20 +579,20 @@ function isSameWeek(dateStr1, dateStr2) {
   const finishedUl = document.getElementById("avance-finished-ul");
   const updateUl = document.getElementById("avance-update-ul");
 
-  // Part 1: Tareas Creadas
+  // Part 1: Tareas Iniciadas (fecha_legacy en misma semana de Fecha de Informe, sin fecha fin)
   const createdTasks = db.filter(item => {
     if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
     const st = normalizeEstado(item.tarea_estado);
     if (st !== "en desarrollo" && st !== "detenida") return false;
-    if (isEmptyDate(item.tarea_fecha_creacion)) return false;
-    if (!isSameWeek(item.tarea_fecha_creacion, fechaInforme)) return false;
+    if (isEmptyDate(item.fecha_legacy)) return false;
+    if (!isSameWeek(item.fecha_legacy, fechaInforme)) return false;
     if (!isEmptyDate(item.fecha_fin_proy)) return false;
     if (!isEmptyDate(item.fecha_fin_real)) return false;
     return true;
   });
 
   if (createdTasks.length === 0) {
-    createdUl.innerHTML = `<li class="alert-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas creadas esta semana</li>`;
+    createdUl.innerHTML = `<li class="alert-row-item" style="color: #888; font-style: italic; font-size: 0.9rem;">Sin tareas iniciadas esta semana</li>`;
   } else {
     createdTasks.forEach(task => {
       const semaforoClass = getSemaforoClass(task);
@@ -609,13 +609,13 @@ function isSameWeek(dateStr1, dateStr2) {
     });
   }
 
-  // Part 2: Tareas Terminadas
+  // Part 2: Tareas Terminadas (fecha_fin_real en misma semana de Fecha de Informe)
   const finishedTasks = db.filter(item => {
     if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
     const st = normalizeEstado(item.tarea_estado);
     if (st !== "terminada" && st !== "eliminada") return false;
-    if (isEmptyDate(item.fecha_fin_proy)) return false;
-    return isSameWeek(item.fecha_fin_proy, fechaInforme);
+    if (isEmptyDate(item.fecha_fin_real)) return false;
+    return isSameWeek(item.fecha_fin_real, fechaInforme);
   });
 
   if (finishedTasks.length === 0) {
@@ -636,30 +636,10 @@ function isSameWeek(dateStr1, dateStr2) {
     });
   }
 
-  // Part 3: Actualizar Fechas
+  // Part 3: Actualizar Fechas (inconsistencias diagnosticadas)
   const updateDateTasks = db.filter(item => {
     if (filterUnit !== "TODAS" && item.unidad_nombre !== filterUnit) return false;
-    const st = normalizeEstado(item.tarea_estado);
-
-    const hasNoFinReal = isEmptyDate(item.fecha_fin_real);
-    const hasNoFinProy = isEmptyDate(item.fecha_fin_proy);
-    const hasNoInicioProy = isEmptyDate(item.fecha_inicio_proy);
-    const hasNoInicioReal = isEmptyDate(item.fecha_inicio_real);
-
-    // Criterio 1: terminada o eliminada y falta fecha_fin_real o falta fecha_fin_proy
-    if ((st === "terminada" || st === "eliminada") && (hasNoFinReal || hasNoFinProy)) {
-      return true;
-    }
-    // Criterio 2: falta fecha_inicio_proy o falta fecha_inicio_real
-    if (hasNoInicioProy || hasNoInicioReal) {
-      return true;
-    }
-    // Criterio 3: tarea_fecha_creacion en misma semana de Fecha de Informe y falta fecha_inicio_proy o fecha_inicio_real
-    if (!isEmptyDate(item.tarea_fecha_creacion) && isSameWeek(item.tarea_fecha_creacion, fechaInforme) && (hasNoInicioProy || hasNoInicioReal)) {
-      return true;
-    }
-
-    return false;
+    return !diagnoseDateConsistency(item).isConsistent;
   });
 
   if (updateDateTasks.length === 0) {
@@ -682,6 +662,106 @@ function isSameWeek(dateStr1, dateStr2) {
 
 }
 
+// Function: Centralized State Transition Management
+function setTaskState(taskOrId, newState) {
+  const task = typeof taskOrId === "string" ? db.find(t => t.tarea_id === taskOrId) : taskOrId;
+  if (!task) return null;
+
+  const oldState = (task.tarea_estado || "").toLowerCase().trim();
+  const normalizedNewState = (newState || "").toLowerCase().trim();
+
+  task.tarea_estado = newState;
+
+  const isNewFinished = (normalizedNewState === "terminada" || normalizedNewState === "eliminada");
+  const isOldFinished = (oldState === "terminada" || oldState === "eliminada");
+
+  if (isNewFinished) {
+    if (isEmptyDate(task.fecha_fin_real)) {
+      task.fecha_fin_real = getTodayStr();
+    }
+  } else if (isOldFinished && !isNewFinished) {
+    task.fecha_fin_real = "";
+  }
+
+  return task;
+}
+
+function normalizeDateStr(val) {
+  if (isEmptyDate(val)) return "";
+  return parseToYYYYMMDD(val) || String(val).trim();
+}
+
+// Function: Read-Only Date Consistency Diagnosis Grouped by Project
+function diagnoseDateConsistency(item) {
+  if (!item) return { isConsistent: true, reasons: [] };
+  const reasons = [];
+
+  const state = (item.tarea_estado || "").toLowerCase().trim();
+  const isActive = (state === "por iniciar" || state === "en desarrollo" || state === "detenida");
+  const isFinishedOrDeleted = (state === "terminada" || state === "eliminada");
+
+  const hasFinProy = !isEmptyDate(item.fecha_fin_proy);
+  const hasFinReal = !isEmptyDate(item.fecha_fin_real);
+
+  // Consolidated project start date
+  let projInicioProy = "";
+  if (item.proyecto_id) {
+    const projTaskWithInicio = db.find(t => t.proyecto_id === item.proyecto_id && !isEmptyDate(t.fecha_inicio_proy));
+    if (projTaskWithInicio) {
+      projInicioProy = normalizeDateStr(projTaskWithInicio.fecha_inicio_proy);
+    }
+  }
+  if (!projInicioProy) {
+    projInicioProy = normalizeDateStr(item.fecha_inicio_proy);
+  }
+
+  const hasInicioProy = !isEmptyDate(projInicioProy);
+
+  // 1. Tareas activas con fecha_fin_proy o fecha_fin_real informada
+  if (isActive && (hasFinProy || hasFinReal)) {
+    reasons.push("Tarea activa con fecha de término informada");
+  }
+
+  // 2. Tareas terminadas o eliminadas sin fecha_fin_real
+  if (isFinishedOrDeleted && !hasFinReal) {
+    reasons.push("Tarea terminada/eliminada sin fecha de término real");
+  }
+
+  // 3. Tareas terminadas o eliminadas sin fecha_fin_proy
+  if (isFinishedOrDeleted && !hasFinProy) {
+    reasons.push("Tarea terminada/eliminada sin fecha de término proyectada");
+  }
+
+  // 4. Tareas sin fecha_inicio_proy
+  if (!hasInicioProy) {
+    reasons.push("Sin fecha de inicio proyectada del proyecto");
+  }
+
+  // 5. Evaluación a nivel de proyecto (agrupada por proyecto_id con fechas normalizadas)
+  if (item.proyecto_id) {
+    const projTasks = db.filter(t => t.proyecto_id === item.proyecto_id);
+    const legacySet = new Set();
+    projTasks.forEach(t => {
+      if (!isEmptyDate(t.fecha_legacy)) {
+        legacySet.add(normalizeDateStr(t.fecha_legacy));
+      }
+    });
+
+    if (legacySet.size > 1) {
+      reasons.push("El proyecto tiene múltiples fechas en minuta (fecha_legacy) diferentes entre sus tareas");
+    } else if (legacySet.size === 1 && hasInicioProy) {
+      const singleLegacyNormalized = Array.from(legacySet)[0];
+      if (singleLegacyNormalized !== projInicioProy) {
+        reasons.push("Fecha en minuta difiere de la fecha de inicio proyectada del proyecto");
+      }
+    }
+  }
+
+  return {
+    isConsistent: reasons.length === 0,
+    reasons: reasons
+  };
+}
 
 // Inline Table Cell Renderers for Estado & Avance %
 function renderTaskStatusCell(taskId, currentStatus) {
@@ -698,18 +778,7 @@ function renderTaskStatusCell(taskId, currentStatus) {
 function updateTaskStatusInline(taskId, newStatus) {
   const task = db.find(t => t.tarea_id === taskId);
   if (task) {
-    const oldState = (task.tarea_estado || "").toLowerCase().trim();
-    task.tarea_estado = newStatus;
-
-    if (newStatus === "en desarrollo" && oldState !== "en desarrollo") {
-      if (!task.fecha_inicio_real) {
-        task.fecha_inicio_real = getTodayStr();
-      }
-    }
-    if ((newStatus === "terminada" || newStatus === "eliminada") && (oldState !== "terminada" && oldState !== "eliminada")) {
-      task.fecha_fin_real = getTodayStr();
-    }
-
+    setTaskState(task, newStatus);
     saveDB();
     renderCurrentView();
   }
@@ -870,7 +939,6 @@ function saveNuevoProyectoForm() {
     fecha_legacy: todayStr,
     con_alerta: "no",
     fecha_inicio_proy: todayStr,
-    fecha_inicio_real: todayStr,
     fecha_fin_proy: "",
     fecha_fin_real: ""
   };
@@ -944,15 +1012,34 @@ function renderFormCrearTarea(pendingRecord) {
   }
 
   const todayStr = getTodayStr();
+
+  // Inherit existing project start date if available
+  let existingProjInicio = "";
+  if (targetPid) {
+    const existingTask = db.find(t => t.proyecto_id === targetPid && !isEmptyDate(t.fecha_inicio_proy));
+    if (existingTask) existingProjInicio = existingTask.fecha_inicio_proy;
+  }
+
   document.getElementById("nt-tarea-nombre").value = pendingRecord ? (pendingRecord.tarea_nombre || "") : "";
   document.getElementById("nt-tarea-descripcion").value = pendingRecord ? (pendingRecord.tarea_descripcion || "") : "";
   document.getElementById("nt-tarea-responsable").value = pendingRecord ? (pendingRecord.tarea_responsable || "") : "";
   document.getElementById("nt-tarea-contraparte").value = pendingRecord ? (pendingRecord.tarea_contraparte || "") : "";
   document.getElementById("nt-con-alerta").value = pendingRecord ? (pendingRecord.con_alerta || "no") : "no";
-  document.getElementById("nt-fecha-inicio-proy").value = pendingRecord ? (parseToYYYYMMDD(pendingRecord.fecha_inicio_proy) || todayStr) : todayStr;
-  document.getElementById("nt-fecha-inicio-real").value = pendingRecord ? (parseToYYYYMMDD(pendingRecord.fecha_inicio_real) || todayStr) : todayStr;
-  document.getElementById("nt-fecha-fin-proy").value = pendingRecord ? parseToYYYYMMDD(pendingRecord.fecha_fin_proy) : "";
-  document.getElementById("nt-fecha-fin-real").value = pendingRecord ? parseToYYYYMMDD(pendingRecord.fecha_fin_real) : "";
+
+  const ntLegacyEl = document.getElementById("nt-fecha-legacy");
+  if (ntLegacyEl) {
+    ntLegacyEl.value = pendingRecord ? (parseToYYYYMMDD(pendingRecord.fecha_legacy) || todayStr) : todayStr;
+  }
+
+  const ntInicioProyEl = document.getElementById("nt-fecha-inicio-proy");
+  if (ntInicioProyEl) {
+    ntInicioProyEl.value = pendingRecord ? (parseToYYYYMMDD(pendingRecord.fecha_inicio_proy) || todayStr) : (parseToYYYYMMDD(existingProjInicio) || todayStr);
+  }
+
+  const ntFinProyEl = document.getElementById("nt-fecha-fin-proy");
+  if (ntFinProyEl) {
+    ntFinProyEl.value = pendingRecord ? parseToYYYYMMDD(pendingRecord.fecha_fin_proy) : "";
+  }
 }
 
 function onNuevaTareaUnitChange(uName) {
@@ -1011,10 +1098,20 @@ function saveNuevaTareaForm() {
   const newTaskId = generateNextTaskId(targetProjId);
   const todayStr = getTodayStr();
 
-  const fInicioProy = document.getElementById("nt-fecha-inicio-proy").value || todayStr;
-  const fInicioReal = document.getElementById("nt-fecha-inicio-real").value || todayStr;
-  const fFinProy = document.getElementById("nt-fecha-fin-proy").value || "";
-  const fFinReal = document.getElementById("nt-fecha-fin-real").value || "";
+  let existingProjInicio = "";
+  if (targetProjId) {
+    const existingTask = db.find(t => t.proyecto_id === targetProjId && !isEmptyDate(t.fecha_inicio_proy));
+    if (existingTask) existingProjInicio = existingTask.fecha_inicio_proy;
+  }
+
+  const ntLegacyEl = document.getElementById("nt-fecha-legacy");
+  const fLegacy = (ntLegacyEl && ntLegacyEl.value) ? ntLegacyEl.value : todayStr;
+
+  const ntInicioProyEl = document.getElementById("nt-fecha-inicio-proy");
+  const fInicioProy = (ntInicioProyEl && ntInicioProyEl.value) ? ntInicioProyEl.value : (existingProjInicio || todayStr);
+
+  const ntFinProyEl = document.getElementById("nt-fecha-fin-proy");
+  const fFinProy = (ntFinProyEl && ntFinProyEl.value) ? ntFinProyEl.value : "";
 
   const newRecord = {
     proyecto_id: targetProjId,
@@ -1030,12 +1127,11 @@ function saveNuevaTareaForm() {
     tarea_contraparte: document.getElementById("nt-tarea-contraparte").value.trim(),
     tarea_pct: 0,
     tarea_fecha_creacion: todayStr,
-    fecha_legacy: todayStr,
+    fecha_legacy: fLegacy,
     con_alerta: document.getElementById("nt-con-alerta").value,
     fecha_inicio_proy: fInicioProy,
-    fecha_inicio_real: fInicioReal,
     fecha_fin_proy: fFinProy,
-    fecha_fin_real: fFinReal
+    fecha_fin_real: ""
   };
 
   const contextPayload = {
@@ -1071,8 +1167,7 @@ function updateTaskAlert(taskId, val) {
 function completeTask(taskId) {
   const task = db.find(t => t.tarea_id === taskId);
   if (task) {
-    task.tarea_estado = "terminada";
-    task.fecha_fin_real = getTodayStr();
+    setTaskState(task, "terminada");
     saveDB();
     renderCurrentView();
   }
@@ -1081,8 +1176,7 @@ function completeTask(taskId) {
 function deleteTask(taskId) {
   const task = db.find(t => t.tarea_id === taskId);
   if (task) {
-    task.tarea_estado = "eliminada";
-    task.fecha_fin_real = getTodayStr();
+    setTaskState(task, "eliminada");
     saveDB();
     renderCurrentView();
   }
@@ -1099,13 +1193,15 @@ function updateAdminDBField(taskId, fieldName, value) {
   const record = db.find(item => item.tarea_id === taskId);
   if (!record) return;
 
-  const projFields = ["unidad_nombre", "proyecto_nombre", "proyecto_descripcion", "proyecto_estado"];
+  const projFields = ["unidad_nombre", "proyecto_nombre", "proyecto_descripcion", "proyecto_estado", "fecha_inicio_proy", "fecha_fin_proy"];
   if (projFields.includes(fieldName) && record.proyecto_id) {
     db.forEach(item => {
       if (item.proyecto_id === record.proyecto_id) {
         item[fieldName] = value;
       }
     });
+  } else if (fieldName === "tarea_estado") {
+    setTaskState(record, value);
   } else {
     record[fieldName] = value;
   }
@@ -1183,7 +1279,7 @@ function renderAdminDBTable(tbodyId) {
         <input type="number" min="0" max="100" class="form-input" style="padding: 3px 4px; font-size: 0.82rem; width: 60px; text-align: center;" value="${item.tarea_pct !== undefined ? item.tarea_pct : ''}" onchange="updateAdminDBField('${taskId}', 'tarea_pct', this.value)">
       </td>
       <td>
-        <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.tarea_fecha_creacion)}" onchange="updateAdminDBField('${taskId}', 'tarea_fecha_creacion', this.value)">
+        <strong>${formatDateDDMMYYYY(item.tarea_fecha_creacion)}</strong>
       </td>
       <td>
         <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_legacy)}" onchange="updateAdminDBField('${taskId}', 'fecha_legacy', this.value)">
@@ -1196,9 +1292,6 @@ function renderAdminDBTable(tbodyId) {
       </td>
       <td>
         <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_inicio_proy)}" onchange="updateAdminDBField('${taskId}', 'fecha_inicio_proy', this.value)">
-      </td>
-      <td>
-        <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_inicio_real)}" onchange="updateAdminDBField('${taskId}', 'fecha_inicio_real', this.value)">
       </td>
       <td>
         <input type="date" class="form-input" style="padding: 3px 4px; font-size: 0.82rem;" value="${parseToYYYYMMDD(item.fecha_fin_proy)}" onchange="updateAdminDBField('${taskId}', 'fecha_fin_proy', this.value)">
@@ -1601,16 +1694,19 @@ function renderFichaTarea() {
           <span class="plain-text-val">${task.tarea_responsable || '-'}</span>
 
           <span class="card-grid-label">Contraparte:</span>
-          <span class="plain-text-val">${task.tarea_contraparte || '-'}</span>
-
-          <span class="card-grid-label">Fecha según Minuta:</span>
+          <span class          <span class="card-grid-label">Fecha en minuta:</span>
           <span class="plain-text-val">${formatDateDDMMYYYY(task.fecha_legacy)}</span>
 
-          <span class="card-grid-label">Fecha inicio:</span>
-          <span class="plain-text-val">${formatDateDDMMYYYY(task.fecha_inicio_proy || task.tarea_fecha_creacion)}</span>
+          <span class="card-grid-label">Inicio proyectado del proyecto:</span>
+          <span class="plain-text-val">${formatDateDDMMYYYY(task.fecha_inicio_proy)}</span>
 
-          <span class="card-grid-label">Fecha término:</span>
+          <span class="card-grid-label">Término proyectado:</span>
           <span class="plain-text-val">${formatDateDDMMYYYY(task.fecha_fin_proy)}</span>
+
+          ${!isEmptyDate(task.fecha_fin_real) ? `
+          <span class="card-grid-label">Término real:</span>
+          <span class="plain-text-val">${formatDateDDMMYYYY(task.fecha_fin_real)}</span>
+          ` : ''}
 
           <span class="card-grid-label">Porcentaje de avance:</span>
           <span class="plain-text-val">${task.tarea_pct !== '' ? task.tarea_pct + '%' : '-'}</span>
@@ -1675,17 +1771,17 @@ function renderFichaTarea() {
             </div>
 
             <div class="form-group">
-              <label class="form-label">Fecha según Minuta:</label>
+              <label class="form-label">Fecha en minuta:</label>
               <input type="date" id="t-fecha-legacy" class="form-input" value="${parseToYYYYMMDD(task.fecha_legacy)}">
             </div>
 
             <div class="form-group">
-              <label class="form-label">Fecha inicio:</label>
-              <input type="date" id="t-fecha-inicio" class="form-input" value="${parseToYYYYMMDD(task.fecha_inicio_proy || task.tarea_fecha_creacion)}">
+              <label class="form-label">Inicio proyectado del proyecto:</label>
+              <input type="date" id="t-fecha-inicio" class="form-input" value="${parseToYYYYMMDD(task.fecha_inicio_proy)}">
             </div>
 
             <div class="form-group">
-              <label class="form-label">Fecha término:</label>
+              <label class="form-label">Término proyectado:</label>
               <input type="date" id="t-fecha-fin" class="form-input" value="${parseToYYYYMMDD(task.fecha_fin_proy)}" ${(task.tarea_estado === "terminada" || task.tarea_estado === "eliminada") ? "disabled" : ""}>
             </div>
 
@@ -1733,13 +1829,12 @@ function saveTareaForm() {
   const task = db.find(item => item.tarea_id === selectedTaskId);
   if (!task) return;
 
-  const oldState = (task.tarea_estado || "").toLowerCase().trim();
   const newState = document.getElementById("t-estado").value;
+  setTaskState(task, newState);
 
   const newName = document.getElementById("t-nombre") ? document.getElementById("t-nombre").value.trim() : "";
   if (newName) task.tarea_nombre = newName;
 
-  task.tarea_estado = newState;
   if (document.getElementById("t-con-alerta")) {
     task.con_alerta = document.getElementById("t-con-alerta").value;
   }
@@ -1747,33 +1842,32 @@ function saveTareaForm() {
   task.tarea_contraparte = document.getElementById("t-contraparte").value;
   task.tarea_descripcion = document.getElementById("t-descripcion").value;
   task.fecha_legacy = document.getElementById("t-fecha-legacy").value;
-  task.fecha_inicio_proy = document.getElementById("t-fecha-inicio").value;
+
+  const newInicioProy = document.getElementById("t-fecha-inicio").value;
+  if (newInicioProy !== task.fecha_inicio_proy && task.proyecto_id) {
+    db.forEach(item => {
+      if (item.proyecto_id === task.proyecto_id) {
+        item.fecha_inicio_proy = newInicioProy;
+      }
+    });
+  } else {
+    task.fecha_inicio_proy = newInicioProy;
+  }
+
   task.fecha_fin_proy = document.getElementById("t-fecha-fin").value;
   task.tarea_pct = document.getElementById("t-pct").value;
-
-  // Auto-set fecha_inicio_real when state changes to "en desarrollo"
-  if (newState === "en desarrollo" && oldState !== "en desarrollo") {
-    task.fecha_inicio_real = getTodayStr();
-  }
-
-  // Auto-set fecha_fin_real when state changes to "terminada" or "eliminada"
-  if ((newState === "terminada" || newState === "eliminada") && (oldState !== "terminada" && oldState !== "eliminada")) {
-    task.fecha_fin_real = getTodayStr();
-  }
 
   isEditingTarea = false;
   saveDB();
   renderCurrentView();
 }
 
-
 function deleteTaskFromFicha(taskId) {
   const taskIndex = db.findIndex(item => item.tarea_id === taskId);
   if (taskIndex === -1) return;
 
   const currentTask = db[taskIndex];
-  currentTask.tarea_estado = "eliminada";
-  currentTask.fecha_fin_real = getTodayStr();
+  setTaskState(currentTask, "eliminada");
   isEditingTarea = false;
   saveDB();
 
@@ -1800,13 +1894,19 @@ function deleteTaskFromFicha(taskId) {
 // Event Listeners Setup
 // ---------------------------------------------------------
 function setupEventListeners() {
-  // Sidebar navigation - Ensure any click on sidebar navigation buttons resets fechaInforme to today
+  // Sidebar navigation - Preserve fechaInforme when switching views
   document.querySelectorAll(".nav-btn").forEach(btn => {
     btn.addEventListener("click", function() {
-      resetFechaInformeToToday();
       switchView(this.getAttribute("data-view"));
     });
   });
+
+  const resetFechaBtn = document.getElementById("btn-reset-fecha-informe");
+  if (resetFechaBtn) {
+    resetFechaBtn.addEventListener("click", function() {
+      resetFechaInformeToToday();
+    });
+  }
 
   // Dashboard unit filter
   document.getElementById("dash-unit-filter").addEventListener("change", renderDashboard);

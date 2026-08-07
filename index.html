@@ -19,12 +19,15 @@
 
     <div class="sidebar-info-block">
       <label class="sidebar-info-label">Fecha de Informe</label>
-      <div class="date-cell-container" style="width: 100%;">
-        <input type="text" id="sidebar-fecha-informe-input" class="sidebar-date-input" placeholder="DD/MM/AAAA" style="margin-bottom: 0;" onchange="updateFechaInforme(this.value)">
+      <div class="date-cell-container" style="width: 100%; display: flex; align-items: center; gap: 4px;">
+        <input type="text" id="sidebar-fecha-informe-input" class="sidebar-date-input" placeholder="DD/MM/AAAA" style="margin-bottom: 0; width: 85px;" onchange="updateFechaInforme(this.value)">
         <div class="date-picker-btn-wrapper">
           <button type="button" class="date-picker-btn" title="Modificar fecha"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
           <input type="date" class="date-picker-hidden-input" id="sidebar-fecha-informe-picker" onchange="document.getElementById('sidebar-fecha-informe-input').value = formatDateDDMMYYYY(this.value); updateFechaInforme(this.value);">
         </div>
+        <button type="button" id="btn-reset-fecha-informe" class="date-picker-btn" title="Restablecer fecha al día actual" aria-label="Restablecer fecha al día actual" style="margin-left: 2px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </button>
       </div>
     </div>
   </aside>
@@ -252,7 +255,6 @@
               <th>Fecha Minuta</th>
               <th>En Alerta</th>
               <th>Fecha Inicio (Proy)</th>
-              <th>Fecha Inicio (Real)</th>
               <th>Fecha Fin (Proy)</th>
               <th>Fecha Fin (Real)</th>
             </tr>
@@ -481,7 +483,17 @@
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">Fecha inicio (proy):</label>
+              <label class="form-label">Fecha en minuta:</label>
+              <div class="date-cell-container">
+                <input type="text" id="nt-fecha-legacy" class="form-input" placeholder="DD/MM/AAAA">
+                <div class="date-picker-btn-wrapper">
+                  <button type="button" class="date-picker-btn" title="Modificar fecha"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+                  <input type="date" class="date-picker-hidden-input" onchange="document.getElementById('nt-fecha-legacy').value = formatDateDDMMYYYY(this.value)">
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Inicio proyectado del proyecto:</label>
               <div class="date-cell-container">
                 <input type="text" id="nt-fecha-inicio-proy" class="form-input" placeholder="DD/MM/AAAA">
                 <div class="date-picker-btn-wrapper">
@@ -491,32 +503,12 @@
               </div>
             </div>
             <div class="form-group">
-              <label class="form-label">Fecha inicio (real):</label>
-              <div class="date-cell-container">
-                <input type="text" id="nt-fecha-inicio-real" class="form-input" placeholder="DD/MM/AAAA">
-                <div class="date-picker-btn-wrapper">
-                  <button type="button" class="date-picker-btn" title="Modificar fecha"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
-                  <input type="date" class="date-picker-hidden-input" onchange="document.getElementById('nt-fecha-inicio-real').value = formatDateDDMMYYYY(this.value)">
-                </div>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Fecha fin (proy):</label>
+              <label class="form-label">Término proyectado:</label>
               <div class="date-cell-container">
                 <input type="text" id="nt-fecha-fin-proy" class="form-input" placeholder="DD/MM/AAAA">
                 <div class="date-picker-btn-wrapper">
                   <button type="button" class="date-picker-btn" title="Modificar fecha"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
                   <input type="date" class="date-picker-hidden-input" onchange="document.getElementById('nt-fecha-fin-proy').value = formatDateDDMMYYYY(this.value)">
-                </div>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Fecha fin (real):</label>
-              <div class="date-cell-container">
-                <input type="text" id="nt-fecha-fin-real" class="form-input" placeholder="DD/MM/AAAA">
-                <div class="date-picker-btn-wrapper">
-                  <button type="button" class="date-picker-btn" title="Modificar fecha"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
-                  <input type="date" class="date-picker-hidden-input" onchange="document.getElementById('nt-fecha-fin-real').value = formatDateDDMMYYYY(this.value)">
                 </div>
               </div>
             </div>
