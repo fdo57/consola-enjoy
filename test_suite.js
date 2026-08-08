@@ -54,9 +54,6 @@ runTest("Prueba 1: Diagnóstico de inconsistencia para tarea 2026_RI019_018", ()
     if (isFinishedOrDeleted && !hasFinReal) {
       reasons.push("Tarea terminada/eliminada sin fecha de término real");
     }
-    if (isFinishedOrDeleted && !hasFinProy) {
-      reasons.push("Tarea terminada/eliminada sin fecha de término proyectada");
-    }
     if (!hasInicioProy) {
       reasons.push("Sin fecha de inicio proyectada");
     }

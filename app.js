@@ -252,23 +252,18 @@ function diagnoseDateConsistency(item) {
     reasons.push("Tarea terminada/eliminada sin fecha de término real");
   }
 
-  // 3. Tareas terminadas o eliminadas sin fecha_fin_proy
-  if (isFinishedOrDeleted && !hasFinProy) {
-    reasons.push("Tarea terminada/eliminada sin fecha de término proyectada");
-  }
-
-  // 4. Tareas sin fecha_inicio_proy
+  // 3. Tareas sin fecha_inicio_proy
   if (!hasInicioProy) {
     reasons.push("Sin fecha de inicio proyectada");
   }
 
-  // 5. Tareas terminadas con porcentaje de avance distinto a 100
+  // 4. Tareas terminadas con porcentaje de avance distinto a 100
   const pctNum = parseInt(item.tarea_pct, 10);
   if (isFinishedOrDeleted && state === "terminada" && !isNaN(pctNum) && pctNum !== 100) {
     reasons.push("Tarea terminada con porcentaje de avance distinto a 100%");
   }
 
-  // 6. Tareas activas con porcentaje de avance igual a 100
+  // 5. Tareas activas con porcentaje de avance igual a 100
   if (isActive && !isNaN(pctNum) && pctNum === 100 && (state === "en desarrollo" || state === "detenida")) {
     reasons.push("Tarea activa con porcentaje de avance igual a 100%");
   }
