@@ -235,16 +235,12 @@ function diagnoseDateConsistency(item) {
   const isActive = (state === "por iniciar" || state === "en desarrollo" || state === "detenida");
   const isFinishedOrDeleted = (state === "terminada" || state === "eliminada");
 
-  const hasFinProy = !isEmptyDate(item.fecha_fin_proy);
   const hasFinReal = !isEmptyDate(item.fecha_fin_real);
   const hasInicioProy = !isEmptyDate(item.fecha_inicio_proy);
 
-  // 1. Tarea activa con fecha_fin_real o fecha_fin_proy informada
+  // 1. Tarea activa con fecha_fin_real informada
   if (isActive && hasFinReal) {
     reasons.push("Tarea activa con fecha de término real informada");
-  }
-  if (isActive && hasFinProy) {
-    reasons.push("Tarea activa con fecha de término proyectada informada");
   }
 
   // 2. Tareas terminadas o eliminadas sin fecha_fin_real

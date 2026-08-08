@@ -48,9 +48,6 @@ runTest("Prueba 1: Diagnóstico de inconsistencia para tarea 2026_RI019_018", ()
     if (isActive && hasFinReal) {
       reasons.push("Tarea activa con fecha de término real informada");
     }
-    if (isActive && hasFinProy) {
-      reasons.push("Tarea activa con fecha de término proyectada informada");
-    }
     if (isFinishedOrDeleted && !hasFinReal) {
       reasons.push("Tarea terminada/eliminada sin fecha de término real");
     }

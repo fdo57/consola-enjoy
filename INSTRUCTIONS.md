@@ -296,7 +296,6 @@ Esta subsección debe mostrar tareas que tengan inconsistencias o fechas incompl
 Deben aparecer en **Actualizar Fechas** las tareas que cumplan cualquiera de estos criterios:
 
 - Tarea activa (`"por iniciar"`, `"en desarrollo"` o `"detenida"`) con `fecha_fin_proy` o `fecha_fin_real` informada.
-- Tarea `"terminada"` o `"eliminada"` sin `fecha_fin_proy`.
 - Tarea `"terminada"` o `"eliminada"` sin `fecha_fin_real`.
 - Tarea activa o terminada sin `fecha_inicio_proy`.
 - Tareas con `tarea_estado` `"terminada"` y `tarea_pct` con un valor distinto a 100.
