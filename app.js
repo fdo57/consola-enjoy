@@ -1598,6 +1598,7 @@ function renderFichaTarea() {
 
   const displayFechaInicio = formatDateDDMMYYYY(task.fecha_inicio_proy || task.tarea_fecha_creacion);
   const displayFechaFin = formatDateDDMMYYYY(task.fecha_fin_proy);
+  const displayFechaFinReal = (!isEmptyDate(task.fecha_fin_real) && task.fecha_fin_real !== "-") ? formatDateDDMMYYYY(task.fecha_fin_real) : "-";
   const currentProj = db.find(item => item.proyecto_id === task.proyecto_id);
   const isProjActive = currentProj ? isProjectActive(currentProj.proyecto_estado) : true;
 
@@ -1636,8 +1637,11 @@ function renderFichaTarea() {
           <span class="card-grid-label">Fecha inicio:</span>
           <span class="plain-text-val">${displayFechaInicio}</span>
 
-          <span class="card-grid-label">Fecha término:</span>
+          <span class="card-grid-label">Fecha término proyectada:</span>
           <span class="plain-text-val">${displayFechaFin}</span>
+
+          <span class="card-grid-label">Fecha término real:</span>
+          <span class="plain-text-val">${displayFechaFinReal} <em style="font-size: 0.85rem; color: #888; margin-left: 8px;">(Para modificar, ir a Admin)</em></span>
 
           <span class="card-grid-label">Porcentaje de avance:</span>
           <span class="plain-text-val">${task.tarea_pct !== undefined && task.tarea_pct !== '' ? task.tarea_pct + '%' : '-'}</span>
@@ -1707,8 +1711,16 @@ function renderFichaTarea() {
             </div>
 
             <div class="form-group">
-              <label class="form-label">Fecha término:</label>
+              <label class="form-label">Fecha término proyectada:</label>
               <input type="date" id="t-fecha-fin" class="form-input" value="${parseToYYYYMMDD(task.fecha_fin_proy)}" ${isFinished ? "disabled" : ""}>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Fecha término real:</label>
+              <div style="display: flex; align-items: center; gap: 8px; padding-top: 6px;">
+                <span class="plain-text-val" style="font-weight: 600;">${displayFechaFinReal}</span>
+                <em style="font-size: 0.82rem; color: #888;">(Para modificar, ir a Admin)</em>
+              </div>
             </div>
 
             <div class="form-group">
