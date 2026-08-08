@@ -589,20 +589,18 @@ La ficha debe tener 2 tarjetas sin títulos, una sobre la otra de todo el ancho 
 La primera debe ser una tarjeta sin título con "Descripción" (tarea\_descripcion) en negrita
 La segunda debe ser una tarjeta sin título con fondo blanco con la siguiente información:
 
-\- "Descripción" (tarea\_descripcion) en negrita
-
+* "Descripción": (tarea\_descripcion) en negrita
 * "Estado de la tarea": (tarea\_estado)
 * "Responsable" (tarea\_responsable)
 * "Contraparte" (tarea\_contraparte)
 * "Fecha inicio" (fecha\_inicio\_proy). Si no hay fecha\_inicio\_proy, se debe mostrar tarea\_fecha\_creacion.
-* "Fecha término": (Fecha\_fin\_proy). Cuando tarea\_estado cambia a "terminada" o "eliminada, fecha\_fin\_real toma el valor de la fecha del día del cambio. y "fecha_fin_proy" ya no se debe poder editar.
+* "Fecha término proyectada": (fecha\_fin\_proy). Cuando tarea\_estado cambia a "terminada" o "eliminada, fecha\_fin\_real toma el valor de la fecha del día del cambio. y "fecha_fin_proy" ya no se debe poder editar.
+* "Fecha término real": (fecha\_fin\_real). agregar una nota que diga "Para modificar, ir a Admin"
 * "Porcentaje de avance" (tarea\_pct)
-
-\- "Alerta" (con\_alerta)
-
-
+* "Alerta" (con\_alerta)
 
 El contenido de cada campo debe mostrarse como texto plano, no como campo editable, hasta que se haga click en el botón "Editar"
+
 
 
 

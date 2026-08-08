@@ -1468,23 +1468,43 @@ function renderFichaProyecto() {
     headerTitleEl.textContent = currentProj ? `${currentProj.unidad_nombre} - ${currentProj.proyecto_nombre}` : "Proyecto";
   }
 
-  const alertTasks = projTasks.filter(t => (t.con_alerta || "").toLowerCase() === "si");
+  const activeTasks = projTasks.filter(t => isTaskActive(t.tarea_estado));
+  const inactiveTasks = projTasks.filter(t => !isTaskActive(t.tarea_estado));
+
+  const alertTasks = activeTasks.filter(t => (t.con_alerta || "").toLowerCase() === "si");
   const alertListText = alertTasks.map(t => `<span class="table-link" onclick="openFichaTarea('${t.tarea_id}')">${t.tarea_nombre}</span>`).join(", ") || "Ninguna";
 
-  const cardContainer = document.getElementById("ficha-proyecto-cards");
+  const projFinReal = (currentProj && currentProj.fecha_fin_real && !isEmptyDate(currentProj.fecha_fin_real) && currentProj.fecha_fin_real !== "-")
+    ? formatDateDDMMYYYY(currentProj.fecha_fin_real)
+    : "-";
+
+  const cardContainer = document.getElementById("ficha-proyecto-card") || document.getElementById("ficha-proyecto-cards");
   if (cardContainer && currentProj) {
     cardContainer.innerHTML = `
-      <div class="executive-card" style="width: 100%; margin-bottom: 20px; background-color: var(--color-white);">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-          <h2 style="margin: 0; font-size: 1.25rem; color: var(--color-title);">${currentProj.proyecto_nombre}</h2>
-          <span class="badge-btn">${projTasks.length} tareas</span>
-        </div>
-        <p style="margin: 6px 0; color: #555; font-size: 0.95rem;">${currentProj.proyecto_descripcion || 'Sin descripción'}</p>
-        <div style="margin-top: 10px; font-size: 0.88rem; color: #666;">
-          <strong>Unidad:</strong> <span class="table-link" onclick="openFichaUnidad('${currentProj.unidad_nombre}')">${currentProj.unidad_nombre}</span> | 
-          <strong>Estado:</strong> ${currentProj.proyecto_estado} | 
-          <strong>En Alerta:</strong> ${alertListText}
-        </div>
+      <div class="card-grid-table">
+        <span class="card-grid-label">Unidad de Negocio:</span>
+        <span class="card-grid-val"><span class="table-link" onclick="openFichaUnidad('${currentProj.unidad_nombre}')">${currentProj.unidad_nombre}</span></span>
+
+        <span class="card-grid-label">Proyecto:</span>
+        <span class="card-grid-val"><input type="text" class="form-input" value="${currentProj.proyecto_nombre || ''}" onchange="updateProjectField('${currentProj.proyecto_id}', 'proyecto_nombre', this.value)" style="font-weight: 600;"></span>
+
+        <span class="card-grid-label">Estado del Proyecto:</span>
+        <span class="card-grid-val">
+          <select class="form-select" onchange="updateProjectField('${currentProj.proyecto_id}', 'proyecto_estado', this.value)" style="padding: 4px 8px;">
+            <option value="en desarrollo" ${currentProj.proyecto_estado === 'en desarrollo' ? 'selected' : ''}>en desarrollo</option>
+            <option value="terminado" ${currentProj.proyecto_estado === 'terminado' ? 'selected' : ''}>terminado</option>
+            <option value="eliminado" ${currentProj.proyecto_estado === 'eliminado' ? 'selected' : ''}>eliminado</option>
+          </select>
+        </span>
+
+        <span class="card-grid-label">Tareas en curso:</span>
+        <span class="card-grid-val">${activeTasks.length}</span>
+
+        <span class="card-grid-label">Tareas en alerta:</span>
+        <span class="card-grid-val">${alertListText}</span>
+
+        <span class="card-grid-label">Fecha término real:</span>
+        <span class="card-grid-val">${projFinReal} <em style="font-size: 0.85rem; color: #888; margin-left: 8px;">(Para modificar, ir a Admin)</em></span>
       </div>
     `;
   }
@@ -1492,10 +1512,11 @@ function renderFichaProyecto() {
   const tbody = document.getElementById("ficha-proyecto-table-body");
   if (tbody) {
     tbody.innerHTML = "";
-    projTasks.forEach(item => {
+    activeTasks.forEach(item => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre}</span></td>
+        <td class="col-desc">${item.tarea_descripcion || '-'}</td>
         <td>${item.tarea_responsable || '-'}</td>
         <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
         <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
@@ -1503,9 +1524,32 @@ function renderFichaProyecto() {
         <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
         <td>${renderDateCell(item.tarea_id, 'fecha_fin_proy', item.fecha_fin_proy)}</td>
         <td><span class="table-link" onclick="toggleTaskAlerta('${item.tarea_id}')">${(item.con_alerta || 'no').toLowerCase() === 'si' ? 'si' : 'no'}</span></td>
-        <td>${item.tarea_descripcion || '-'}</td>
+        <td><button class="action-btn check-btn" onclick="completeTask('${item.tarea_id}')">${ICON_CHECK}</button></td>
+        <td><button class="action-btn delete-btn" onclick="deleteTask('${item.tarea_id}')">${ICON_DELETE}</button></td>
       `;
       tbody.appendChild(tr);
+    });
+  }
+
+  const inactiveTbody = document.getElementById("ficha-proyecto-inactive-table-body");
+  if (inactiveTbody) {
+    inactiveTbody.innerHTML = "";
+    inactiveTasks.forEach(item => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><span class="table-link" onclick="openFichaTarea('${item.tarea_id}')">${item.tarea_nombre}</span></td>
+        <td class="col-desc">${item.tarea_descripcion || '-'}</td>
+        <td>${item.tarea_responsable || '-'}</td>
+        <td>${renderTaskStatusCell(item.tarea_id, item.tarea_estado)}</td>
+        <td>${renderTaskPctCell(item.tarea_id, item.tarea_pct)}</td>
+        <td>${item.tarea_contraparte || '-'}</td>
+        <td>${renderDateCell(item.tarea_id, 'fecha_inicio_proy', item.fecha_inicio_proy)}</td>
+        <td>${renderDateCell(item.tarea_id, 'fecha_fin_proy', item.fecha_fin_proy)}</td>
+        <td><span class="table-link" onclick="toggleTaskAlerta('${item.tarea_id}')">${(item.con_alerta || 'no').toLowerCase() === 'si' ? 'si' : 'no'}</span></td>
+        <td><button class="action-btn check-btn" onclick="completeTask('${item.tarea_id}')">${ICON_CHECK}</button></td>
+        <td><button class="action-btn delete-btn" onclick="deleteTask('${item.tarea_id}')">${ICON_DELETE}</button></td>
+      `;
+      inactiveTbody.appendChild(tr);
     });
   }
 }
